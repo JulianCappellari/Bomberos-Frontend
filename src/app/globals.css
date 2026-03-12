@@ -1,116 +1,453 @@
-/* ─── RESET & BASE ──────────────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800&display=swap");
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0a0a;
+  --surf: #141414;
+  --card: #1c1c1c;
+  --card2: #222222;
+  --bord: #2c2c2c;
+  --red: #e63c3c;
+  --redd: #b02828;
+  --redg: rgba(230, 60, 60, 0.25);
+  --ora: #ff7a2f;
+  --grn: #2ecc71;
+  --yel: #f1c40f;
+  --blu: #3a9cdb;
+  --txt: #f0f0f0;
+  --mut: #888888;
+  --dim: #444444;
+  --nav: 65px;
+  --hdr: 58px;
 }
 
-html {
-  font-size: 16px;
-  -webkit-text-size-adjust: 100%;
-  scroll-behavior: smooth;
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--txt);
+  font-family: "Barlow", sans-serif;
 }
 
 body {
-  font-family: 'Barlow', sans-serif;
-  background-color: #0a0a0b;
-  color: #f0f0f0;
-  line-height: 1.5;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  @apply antialiased;
 }
 
-/* ─── CSS VARIABLES ─────────────────────────────────────── */
-:root {
-  /* Colors */
-  --red:        #ef4444;
-  --red-dark:   #b91c1c;
-  --red-deeper: #7f1d1d;
-  --orange:     #f97316;
-  --green:      #4ade80;
-  --blue:       #60a5fa;
-
-  /* Text */
-  --txt:  #f0f0f0;
-  --txt2: rgba(255, 255, 255, 0.65);
-  --mut:  rgba(255, 255, 255, 0.38);
-  --dim:  rgba(255, 255, 255, 0.18);
-
-  /* Surfaces */
-  --surface-1: rgba(15, 15, 18, 0.97);
-  --surface-2: rgba(22, 22, 26, 0.9);
-  --border:    rgba(255, 255, 255, 0.07);
-  --border-red: rgba(239, 68, 68, 0.25);
-
-  /* Fonts */
-  --font-display: 'Barlow Condensed', sans-serif;
-  --font-body:    'Barlow', sans-serif;
-
-  /* Radii */
-  --radius-sm:  8px;
-  --radius-md:  12px;
-  --radius-lg:  16px;
-
-  /* Shadows */
-  --shadow-card: 0 32px 64px rgba(0, 0, 0, 0.5);
-  --shadow-red:  0 8px 28px rgba(185, 28, 28, 0.45);
-  --glow-red:    0 0 0 1px rgba(200, 30, 30, 0.4), 0 8px 32px rgba(200, 30, 30, 0.3);
+button {
+  @apply cursor-pointer;
 }
 
-/* ─── TYPOGRAPHY HELPERS ────────────────────────────────── */
-.font-display { font-family: var(--font-display); }
+@layer components {
+  .app-shell {
+    @apply min-h-screen bg-(--bg) text-(--txt) flex flex-col relative;
+  }
 
-/* ─── SCROLLBAR ─────────────────────────────────────────── */
-::-webkit-scrollbar       { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+  .app-header {
+    @apply sticky top-0 z-10 h-[58px] px-4 bg-(--surf) border-b border-(--bord) flex items-center justify-between shrink-0;
+  }
 
-/* ─── FOCUS RING ────────────────────────────────────────── */
-:focus-visible {
-  outline: 2px solid rgba(239, 68, 68, 0.5);
-  outline-offset: 2px;
+  .app-header-title {
+    font-family: "Bebas Neue", sans-serif;
+    @apply text-[22px] tracking-[1px] text-[var(--txt)];
+  }
+
+  .app-header-title span {
+    @apply text-[var(--red)];
+  }
+
+  .screen-body {
+  @apply flex-1 overflow-y-auto overflow-x-hidden p-4 pb-[calc(var(--nav)+16px)];
+  -webkit-overflow-scrolling: touch;
 }
 
-/* ─── SELECTION ─────────────────────────────────────────── */
-::selection {
-  background: rgba(239, 68, 68, 0.25);
-  color: #fff;
+  .screen-body-no-nav {
+    @apply pb-4;
+  }
+
+  .card {
+    @apply bg-[var(--card)] border border-[var(--bord)] rounded-xl p-4 mb-3;
+  }
+
+  .card-2 {
+    @apply bg-[var(--card2)] border border-[var(--bord)] rounded-[10px] p-3.5 mb-2.5;
+  }
+
+  .section-title {
+    font-family: "Bebas Neue", sans-serif;
+    @apply text-[16px] tracking-[1px] text-[var(--mut)] mb-2.5 mt-1;
+  }
+
+  .app-input {
+    @apply w-full bg-[var(--card)] border-[1.5px] border-[var(--bord)] rounded-[10px] px-3.5 py-3 text-[15px] text-[var(--txt)] outline-none transition-colors;
+  }
+
+  .app-input::placeholder {
+    color: var(--dim);
+  }
+
+  .app-input:focus {
+    border-color: var(--red);
+  }
+
+  .app-label {
+    font-family: "Barlow Condensed", sans-serif;
+    @apply block text-[12px] font-semibold uppercase tracking-[0.5px] text-[var(--mut)] mb-1.5;
+  }
+
+  .app-button {
+    font-family: "Barlow Condensed", sans-serif;
+    @apply inline-flex items-center justify-center gap-2 rounded-[10px] px-5 py-[13px] text-[15px] font-bold uppercase tracking-[0.5px] transition-all w-full;
+  }
+
+  .app-button-red {
+    @apply bg-[var(--red)] text-white;
+  }
+
+  .app-button-red:active {
+    background: var(--redd);
+    transform: scale(0.98);
+  }
+
+  .app-button-outline {
+    @apply bg-transparent text-[var(--txt)] border-[1.5px] border-[var(--bord)];
+  }
+
+  .app-button-outline:active {
+    background: var(--bord);
+  }
+
+  .app-button-green {
+    @apply bg-[var(--grn)] text-white;
+  }
+
+  .app-button-orange {
+    @apply bg-[var(--ora)] text-white;
+  }
+
+  .btn-icon {
+    @apply w-10 h-10 rounded-full bg-[var(--card)] border border-[var(--bord)] text-[var(--txt)] text-[18px] inline-flex items-center justify-center transition-all;
+  }
+
+  .btn-icon:active {
+    background: var(--bord);
+  }
+
+  .badge {
+    font-family: "Barlow Condensed", sans-serif;
+    @apply inline-flex items-center rounded-full px-2 py-[3px] text-[11px] font-bold uppercase tracking-[0.5px];
+  }
+
+  .badge-red {
+    @apply bg-[rgba(230,60,60,.2)] text-[var(--red)] border border-[rgba(230,60,60,.3)];
+  }
+
+  .badge-green {
+    @apply bg-[rgba(46,204,113,.15)] text-[var(--grn)] border border-[rgba(46,204,113,.25)];
+  }
+
+  .badge-yellow {
+    @apply bg-[rgba(241,196,15,.15)] text-[var(--yel)] border border-[rgba(241,196,15,.25)];
+  }
+
+  .badge-blue {
+    @apply bg-[rgba(58,156,219,.15)] text-[var(--blu)] border border-[rgba(58,156,219,.25)];
+  }
+
+  .badge-gray {
+    @apply bg-[rgba(136,136,136,.15)] text-[var(--mut)] border border-[rgba(136,136,136,.2)];
+  }
+
+  .avatar {
+    @apply w-[42px] h-[42px] rounded-full bg-[var(--card2)] border-2 border-[var(--bord)] flex items-center justify-center text-[22px] shrink-0;
+  }
+
+  .avatar-lg {
+    @apply w-[70px] h-[70px] text-[38px] border-[3px] border-[var(--red)];
+  }
+
+  .stats-grid {
+    @apply grid grid-cols-2 gap-2.5 mb-4;
+  }
+
+  .stat-card {
+    @apply bg-[var(--card)] border border-[var(--bord)] rounded-xl p-3.5 text-center;
+  }
+
+  .stat-num {
+    font-family: "Bebas Neue", sans-serif;
+    @apply text-[32px] leading-none text-[var(--red)];
+  }
+
+  .stat-label {
+    font-family: "Barlow Condensed", sans-serif;
+    @apply text-[11px] text-[var(--mut)] mt-0.5 uppercase tracking-[0.5px];
+  }
+
+  .quick-grid {
+    @apply grid grid-cols-2 gap-2.5 mb-4;
+  }
+
+  .quick-btn {
+    @apply bg-[var(--card)] border-[1.5px] border-[var(--bord)] rounded-xl px-3 py-4 flex flex-col items-center gap-2 transition-all;
+  }
+
+  .quick-btn:active {
+    transform: scale(0.96);
+    border-color: var(--red);
+  }
+
+  .quick-btn-red {
+    @apply border-[rgba(230,60,60,.4)] bg-[rgba(230,60,60,.07)];
+  }
+
+  .quick-icon {
+    @apply text-[28px];
+  }
+
+  .quick-label {
+    font-family: "Barlow Condensed", sans-serif;
+    @apply text-[13px] font-bold uppercase tracking-[0.5px] text-center;
+  }
+
+  .bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 h-[65px] bg-[var(--surf)] border-t border-[var(--bord)] z-[100] hidden;
+  }
+
+  .bottom-nav-visible {
+    @apply flex;
+  }
+
+  .nav-btn {
+    @apply flex-1 flex flex-col items-center justify-center gap-[3px] bg-transparent text-[var(--mut)] transition-all py-1;
+  }
+
+  .nav-btn-active {
+    @apply text-[var(--red)];
+  }
+
+  .nav-icon {
+    @apply text-[20px];
+  }
+
+  .nav-label {
+    font-family: "Barlow Condensed", sans-serif;
+    @apply text-[10px] font-semibold uppercase tracking-[0.5px];
+  }
+
+  .login-root {
+    @apply min-h-screen flex items-center justify-center px-6 py-6 bg-[var(--bg)] relative overflow-hidden;
+    font-family: "Barlow", sans-serif;
+  }
+
+  .login-root::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 10% 90%, rgba(180, 20, 20, 0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 10%, rgba(180, 20, 20, 0.08) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .login-root::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  .bg-grid {
+    @apply fixed inset-0 pointer-events-none;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .login-wrapper {
+    @apply relative z-10 w-full max-w-[400px];
+  }
+
+  .login-badge {
+    @apply flex items-center gap-2.5 mb-8;
+    animation: fadeSlideDown 0.5s ease both;
+  }
+
+  .badge-line {
+    @apply flex-1 h-px;
+    background: linear-gradient(90deg, transparent, rgba(200, 30, 30, 0.5));
+  }
+
+  .badge-line.right {
+    background: linear-gradient(90deg, rgba(200, 30, 30, 0.5), transparent);
+  }
+
+  .badge-text {
+    font-family: "Barlow Condensed", sans-serif;
+    @apply text-[11px] font-bold uppercase whitespace-nowrap;
+    letter-spacing: 0.2em;
+    color: rgba(200, 30, 30, 0.8);
+  }
+
+  .login-logo {
+    @apply mb-9;
+    animation: fadeSlideDown 0.5s 0.1s ease both;
+  }
+
+  .logo-icon-wrap {
+    @apply flex items-center gap-3.5 mb-1.5;
+  }
+
+  .logo-emblem {
+    @apply w-[52px] h-[52px] rounded-[10px] flex items-center justify-center text-[26px] shrink-0 relative;
+    background: linear-gradient(135deg, #c81e1e, #7f1d1d);
+    box-shadow:
+      0 0 0 1px rgba(200, 30, 30, 0.4),
+      0 8px 32px rgba(200, 30, 30, 0.3);
+  }
+
+  .logo-title {
+    font-family: "Barlow Condensed", sans-serif;
+    @apply text-[32px] font-black uppercase leading-none text-[#f5f5f5];
+    letter-spacing: 0.05em;
+  }
+
+  .logo-title span {
+    @apply text-red-500;
+  }
+
+  .logo-subtitle {
+    @apply text-[11px] font-medium uppercase mt-1;
+    letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.35);
+  }
+
+  .login-card-modern {
+    @apply rounded-2xl p-8 relative overflow-hidden;
+    background: rgba(15, 15, 18, 0.95);
+    border: 1px solid rgba(255,255,255,0.07);
+    box-shadow:
+      0 0 0 1px rgba(200,30,30,0.06),
+      0 32px 64px rgba(0,0,0,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+    animation: fadeSlideUp 0.5s 0.2s ease both;
+  }
+
+  .login-card-modern::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #ef4444, transparent);
+    opacity: 0.6;
+  }
+
+  .card-title-modern {
+    font-family: "Barlow Condensed", sans-serif;
+    @apply text-[20px] font-bold uppercase text-[#f0f0f0] mb-1;
+    letter-spacing: 0.08em;
+  }
+
+  .card-desc-modern {
+    @apply text-[13px];
+    color: rgba(255,255,255,0.3);
+  }
+
+  .field-label-modern {
+    font-family: "Barlow Condensed", sans-serif;
+    @apply flex items-center gap-1.5 text-[12px] font-bold uppercase mb-2;
+    letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.45);
+  }
+
+  .field-input-modern {
+    @apply w-full rounded-[10px] px-4 py-[13px] text-[15px] transition-all;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #f0f0f0;
+  }
+
+  .field-input-modern::placeholder {
+    color: rgba(255,255,255,0.18);
+  }
+
+  .field-input-modern:focus {
+    border-color: rgba(239, 68, 68, 0.5);
+    background: rgba(255,255,255,0.06);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.08);
+  }
+
+  .field-input-modern-error {
+    border-color: rgba(239, 68, 68, 0.6);
+  }
+
+  .btn-submit-modern {
+    font-family: "Barlow Condensed", sans-serif;
+    @apply w-full rounded-[10px] py-3.5 text-[16px] font-extrabold uppercase text-white relative overflow-hidden transition-all mt-2;
+    letter-spacing: 0.12em;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    box-shadow: 0 4px 20px rgba(185, 28, 28, 0.4);
+  }
+
+  .btn-submit-modern:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 28px rgba(185, 28, 28, 0.5);
+  }
+
+  .btn-submit-modern:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 }
 
-/* ─── INPUTS ────────────────────────────────────────────── */
-input, button, textarea, select {
-  font-family: inherit;
-}
-
-/* ─── LINK RESET ────────────────────────────────────────── */
-a { color: inherit; text-decoration: none; }
-
-/* ─── IMAGE RESET ───────────────────────────────────────── */
-img, svg { display: block; max-width: 100%; }
-
-/* ─── ANIMATIONS ────────────────────────────────────────── */
 @keyframes fadeSlideDown {
-  from { opacity: 0; transform: translateY(-12px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@media (min-width: 640px) {
+  .screen-body {
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+  }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
-}
+  .app-header {
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+  }
 
-@keyframes glow {
-  0%, 100% { box-shadow: 0 0 6px rgba(239, 68, 68, 0.4); }
-  50%       { box-shadow: 0 0 16px rgba(239, 68, 68, 0.7); }
+  .bottom-nav-visible {
+    max-width: 600px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 16px 16px 0 0;
+  }
 }

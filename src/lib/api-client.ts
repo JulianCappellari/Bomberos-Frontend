@@ -1,5 +1,10 @@
 import { api } from "./axios";
-import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "./auth";
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  setTokens,
+} from "./auth";
 
 api.interceptors.request.use((config) => {
   const token = getAccessToken();
@@ -18,7 +23,7 @@ api.interceptors.response.use(
 
     if (
       error.response?.status === 401 &&
-      !originalRequest._retry &&
+      !originalRequest?._retry &&
       getRefreshToken()
     ) {
       originalRequest._retry = true;
@@ -26,7 +31,9 @@ api.interceptors.response.use(
       try {
         const refreshToken = getRefreshToken();
 
-        const response = await api.post("/auth/refresh", { refreshToken });
+        const response = await api.post("/auth/refresh", {
+          refreshToken,
+        });
 
         const newAccessToken = response.data.accessToken;
         const currentRefreshToken = getRefreshToken();

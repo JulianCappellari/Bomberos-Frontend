@@ -7,16 +7,9 @@ import {
   useMemo,
   useState,
 } from "react";
-import { jwtDecode } from "jwt-decode";
 import { clearTokens, getAccessToken, setTokens } from "@/lib/auth";
 import { loginRequest } from "@/services/auth.service";
 import { AuthUser } from "@/types/auth";
-
-type JwtPayload = {
-  userId: string;
-  role: "ADMIN" | "FIREFIGHTER" | "OPERATOR";
-  exp: number;
-};
 
 type AuthContextType = {
   user: AuthUser | null;
@@ -29,42 +22,83 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const USER_KEY = "bomberos_user";
+
+const DEV_BYPASS = process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === "true";
+
+const DEV_USER: AuthUser = {
+  id: "dev-admin",
+  username: "admin",
+  email: "admin@bomberos.local",
+  role: "ADMIN",
+  isActive: true,
+  isPendingApproval: false,
+  profile: {
+    fullName: "Administrador Demo",
+    rank: "Jefe de Guardia",
+    badge: "A-001",
+  },
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUserState] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = getAccessToken();
-
-    if (!token) {
+    if (DEV_BYPASS) {
+      setUserState(DEV_USER);
       setIsLoading(false);
       return;
     }
 
-    try {
-      const decoded = jwtDecode<JwtPayload>(token);
+    const token = getAccessToken();
+    const savedUser =
+      typeof window !== "undefined" ? localStorage.getItem(USER_KEY) : null;
 
-      if (decoded.exp * 1000 < Date.now()) {
+    if (token && savedUser) {
+      try {
+        setUserState(JSON.parse(savedUser));
+      } catch {
         clearTokens();
-        setUser(null);
+        localStorage.removeItem(USER_KEY);
       }
-    } catch {
-      clearTokens();
-      setUser(null);
     }
 
     setIsLoading(false);
   }, []);
 
+  function setUser(user: AuthUser | null) {
+    setUserState(user);
+
+    if (typeof window !== "undefined") {
+      if (user) {
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(USER_KEY);
+      }
+    }
+  }
+
   async function login(username: string, password: string) {
+    if (DEV_BYPASS) {
+      setUser(DEV_USER);
+      return;
+    }
+
     const data = await loginRequest(username, password);
     setTokens(data.tokens.accessToken, data.tokens.refreshToken);
     setUser(data.user);
   }
 
   function logout() {
+    if (DEV_BYPASS) {
+      setUser(DEV_USER);
+      return;
+    }
+
     clearTokens();
     setUser(null);
+
     if (typeof window !== "undefined") {
       window.location.href = "/login";
     }
@@ -79,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       setUser,
     }),
-    [user, isLoading],
+    [user, isLoading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

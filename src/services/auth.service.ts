@@ -18,3 +18,8 @@ export async function changePasswordRequest(data: {
   const response = await api.patch("/auth/change-password", data);
   return response.data;
 }
+
+export async function getMeRequest() {
+  const response = await api.get("/auth/me");
+  return response.data;
+}

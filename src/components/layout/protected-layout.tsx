@@ -1,16 +1,26 @@
 "use client";
 
 import { useAuth } from "@/features/auth/auth-context";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
+import Link from "next/link";
+
+const navItems = [
+  { href: "/dashboard", label: "Inicio", icon: "🏠" },
+  { href: "/alerts", label: "Alertas", icon: "🔔" },
+  { href: "/attendance", label: "Horas", icon: "⏱" },
+  { href: "/users", label: "Usuarios", icon: "👥" },
+  { href: "/assets", label: "Equipos", icon: "🚒" },
+];
 
 export function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { isAuthenticated, isLoading, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -20,7 +30,7 @@ export function ProtectedLayout({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg)] text-[var(--txt)] flex items-center justify-center">
         Cargando...
       </div>
     );
@@ -29,26 +39,38 @@ export function ProtectedLayout({
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      <header className="border-b border-zinc-800 bg-zinc-900">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-lg font-bold">Bomberos App</h1>
-            <p className="text-sm text-zinc-400">
-              {user?.profile?.fullName} · {user?.role}
-            </p>
-          </div>
+    <div className="app-shell">
+      <header className="app-header">
+        <div className="app-header-title">
+          🚒 <span>SAMPACHO</span>
+        </div>
 
-          <button
-            onClick={logout}
-            className="rounded-lg border border-zinc-700 px-4 py-2 text-sm hover:bg-zinc-800"
-          >
-            Cerrar sesión
+        <div className="flex items-center gap-3">
+          <button className="btn-icon">🔔</button>
+          <button className="btn-icon" onClick={logout}>
+            🚪
           </button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-6">{children}</main>
+      {children}
+
+      <nav className="bottom-nav bottom-nav-visible">
+        {navItems.map((item) => {
+          const active = pathname === item.href;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`nav-btn ${active ? "nav-btn-active" : ""}`}
+            >
+              <div className="nav-icon">{item.icon}</div>
+              <div className="nav-label">{item.label}</div>
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }
