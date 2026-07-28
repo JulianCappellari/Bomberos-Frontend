@@ -2,8 +2,8 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -35,62 +35,60 @@ const DEV_USER: AuthUser = {
   isPendingApproval: false,
   profile: {
     fullName: "Administrador Demo",
-    rank: "Jefe de Guardia",
+    rank: "Oficial",
     badge: "A-001",
   },
 };
 
+function readSavedUser() {
+  if (DEV_BYPASS) return DEV_USER;
+  if (typeof window === "undefined") return null;
+
+  const token = getAccessToken();
+  const savedUser = localStorage.getItem(USER_KEY);
+
+  if (!token || !savedUser) return null;
+
+  try {
+    return JSON.parse(savedUser) as AuthUser;
+  } catch {
+    clearTokens();
+    localStorage.removeItem(USER_KEY);
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUserState] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUserState] = useState<AuthUser | null>(() => readSavedUser());
+  const [isLoading] = useState(false);
 
-  useEffect(() => {
-    if (DEV_BYPASS) {
-      setUserState(DEV_USER);
-      setIsLoading(false);
-      return;
-    }
-
-    const token = getAccessToken();
-    const savedUser =
-      typeof window !== "undefined" ? localStorage.getItem(USER_KEY) : null;
-
-    if (token && savedUser) {
-      try {
-        setUserState(JSON.parse(savedUser));
-      } catch {
-        clearTokens();
-        localStorage.removeItem(USER_KEY);
-      }
-    }
-
-    setIsLoading(false);
-  }, []);
-
-  function setUser(user: AuthUser | null) {
-    setUserState(user);
+  const setUser = useCallback((nextUser: AuthUser | null) => {
+    setUserState(nextUser);
 
     if (typeof window !== "undefined") {
-      if (user) {
-        localStorage.setItem(USER_KEY, JSON.stringify(user));
+      if (nextUser) {
+        localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
       } else {
         localStorage.removeItem(USER_KEY);
       }
     }
-  }
+  }, []);
 
-  async function login(username: string, password: string) {
-    if (DEV_BYPASS) {
-      setUser(DEV_USER);
-      return;
-    }
+  const login = useCallback(
+    async (username: string, password: string) => {
+      if (DEV_BYPASS) {
+        setUser(DEV_USER);
+        return;
+      }
 
-    const data = await loginRequest(username, password);
-    setTokens(data.tokens.accessToken, data.tokens.refreshToken);
-    setUser(data.user);
-  }
+      const data = await loginRequest(username, password);
+      setTokens(data.tokens.accessToken, data.tokens.refreshToken);
+      setUser(data.user);
+    },
+    [setUser],
+  );
 
-  function logout() {
+  const logout = useCallback(() => {
     if (DEV_BYPASS) {
       setUser(DEV_USER);
       return;
@@ -102,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") {
       window.location.href = "/login";
     }
-  }
+  }, [setUser]);
 
   const value = useMemo(
     () => ({
@@ -113,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       setUser,
     }),
-    [user, isLoading]
+    [user, isLoading, login, logout, setUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,39 +1,21 @@
 "use client";
 
-import { useCreateAttendanceQrChallenge } from "@/hooks/use-scan-attendance-qr";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import QRCode from "react-qr-code";
-
+import { useCreateAttendanceQrChallenge } from "@/hooks/use-scan-attendance-qr";
 
 const STATION_ID = "station_sampacho_dev";
 
 export default function DevAttendanceQrPage() {
-  const [qrData, setQrData] = useState<{
-    qrToken: string;
-    expiresAt: string;
-  } | null>(null);
-
-  const mutation = useCreateAttendanceQrChallenge();
-
-  async function generateQr() {
-    try {
-      const data = await mutation.mutateAsync(STATION_ID);
-      setQrData({
-        qrToken: data.qrToken,
-        expiresAt: data.expiresAt,
-      });
-    } catch (error) {
-      console.error(error);
-      alert("No se pudo generar el QR");
-    }
-  }
+  const { mutate, data: qrData, error, isPending } =
+    useCreateAttendanceQrChallenge();
 
   useEffect(() => {
-    generateQr();
-  }, []);
+    mutate(STATION_ID);
+  }, [mutate]);
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
+    <main className="flex min-h-screen items-center justify-center bg-zinc-950 p-6 text-white">
       <div className="w-full max-w-md rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl">
         <h1 className="text-2xl font-black uppercase tracking-wider text-red-500">
           QR asistencia DEV
@@ -44,12 +26,19 @@ export default function DevAttendanceQrPage() {
         </p>
 
         <button
-          onClick={generateQr}
-          disabled={mutation.isPending}
-          className="mt-5 h-12 w-full rounded-2xl bg-red-500 font-black uppercase tracking-wide text-white"
+          type="button"
+          onClick={() => mutate(STATION_ID)}
+          disabled={isPending}
+          className="mt-5 h-12 w-full rounded-2xl bg-red-500 font-black uppercase tracking-wide text-white disabled:opacity-70"
         >
-          {mutation.isPending ? "Generando..." : "Regenerar QR"}
+          {isPending ? "Generando..." : "Regenerar QR"}
         </button>
+
+        {error && (
+          <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
+            No se pudo generar el QR.
+          </div>
+        )}
 
         {qrData && (
           <>

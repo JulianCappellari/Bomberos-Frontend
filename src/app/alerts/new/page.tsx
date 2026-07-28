@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import {
   AlertTriangle,
-  ArrowLeft,
   Droplets,
   Flame,
   ShieldPlus,
@@ -11,9 +10,10 @@ import {
   Stethoscope,
   TestTube2,
 } from "lucide-react";
-import Link from "next/link";
 import { useCreateAlert } from "@/hooks/use-alerts";
 import AlertStatus from "@/components/ui/alert-status";
+import { getErrorMessage } from "@/lib/get-error-message";
+import { BackButton, HomeButton } from "@/components/layout/navigation-buttons";
 
 type EmergencyType =
   | "incendio"
@@ -103,9 +103,6 @@ export default function EmergencyAlertPage() {
 
   try {
     await createAlertMutation.mutateAsync({
-      title:
-        emergencyTypes.find((item) => item.id === selectedEmergency)?.label ||
-        "Emergencia",
       type: emergencyTypeMap[selectedEmergency],
       description: description.trim() || undefined,
       location: location.trim(),
@@ -123,12 +120,8 @@ export default function EmergencyAlertPage() {
     setFeedbackMessage("La alerta fue enviada correctamente.");
     setFeedbackOpen(true);
   } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string } } };
-
     setFeedbackType("error");
-    setFeedbackMessage(
-      err?.response?.data?.message || "No se pudo enviar la alerta.",
-    );
+    setFeedbackMessage(getErrorMessage(error, "No se pudo enviar la alerta."));
     setFeedbackOpen(true);
   }
 }
@@ -142,13 +135,9 @@ export default function EmergencyAlertPage() {
             <div className="relative flex h-full flex-col">
               <header className="border-b border-white/5 bg-[#0d0e11]/90 backdrop-blur">
                 <div className="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
-                  <Link
-                    href="/dashboard"
+                  <BackButton
                     className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10"
-                    aria-label="Volver"
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                  </Link>
+                  />
 
                   <div className="flex items-center gap-2 sm:gap-3">
                     <AlertTriangle className="h-5 w-5 text-[#ff5a52] sm:h-6 sm:w-6" />
@@ -162,7 +151,7 @@ export default function EmergencyAlertPage() {
                     </div>
                   </div>
 
-                  <div className="w-11" />
+                  <HomeButton className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10" />
                 </div>
               </header>
 

@@ -1,11 +1,12 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useAuth } from "@/features/auth/auth-context";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { useAuth } from "@/features/auth/auth-context";
+import { getErrorMessage } from "@/lib/get-error-message";
 
 const schema = z.object({
   username: z.string().min(1, "Ingresá tu usuario"),
@@ -32,10 +33,8 @@ export default function LoginPage() {
       setServerError("");
       await login(values.username, values.password);
       router.push("/dashboard");
-    } catch (error: any) {
-      setServerError(
-        error?.response?.data?.message || "No se pudo iniciar sesión",
-      );
+    } catch (error: unknown) {
+      setServerError(getErrorMessage(error, "No se pudo iniciar sesión"));
     }
   }
 
@@ -52,7 +51,7 @@ export default function LoginPage() {
 
         <div className="login-logo">
           <div className="logo-icon-wrap">
-            <div className="logo-emblem">🔥</div>
+            <div className="logo-emblem">BV</div>
 
             <div>
               <div className="logo-title">
@@ -106,7 +105,7 @@ export default function LoginPage() {
                 className={`field-input-modern ${
                   errors.password ? "field-input-modern-error" : ""
                 }`}
-                placeholder="••••••••"
+                placeholder="********"
                 autoComplete="current-password"
               />
               {errors.password && (

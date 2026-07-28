@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createAlertRequest,
   getAlertsRequest,
+  respondAlertRequest,
   resolveAlertRequest,
 } from "@/services/alerts.service";
 
@@ -33,6 +34,19 @@ export function useResolveAlert() {
     mutationFn: resolveAlertRequest,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+    },
+  });
+}
+
+export function useRespondAlert() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: respondAlertRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
     },
   });
 }

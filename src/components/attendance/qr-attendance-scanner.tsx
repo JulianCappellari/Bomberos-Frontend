@@ -22,49 +22,7 @@ export default function QrAttendanceScanner({
   const [scannerError, setScannerError] = useState("");
   const [hasDetected, setHasDetected] = useState(false);
 
-  async function startCamera() {
-    console.log("[QR] startCamera() -> iniciando cámara");
-
-    try {
-      setScannerError("");
-      setHasDetected(false);
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      });
-
-      console.log("[QR] Cámara concedida correctamente", stream);
-
-      streamRef.current = stream;
-
-      const video = videoRef.current;
-      if (!video) {
-        console.log("[QR] videoRef.current es null");
-        return;
-      }
-
-      video.srcObject = stream;
-      await video.play();
-
-      console.log("[QR] Video reproduciéndose");
-
-      setIsCameraActive(true);
-      scanFrame();
-    } catch (error) {
-      console.error("[QR] Error al iniciar cámara:", error);
-      setScannerError("No se pudo acceder a la cámara.");
-      setIsCameraActive(false);
-    }
-  }
-
   function stopCamera() {
-    console.log("[QR] stopCamera() -> deteniendo cámara");
-
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
       animationRef.current = null;
@@ -83,23 +41,15 @@ export default function QrAttendanceScanner({
   }
 
   async function handleDetectedToken(token: string) {
-    console.log("[QR] handleDetectedToken() -> token detectado:", token);
-    console.log("[QR] hasDetected:", hasDetected, "| isProcessing:", isProcessing);
-
-    if (hasDetected || isProcessing) {
-      console.log("[QR] Se ignora el token porque ya se detectó uno o está procesando");
-      return;
-    }
+    if (hasDetected || isProcessing) return;
 
     setHasDetected(true);
     stopCamera();
 
     try {
-      console.log("[QR] Ejecutando onDetected(token)");
       await onDetected(token);
-      console.log("[QR] onDetected(token) finalizó correctamente");
-    } catch (error) {
-      console.error("[QR] Error dentro de onDetected(token):", error);
+    } catch {
+      setScannerError("No se pudo procesar el QR detectado.");
     }
   }
 
@@ -108,7 +58,6 @@ export default function QrAttendanceScanner({
     const canvas = canvasRef.current;
 
     if (!video || !canvas) {
-      console.log("[QR] scanFrame() -> falta video o canvas");
       animationRef.current = requestAnimationFrame(scanFrame);
       return;
     }
@@ -123,13 +72,11 @@ export default function QrAttendanceScanner({
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
           inversionAttempts: "dontInvert",
         });
 
         if (code?.data) {
-          console.log("[QR] QR leído correctamente:", code.data);
           void handleDetectedToken(code.data);
           return;
         }
@@ -139,11 +86,41 @@ export default function QrAttendanceScanner({
     animationRef.current = requestAnimationFrame(scanFrame);
   }
 
-  useEffect(() => {
-    console.log("[QR] QrAttendanceScanner montado");
+  async function startCamera() {
+    try {
+      setScannerError("");
+      setHasDetected(false);
 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+
+      streamRef.current = stream;
+
+      const video = videoRef.current;
+      if (!video) {
+        stopCamera();
+        return;
+      }
+
+      video.srcObject = stream;
+      await video.play();
+
+      setIsCameraActive(true);
+      scanFrame();
+    } catch {
+      setScannerError("No se pudo acceder a la cámara.");
+      setIsCameraActive(false);
+    }
+  }
+
+  useEffect(() => {
     return () => {
-      console.log("[QR] QrAttendanceScanner desmontado");
       stopCamera();
     };
   }, []);
@@ -173,7 +150,8 @@ export default function QrAttendanceScanner({
             Escaneá el QR del cuartel
           </p>
           <p className="mt-2 text-sm text-white/60">
-            Apuntá la cámara al código QR dinámico para registrar entrada o salida.
+            Apuntá la cámara al código QR dinámico para registrar entrada o
+            salida.
           </p>
         </div>
       </div>

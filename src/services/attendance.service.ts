@@ -1,5 +1,5 @@
 import { api } from "@/lib/api-client";
-import axios from "axios";
+import { getErrorMessage } from "@/lib/get-error-message";
 
 export type ScanAttendanceQrPayload = {
   qrToken: string;
@@ -9,30 +9,51 @@ export type ScanAttendanceQrPayload = {
   deviceFingerprint: string;
 };
 
+export type AttendanceSummary = {
+  totalMinutes: number;
+  totalHours: number;
+  totalHoursFormatted: string;
+  totalAttendances: number;
+  currentMonthMinutes: number;
+  currentMonthFormatted: string;
+  isCurrentlyInside: boolean;
+};
+
+export type PresentPersonnelItem = {
+  id: string;
+  checkInAt: string;
+  checkInTrust: "HIGH" | "MEDIUM" | "REJECTED" | null;
+  station: {
+    id: string;
+    name: string;
+  };
+  user: {
+    id: string;
+    username: string;
+    role: "ADMIN" | "FIREFIGHTER" | "OPERATOR";
+    profile: {
+      fullName: string;
+      rank: string;
+      badge: string;
+      avatarUrl?: string | null;
+    } | null;
+  };
+};
+
 export async function createAttendanceQrChallenge(stationId: string) {
-  console.log("[SERVICE] createAttendanceQrChallenge() -> request:", { stationId });
-
-  const response = await api.post("/attendance/qr-challenges", { stationId });
-
-  console.log("[SERVICE] createAttendanceQrChallenge() -> raw response:", response.data);
-
-  return response.data as {
+  const response = await api.post<{
     id: string;
     qrToken: string;
     expiresAt: string;
     stationId: string;
-  };
+  }>("/attendance/qr-challenges", { stationId });
+
+  return response.data;
 }
 
 export async function scanAttendanceQr(payload: ScanAttendanceQrPayload) {
   try {
-    console.log("[SERVICE] scanAttendanceQr() -> request payload:", payload);
-
-    const response = await api.post("/attendance/scan", payload);
-
-    console.log("[SERVICE] scanAttendanceQr() -> raw response:", response.data);
-
-    return response.data as {
+    const response = await api.post<{
       action: "CHECK_IN" | "CHECK_OUT";
       station: {
         id: string;
@@ -40,42 +61,33 @@ export async function scanAttendanceQr(payload: ScanAttendanceQrPayload) {
       };
       workedMinutes: number;
       distanceMeters: number;
-    };
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      throw new Error(
-        error.response?.data?.message || "No se pudo registrar la asistencia.",
-      );
-    }
+    }>("/attendance/scan", payload);
 
-    throw new Error("Ocurrió un error inesperado al registrar la asistencia.");
+    return response.data;
+  } catch (error: unknown) {
+    throw new Error(
+      getErrorMessage(error, "No se pudo registrar la asistencia."),
+    );
   }
 }
 
 export async function getMyOpenAttendance() {
-  console.log("[SERVICE] getMyOpenAttendance() -> request");
   const response = await api.get("/attendance/me/open");
-  console.log("[SERVICE] getMyOpenAttendance() -> raw response:", response.data);
   return response.data;
 }
 
 export async function getMyAttendances() {
-  console.log("[SERVICE] getMyAttendances() -> request");
   const response = await api.get("/attendance/me");
-  console.log("[SERVICE] getMyAttendances() -> raw response:", response.data);
   return response.data;
 }
 
-
 export async function getMyAttendanceSummary() {
-  const response = await api.get("/attendance/me/summary");
-  return response.data as {
-    totalMinutes: number;
-    totalHours: number;
-    totalHoursFormatted: string;
-    totalAttendances: number;
-    currentMonthMinutes: number;
-    currentMonthFormatted: string;
-    isCurrentlyInside: boolean;
-  };
+  const response = await api.get<AttendanceSummary>("/attendance/me/summary");
+  return response.data;
+}
+
+export async function getPresentPersonnelRequest() {
+  const response =
+    await api.get<PresentPersonnelItem[]>("/attendance/present");
+  return response.data;
 }

@@ -14,10 +14,15 @@ export type BackendAlert = {
     id: string;
     username: string;
     profile?: {
-      firstName?: string | null;
-      lastName?: string | null;
+      fullName?: string | null;
     } | null;
   } | null;
+  responses?: Array<{
+    id: string;
+    response: "GOING" | "NOT_GOING";
+    userId: string;
+    respondedAt: string;
+  }>;
 };
 
 export async function getAlertsRequest() {
@@ -38,5 +43,15 @@ export async function createAlertRequest(payload: {
 
 export async function resolveAlertRequest(id: string) {
   const response = await api.patch(`/alerts/${id}/resolve`);
+  return response.data;
+}
+
+export async function respondAlertRequest(payload: {
+  id: string;
+  response: "GOING" | "NOT_GOING";
+}) {
+  const response = await api.post(`/alerts/${payload.id}/respond`, {
+    response: payload.response,
+  });
   return response.data;
 }

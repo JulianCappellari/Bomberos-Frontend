@@ -1,8 +1,13 @@
 import { api } from "@/lib/api-client";
-import { User } from "@/types/user";
+import { User, UserRosterItem } from "@/types/user";
 
 export async function getUsersRequest() {
   const response = await api.get<User[]>("/users");
+  return response.data;
+}
+
+export async function getUserRosterRequest() {
+  const response = await api.get<UserRosterItem[]>("/users/roster");
   return response.data;
 }
 

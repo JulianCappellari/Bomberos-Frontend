@@ -3,17 +3,26 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
-  ArrowLeft,
+  Bell,
+  CheckCircle2,
   Droplets,
   Flame,
   MapPin,
+  Plus,
   ShieldPlus,
   Siren,
   Stethoscope,
   TestTube2,
-  Bell,
+  XCircle,
 } from "lucide-react";
-import { useAlerts } from "@/hooks/use-alerts";
+import { useAuth } from "@/features/auth/auth-context";
+import { getErrorMessage } from "@/lib/get-error-message";
+import {
+  useAlerts,
+  useRespondAlert,
+  useResolveAlert,
+} from "@/hooks/use-alerts";
+import { BackButton, HomeButton } from "@/components/layout/navigation-buttons";
 import type { BackendAlert } from "@/services/alerts.service";
 
 type EmergencyType =
@@ -23,7 +32,8 @@ type EmergencyType =
   | "accidente"
   | "quimico"
   | "medico"
-  | "inundacion";
+  | "inundacion"
+  | "otro";
 
 type AlertStatus = "activa" | "resuelta";
 type AlertPriority = "alta" | "media" | "baja";
@@ -38,6 +48,8 @@ type AlertItem = {
   timeAgo: string;
   priority: AlertPriority;
   status: AlertStatus;
+  responsesCount: number;
+  myResponse: "GOING" | "NOT_GOING" | null;
 };
 
 const filters = [
@@ -65,72 +77,44 @@ function mapBackendType(type: BackendAlert["type"]): AlertItem["type"] {
     case "FLOOD":
       return "inundacion";
     default:
-      return "incendio";
+      return "otro";
   }
 }
 
 function mapBackendPriority(priority: BackendAlert["priority"]): AlertPriority {
-  switch (priority) {
-    case "HIGH":
-      return "alta";
-    case "MEDIUM":
-      return "media";
-    case "LOW":
-      return "baja";
-    default:
-      return "media";
-  }
+  if (priority === "HIGH") return "alta";
+  if (priority === "LOW") return "baja";
+  return "media";
 }
 
 function mapBackendStatus(status: BackendAlert["status"]): AlertStatus {
-  switch (status) {
-    case "ACTIVE":
-      return "activa";
-    case "RESOLVED":
-      return "resuelta";
-    case "CANCELLED":
-      return "resuelta";
-    default:
-      return "activa";
-  }
+  return status === "ACTIVE" ? "activa" : "resuelta";
 }
 
 function formatTimeAgo(dateString: string) {
-  const now = new Date().getTime();
   const created = new Date(dateString).getTime();
-  const diffMs = now - created;
+  if (Number.isNaN(created)) return "sin fecha";
 
-  const minutes = Math.floor(diffMs / 1000 / 60);
+  const minutes = Math.max(0, Math.floor((Date.now() - created) / 60000));
+  if (minutes < 1) return "recién";
+  if (minutes < 60) return `hace ${minutes} min`;
+
   const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `hace ${hours} h`;
+
   const days = Math.floor(hours / 24);
-
-  if (days > 0) {
-    return `hace ${days} día${days > 1 ? "s" : ""}`;
-  }
-
-  if (hours > 0) {
-    return `hace ${hours}h ${minutes % 60}min`;
-  }
-
-  if (minutes > 0) {
-    return `hace ${minutes}min`;
-  }
-
-  return "recién";
+  return `hace ${days} día${days === 1 ? "" : "s"}`;
 }
 
 function getAuthorName(alert: BackendAlert) {
-  const firstName = alert.createdBy?.profile?.firstName?.trim();
-  const lastName = alert.createdBy?.profile?.lastName?.trim();
-
-  if (firstName || lastName) {
-    return [firstName, lastName].filter(Boolean).join(" ");
-  }
-
-  return alert.createdBy?.username || "Sistema";
+  return (
+    alert.createdBy?.profile?.fullName?.trim() ||
+    alert.createdBy?.username ||
+    "Sistema"
+  );
 }
 
-function mapAlert(alert: BackendAlert): AlertItem {
+function mapAlert(alert: BackendAlert, userId?: string): AlertItem {
   const mappedType = mapBackendType(alert.type);
 
   return {
@@ -144,6 +128,7 @@ function mapAlert(alert: BackendAlert): AlertItem {
         quimico: "Químico",
         medico: "Médico",
         inundacion: "Inundación",
+        otro: "Alerta",
       }[mappedType] || "Alerta",
     address: alert.location,
     description: alert.description || "Sin descripción",
@@ -151,16 +136,21 @@ function mapAlert(alert: BackendAlert): AlertItem {
     timeAgo: formatTimeAgo(alert.createdAt),
     priority: mapBackendPriority(alert.priority),
     status: mapBackendStatus(alert.status),
+    responsesCount: alert.responses?.length ?? 0,
+    myResponse:
+      alert.responses?.find((response) => response.userId === userId)
+        ?.response ?? null,
   };
 }
 
 export default function AlertsListPage() {
-  const [activeFilter, setActiveFilter] = useState<FilterId>("todas");
+  const { user } = useAuth();
   const { data, isLoading, isError } = useAlerts();
+  const [activeFilter, setActiveFilter] = useState<FilterId>("todas");
 
   const alerts = useMemo(() => {
-    return (data || []).map(mapAlert);
-  }, [data]);
+    return (data || []).map((alert) => mapAlert(alert, user?.id));
+  }, [data, user?.id]);
 
   const filteredAlerts = useMemo(() => {
     if (activeFilter === "todas") return alerts;
@@ -170,27 +160,39 @@ export default function AlertsListPage() {
     return alerts.filter((alert) => alert.type === activeFilter);
   }, [activeFilter, alerts]);
 
+  const activeCount = alerts.filter((alert) => alert.status === "activa").length;
+
   return (
     <main className="min-h-screen bg-[#09090b] text-white">
       <div className="mx-auto min-h-screen w-full max-w-4xl">
         <header className="sticky top-0 z-20 border-b border-white/5 bg-[#0c0d10]/92 backdrop-blur-xl">
           <div className="flex items-center justify-between px-3 py-3 sm:px-5 sm:py-4">
-            <Link
-              href="/dashboard"
+            <BackButton
               className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10"
-              aria-label="Volver"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
+            />
 
             <div className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-[#ff5349]" />
-              <h1 className="text-base font-black uppercase tracking-[0.14em] text-[#ff5349] sm:text-lg">
-                Alertas
-              </h1>
+              <div className="text-center">
+                <h1 className="text-base font-black uppercase tracking-[0.14em] text-[#ff5349] sm:text-lg">
+                  Alertas
+                </h1>
+                <p className="text-[11px] text-white/40">
+                  {activeCount} activas
+                </p>
+              </div>
             </div>
 
-            <div className="w-11" />
+            <div className="flex items-center gap-2">
+              <HomeButton className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10" />
+              <Link
+                href="/alerts/new"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-[#ff4d4f] text-white transition hover:brightness-110"
+                aria-label="Nueva alerta"
+              >
+                <Plus className="h-5 w-5" />
+              </Link>
+            </div>
           </div>
         </header>
 
@@ -219,31 +221,31 @@ export default function AlertsListPage() {
 
         <section className="space-y-3 px-2.5 pb-5 sm:px-4 sm:pb-6">
           {isLoading && (
-            <div className="rounded-[22px] border border-white/10 bg-[#111214] px-5 py-12 text-center">
-              <p className="text-sm font-semibold text-white/75">Cargando alertas...</p>
-            </div>
+            <PanelMessage message="Cargando alertas..." tone="neutral" />
           )}
 
           {isError && (
-            <div className="rounded-[22px] border border-red-500/20 bg-red-500/10 px-5 py-12 text-center">
-              <p className="text-sm font-semibold text-red-300">
-                No se pudieron cargar las alertas.
-              </p>
-            </div>
+            <PanelMessage
+              message="No se pudieron cargar las alertas."
+              tone="error"
+            />
           )}
 
           {!isLoading &&
             !isError &&
             filteredAlerts.map((alert) => (
-              <AlertCard key={alert.id} alert={alert} />
+              <AlertCard
+                key={alert.id}
+                alert={alert}
+                canResolve={user?.role === "ADMIN" || user?.role === "OPERATOR"}
+              />
             ))}
 
           {!isLoading && !isError && filteredAlerts.length === 0 && (
-            <div className="rounded-[22px] border border-dashed border-white/10 bg-[#111214] px-5 py-12 text-center">
-              <p className="text-sm font-semibold text-white/75">
-                No hay alertas para este filtro.
-              </p>
-            </div>
+            <PanelMessage
+              message="No hay alertas para este filtro."
+              tone="neutral"
+            />
           )}
         </section>
       </div>
@@ -251,10 +253,35 @@ export default function AlertsListPage() {
   );
 }
 
-function AlertCard({ alert }: { alert: AlertItem }) {
+function AlertCard({
+  alert,
+  canResolve,
+}: {
+  alert: AlertItem;
+  canResolve: boolean;
+}) {
+  const respondMutation = useRespondAlert();
+  const resolveMutation = useResolveAlert();
   const { icon: Icon, accentClass, badgeClass } = getTypeStyles(alert.type);
   const priorityClass = getPriorityClass(alert.priority);
   const statusClass = getStatusClass(alert.status);
+  const isActive = alert.status === "activa";
+
+  async function respond(response: "GOING" | "NOT_GOING") {
+    try {
+      await respondMutation.mutateAsync({ id: alert.id, response });
+    } catch (error: unknown) {
+      window.alert(getErrorMessage(error, "No se pudo responder la alerta."));
+    }
+  }
+
+  async function resolve() {
+    try {
+      await resolveMutation.mutateAsync(alert.id);
+    } catch (error: unknown) {
+      window.alert(getErrorMessage(error, "No se pudo resolver la alerta."));
+    }
+  }
 
   return (
     <article
@@ -282,7 +309,9 @@ function AlertCard({ alert }: { alert: AlertItem }) {
                 </h2>
                 <div className="mt-1 flex items-start gap-1.5 text-sm text-white/45">
                   <MapPin className="mt-[2px] h-3.5 w-3.5 shrink-0 text-[#ff4d8d]" />
-                  <span className="truncate sm:whitespace-normal">{alert.address}</span>
+                  <span className="truncate sm:whitespace-normal">
+                    {alert.address}
+                  </span>
                 </div>
               </div>
 
@@ -310,16 +339,110 @@ function AlertCard({ alert }: { alert: AlertItem }) {
               {alert.description}
             </p>
 
-            <div className="mt-4 flex items-center gap-2 text-xs text-white/28 sm:text-sm">
-              <span>🚒</span>
+            <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/35 sm:text-sm">
               <span>{alert.author}</span>
               <span>·</span>
               <span>{alert.timeAgo}</span>
+              <span>·</span>
+              <span>{alert.responsesCount} respuestas</span>
             </div>
           </div>
         </div>
+
+        {isActive && (
+          <div className="grid gap-2 border-t border-white/10 pt-4 sm:grid-cols-3">
+            <ActionButton
+              active={alert.myResponse === "GOING"}
+              disabled={respondMutation.isPending}
+              onClick={() => respond("GOING")}
+              icon={<CheckCircle2 className="h-4 w-4" />}
+              label={alert.myResponse === "GOING" ? "Vas" : "Voy"}
+              tone="green"
+            />
+            <ActionButton
+              active={alert.myResponse === "NOT_GOING"}
+              disabled={respondMutation.isPending}
+              onClick={() => respond("NOT_GOING")}
+              icon={<XCircle className="h-4 w-4" />}
+              label={alert.myResponse === "NOT_GOING" ? "No vas" : "No voy"}
+              tone="gray"
+            />
+            {canResolve && (
+              <ActionButton
+                active={false}
+                disabled={resolveMutation.isPending}
+                onClick={resolve}
+                icon={<CheckCircle2 className="h-4 w-4" />}
+                label="Resolver"
+                tone="red"
+              />
+            )}
+          </div>
+        )}
       </div>
     </article>
+  );
+}
+
+function ActionButton({
+  active,
+  disabled,
+  onClick,
+  icon,
+  label,
+  tone,
+}: {
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  tone: "green" | "gray" | "red";
+}) {
+  const toneClass = {
+    green: active
+      ? "border-emerald-500 bg-emerald-500 text-white"
+      : "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+    gray: active
+      ? "border-slate-400 bg-slate-500 text-white"
+      : "border-white/10 bg-white/5 text-slate-300",
+    red: "border-red-500/30 bg-red-500/10 text-red-300",
+  }[tone];
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={[
+        "inline-flex h-11 items-center justify-center gap-2 rounded-2xl border px-4 text-xs font-black uppercase tracking-[0.1em] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60",
+        toneClass,
+      ].join(" ")}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function PanelMessage({
+  message,
+  tone,
+}: {
+  message: string;
+  tone: "neutral" | "error";
+}) {
+  return (
+    <div
+      className={[
+        "rounded-[22px] border px-5 py-12 text-center",
+        tone === "error"
+          ? "border-red-500/20 bg-red-500/10 text-red-300"
+          : "border-white/10 bg-[#111214] text-white/75",
+      ].join(" ")}
+    >
+      <p className="text-sm font-semibold">{message}</p>
+    </div>
   );
 }
 
@@ -367,6 +490,13 @@ function getTypeStyles(type: AlertItem["type"]) {
           "border-l-4 border-l-[#16c784] border-y-white/10 border-r-white/10",
         badgeClass: "border-[#16c784]/20 bg-[#112921] text-[#53d9a4]",
       };
+    case "otro":
+      return {
+        icon: Bell,
+        accentClass:
+          "border-l-4 border-l-[#ff7a2f] border-y-white/10 border-r-white/10",
+        badgeClass: "border-[#ff7a2f]/20 bg-[#2c2118] text-[#ffad78]",
+      };
   }
 }
 
@@ -389,4 +519,3 @@ function getStatusClass(status: AlertStatus) {
       return "border-white/10 bg-[#1a1d22] text-white/45";
   }
 }
-

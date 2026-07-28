@@ -11,3 +11,15 @@ export type User = {
     badge: string;
   } | null;
 };
+
+export type UserRosterItem = {
+  id: string;
+  username: string;
+  role: "ADMIN" | "FIREFIGHTER" | "OPERATOR";
+  profile: {
+    fullName: string;
+    rank: string;
+    badge: string;
+    avatarUrl?: string | null;
+  } | null;
+};
