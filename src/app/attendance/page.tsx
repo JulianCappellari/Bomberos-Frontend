@@ -2,23 +2,32 @@
 
 import { useRef, useState } from "react";
 import jsQR from "jsqr";
+import { motion } from "framer-motion";
 import {
   CheckCircle2,
   CircleX,
   Clock,
-  MapPin,
   ShieldCheck,
-  Timer,
   UserCheck,
   UserX,
-  X,
+  Camera,
+  CameraOff,
+  QrCode,
+  Scan,
 } from "lucide-react";
 import { getDeviceFingerprint } from "@/helper/getDeviceFingerprint";
 import { formatWorkedTimeHM } from "@/helper/formatWorkedTime";
 import { useMyAttendanceSummary } from "@/hooks/use-attendence";
 import { useScanAttendanceQr } from "@/hooks/use-scan-attendance-qr";
 import { getCurrentPositionAsync } from "@/lib/geolocation";
-import { BackButton, HomeButton } from "@/components/layout/navigation-buttons";
+import { ProtectedLayout } from "@/components/layout/protected-layout";
+import { PageHeader } from "@/components/ui/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
+import { AnimatedPage } from "@/components/ui/animated-layout";
+import { api } from "@/lib/api-client";
+import { getErrorMessage } from "@/lib/get-error-message";
 
 type AttendanceModalState = {
   open: boolean;
@@ -29,6 +38,7 @@ type AttendanceModalState = {
   stationName?: string;
   distanceMeters?: number;
   workedMinutes?: number;
+  shouldPromptAvailability?: boolean;
 };
 
 const initialModalState: AttendanceModalState = {
@@ -50,19 +60,22 @@ export default function AttendancePage() {
   const [message, setMessage] = useState("");
   const [loadingMessage, setLoadingMessage] = useState("");
   const [modal, setModal] = useState<AttendanceModalState>(initialModalState);
+  const [availabilityBusy, setAvailabilityBusy] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState("");
 
   const scanMutation = useScanAttendanceQr();
   const attendanceSummary = useMyAttendanceSummary();
 
   function closeModal() {
     setModal(initialModalState);
+    setAvailabilityError("");
   }
 
   function openErrorModal(errorMessage: string) {
     setModal({
       open: true,
       type: "error",
-      title: "No se pudo registrar la asistencia",
+      title: "Error en Registro",
       description: errorMessage,
     });
   }
@@ -72,23 +85,42 @@ export default function AttendancePage() {
     stationName: string;
     distanceMeters: number;
     workedMinutes?: number;
+    shouldPromptAvailability?: boolean;
   }) {
     setModal({
       open: true,
       type: "success",
       title:
         data.action === "CHECK_IN"
-          ? "Entrada registrada"
-          : "Salida registrada",
+          ? "Entrada Registrada"
+          : "Salida Registrada",
       description:
         data.action === "CHECK_IN"
           ? `Tu ingreso en ${data.stationName} se registró correctamente.`
-          : `Tu salida en ${data.stationName} se registró correctamente.`,
+          : `Tu salida en ${data.stationName} se registró con éxito.`,
       action: data.action,
       stationName: data.stationName,
       distanceMeters: data.distanceMeters,
       workedMinutes: data.workedMinutes,
+      shouldPromptAvailability: data.shouldPromptAvailability,
     });
+  }
+
+  async function activateAvailability() {
+    setAvailabilityBusy(true);
+    setAvailabilityError("");
+    try {
+      await api.post("/members/availability/available-now");
+      setModal((current) => ({
+        ...current,
+        description: `${current.description} Marcaste disponibilidad para recibir próximas alertas.`,
+        shouldPromptAvailability: false,
+      }));
+    } catch (error: unknown) {
+      setAvailabilityError(getErrorMessage(error, "No se pudo actualizar tu disponibilidad."));
+    } finally {
+      setAvailabilityBusy(false);
+    }
   }
 
   function stopCamera() {
@@ -115,11 +147,11 @@ export default function AttendancePage() {
     processingRef.current = true;
 
     try {
-      setLoadingMessage("Obteniendo ubicación...");
+      setLoadingMessage("Obteniendo coordenadas GPS...");
       const position = await getCurrentPositionAsync();
       const deviceFingerprint = getDeviceFingerprint();
 
-      setLoadingMessage("Validando asistencia...");
+      setLoadingMessage("Validando asistencia con el servidor...");
 
       const result = await scanMutation.mutateAsync({
         qrToken,
@@ -132,16 +164,15 @@ export default function AttendancePage() {
       await attendanceSummary.refetch();
 
       if (result.action === "CHECK_IN") {
-        const successMessage = `Entrada registrada en ${result.station.name}. Distancia: ${result.distanceMeters} m.`;
-        setMessage(successMessage);
+        setMessage(`Entrada registrada en ${result.station.name}. Distancia: ${result.distanceMeters} m.`);
         openSuccessModal({
           action: "CHECK_IN",
           stationName: result.station.name,
           distanceMeters: result.distanceMeters,
+          shouldPromptAvailability: result.shouldPromptAvailability,
         });
       } else {
-        const successMessage = `Salida registrada. Tiempo trabajado: ${formatWorkedTimeHM(result.workedMinutes)}`;
-        setMessage(successMessage);
+        setMessage(`Salida registrada. Tiempo de guardia: ${formatWorkedTimeHM(result.workedMinutes)}`);
         openSuccessModal({
           action: "CHECK_OUT",
           stationName: result.station.name,
@@ -233,266 +264,294 @@ export default function AttendancePage() {
       setStreaming(true);
       animationRef.current = requestAnimationFrame(scanFrame);
     } catch {
-      setMessage("No se pudo acceder a la cámara.");
-      openErrorModal("No se pudo acceder a la cámara.");
+      setMessage("No se pudo acceder a la cámara. Verificá los permisos del navegador.");
+      openErrorModal("No se pudo acceder a la cámara. Asegurate de habilitar los permisos.");
     }
   }
 
+  const isInside = attendanceSummary.data?.isCurrentlyInside ?? false;
+
   return (
-    <main className="min-h-screen bg-zinc-950 p-6 text-white">
-      <div className="mx-auto max-w-xl">
-        <div className="mb-5 flex items-center justify-between">
-          <BackButton className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10" />
-          <HomeButton className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10" />
-        </div>
-
-        <h1 className="text-2xl font-black uppercase tracking-wide text-red-500">
-          Asistencia QR
-        </h1>
-
-        <AttendanceStateCard
-          isLoading={attendanceSummary.isLoading}
-          isCurrentlyInside={
-            attendanceSummary.data?.isCurrentlyInside ?? false
-          }
-          currentMonthFormatted={
-            attendanceSummary.data?.currentMonthFormatted ?? "0h 0m"
+    <ProtectedLayout>
+      <AnimatedPage className="space-y-6">
+        {/* Page Header */}
+        <PageHeader
+          title="Fichaje de Asistencia"
+          subtitle="Escaneo de código QR geolocalizado en el cuartel"
+          icon={<QrCode className="h-6 w-6" />}
+          badge={
+            <Badge variant={isInside ? "green" : "gray"} pulse={isInside}>
+              {isInside ? "En Cuartel" : "Sin Guardia Activa"}
+            </Badge>
           }
         />
 
-        <section className="mt-6 rounded-3xl border border-white/10 bg-zinc-900 p-4">
-          <video
-            ref={videoRef}
-            className="w-full rounded-2xl bg-black"
-            playsInline
-            muted
-          />
-          <canvas ref={canvasRef} className="hidden" />
+        {/* Current Attendance Status Card */}
+        <div className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-[#121316] p-6 shadow-xl backdrop-blur-md">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div
+                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border shadow-inner ${
+                  isInside
+                    ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                    : "bg-white/[0.04] border-white/[0.08] text-white/40"
+                }`}
+              >
+                {isInside ? (
+                  <UserCheck className="h-7 w-7" />
+                ) : (
+                  <UserX className="h-7 w-7" />
+                )}
+              </div>
 
-          <div className="mt-4 flex gap-3">
-            <button
-              type="button"
-              onClick={startCamera}
-              disabled={streaming || scanMutation.isPending}
-              className="h-12 flex-1 rounded-2xl bg-red-500 font-black uppercase transition hover:brightness-110 disabled:opacity-50"
-            >
-              Abrir cámara
-            </button>
+              <div>
+                <div className="font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-wider text-white/50">
+                  Estado de tu Registro
+                </div>
+                <h3 className="font-[family-name:var(--font-bebas)] text-2xl uppercase tracking-wider text-white">
+                  {isInside ? "Guardia Activa en Cuartel" : "Fuera del Cuartel"}
+                </h3>
+                <p className="text-xs text-white/50 mt-0.5 font-[family-name:var(--font-barlow)]">
+                  {isInside
+                    ? "Tenés un ingreso activo. Al escanear registrarás tu salida."
+                    : "No hay asistencia abierta. Escaneá para registrar ingreso."}
+                </p>
+              </div>
+            </div>
 
-            <button
-              type="button"
-              onClick={stopCamera}
-              disabled={!streaming}
-              className="h-12 flex-1 rounded-2xl border border-white/10 bg-white/5 font-black uppercase transition hover:bg-white/10 disabled:opacity-50"
-            >
-              Detener
-            </button>
+            <div className="flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:self-auto">
+              <Clock className="h-5 w-5 text-red-400 shrink-0" />
+              <div>
+                <div className="font-[family-name:var(--font-barlow-condensed)] text-[11px] font-bold uppercase tracking-wider text-white/40">
+                  Horas este mes
+                </div>
+                <div className="font-[family-name:var(--font-bebas)] text-2xl text-white">
+                  {attendanceSummary.isLoading
+                    ? "..."
+                    : attendanceSummary.data?.currentMonthFormatted ?? "0h 0m"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* QR Scanner Viewport */}
+        <section className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-[#121316] p-5 sm:p-6 shadow-xl">
+          <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black/60 border border-white/[0.08]">
+            <video
+              ref={videoRef}
+              className="h-full w-full object-cover"
+              playsInline
+              muted
+            />
+            <canvas ref={canvasRef} className="hidden" />
+
+            {/* Tactical Scan Overlay when streaming */}
+            {streaming && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-8">
+                {/* Scanner Frame */}
+                <div className="relative h-48 w-48 sm:h-64 sm:w-64 border-2 border-red-500/50 rounded-2xl">
+                  {/* Glowing corners */}
+                  <div className="absolute -top-1 -left-1 h-6 w-6 border-t-4 border-l-4 border-red-500 rounded-tl-lg" />
+                  <div className="absolute -top-1 -right-1 h-6 w-6 border-t-4 border-r-4 border-red-500 rounded-tr-lg" />
+                  <div className="absolute -bottom-1 -left-1 h-6 w-6 border-b-4 border-l-4 border-red-500 rounded-bl-lg" />
+                  <div className="absolute -bottom-1 -right-1 h-6 w-6 border-b-4 border-r-4 border-red-500 rounded-br-lg" />
+
+                  {/* Horizontal animated laser scanner line */}
+                  <motion.div
+                    animate={{ y: [0, 180, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    className="h-0.5 w-full bg-gradient-to-r from-transparent via-red-500 to-transparent shadow-[0_0_12px_rgba(239,68,68,0.8)]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Placeholder state when camera is off */}
+            {!streaming && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white/30">
+                  <Scan className="h-8 w-8" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-[family-name:var(--font-barlow-condensed)] text-sm font-bold uppercase tracking-wider text-white">
+                    Cámara en espera
+                  </p>
+                  <p className="text-xs text-white/40 max-w-xs">
+                    Presioná &ldquo;Abrir Cámara&rdquo; para escanear el QR físico ubicado en el cuartel.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
+          {/* Scanner Controls */}
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={startCamera}
+              disabled={streaming || scanMutation.isPending}
+              icon={<Camera className="h-5 w-5" />}
+              className="w-full"
+            >
+              Abrir Cámara
+            </Button>
+
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={stopCamera}
+              disabled={!streaming}
+              icon={<CameraOff className="h-5 w-5" />}
+              className="w-full"
+            >
+              Detener
+            </Button>
+          </div>
+
+          {/* Loading or status feedback */}
           {loadingMessage && (
-            <p className="mt-4 text-sm text-white/70">{loadingMessage}</p>
+            <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-300">
+              <span className="h-2 w-2 animate-ping rounded-full bg-red-400" />
+              <span>{loadingMessage}</span>
+            </div>
           )}
 
-          {message && (
-            <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/80">
+          {message && !loadingMessage && (
+            <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70 text-center">
               {message}
             </div>
           )}
         </section>
 
-        <section className="mt-6 rounded-3xl border border-white/10 bg-zinc-900/80 p-5">
-          <h2 className="flex items-center gap-2 text-lg font-black text-white">
+        {/* Instructions / Protocol */}
+        <section className="rounded-3xl border border-white/[0.08] bg-[#121316] p-5 sm:p-6 shadow-xl">
+          <h2 className="flex items-center gap-2 font-[family-name:var(--font-bebas)] text-xl uppercase tracking-wider text-white">
             <ShieldCheck className="h-5 w-5 text-red-400" />
-            Cómo funciona
+            Protocolo de Fichaje y Geovalidación
           </h2>
 
-          <p className="mt-3 text-sm leading-6 text-white/70">
-            Escaneá el QR dinámico del cuartel para registrar entrada o salida.
-            El sistema valida ubicación, precisión y vigencia del QR antes de
-            guardar el movimiento.
-          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-4 font-[family-name:var(--font-barlow)]">
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-1">
+              <span className="font-[family-name:var(--font-bebas)] text-xl text-red-500">
+                01
+              </span>
+              <div className="text-xs font-bold text-white">Ubicación GPS</div>
+              <p className="text-[11px] text-white/50">
+                El navegador solicitará permisos de localización para certificar presencia física en el cuartel.
+              </p>
+            </div>
 
-          <ol className="mt-4 space-y-2 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/75">
-            <li>
-              <span className="font-bold text-white">1.</span> Presioná{" "}
-              <strong className="text-white">Abrir cámara</strong>.
-            </li>
-            <li>
-              <span className="font-bold text-white">2.</span> Apuntá al QR del
-              cuartel.
-            </li>
-            <li>
-              <span className="font-bold text-white">3.</span> Permití el acceso
-              a ubicación si el navegador lo solicita.
-            </li>
-            <li>
-              <span className="font-bold text-white">4.</span> Esperá la
-              confirmación del registro.
-            </li>
-          </ol>
-        </section>
-      </div>
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-1">
+              <span className="font-[family-name:var(--font-bebas)] text-xl text-red-500">
+                02
+              </span>
+              <div className="text-xs font-bold text-white">QR Dinámico</div>
+              <p className="text-[11px] text-white/50">
+                El código del cuartel rota periódicamente para evitar copias o fotografías remotas.
+              </p>
+            </div>
 
-      {modal.open && <AttendanceModal modal={modal} onClose={closeModal} />}
-    </main>
-  );
-}
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-1">
+              <span className="font-[family-name:var(--font-bebas)] text-xl text-red-500">
+                03
+              </span>
+              <div className="text-xs font-bold text-white">Cómputo Automático</div>
+              <p className="text-[11px] text-white/50">
+                Al escanear la salida, el sistema calcula de inmediato las horas trabajadas del turno.
+              </p>
+            </div>
 
-function AttendanceStateCard({
-  isLoading,
-  isCurrentlyInside,
-  currentMonthFormatted,
-}: {
-  isLoading: boolean;
-  isCurrentlyInside: boolean;
-  currentMonthFormatted: string;
-}) {
-  if (isLoading) {
-    return (
-      <div className="mt-6 rounded-3xl border border-white/10 bg-zinc-900 p-4">
-        <div className="flex items-center justify-center py-8">
-          <div className="text-sm text-white/60">
-            Cargando estado de asistencia...
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-1">
+              <span className="font-[family-name:var(--font-bebas)] text-xl text-red-500">
+                04
+              </span>
+              <div className="text-xs font-bold text-white">Historial Central</div>
+              <p className="text-[11px] text-white/50">
+                Todas las asistencias alimentan la bitácora de guardia de jefatura automáticamente.
+              </p>
+            </div>
           </div>
-        </div>
-      </div>
-    );
-  }
+        </section>
 
-  return (
-    <div className="mt-6 rounded-3xl border border-white/10 bg-zinc-900 p-4">
-      <div className="flex items-center gap-3">
-        <div
-          className={`flex h-12 w-12 items-center justify-center rounded-full ${
-            isCurrentlyInside
-              ? "bg-emerald-500/15 text-emerald-400"
-              : "bg-zinc-800/50 text-zinc-400"
-          }`}
+        {/* Modal feedback */}
+        <Modal
+          open={modal.open}
+          onClose={closeModal}
+          title={modal.title}
+          description={modal.description}
+          size="sm"
         >
-          {isCurrentlyInside ? (
-            <UserCheck className="h-6 w-6" />
-          ) : (
-            <UserX className="h-6 w-6" />
-          )}
-        </div>
-        <div>
-          <h3 className="text-lg font-black text-white">
-            {isCurrentlyInside ? "Asistencia abierta" : "Asistencia cerrada"}
-          </h3>
-          <p className="text-sm text-white/60">
-            {isCurrentlyInside
-              ? "Tenés una entrada registrada sin salida"
-              : "No tenés asistencia abierta actualmente"}
-          </p>
-        </div>
-      </div>
+          <div className="flex flex-col items-center text-center space-y-4 pt-2">
+            <div
+              className={`flex h-16 w-16 items-center justify-center rounded-2xl border shadow-inner ${
+                modal.type === "success"
+                  ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                  : "bg-red-500/15 border-red-500/30 text-red-400"
+              }`}
+            >
+              {modal.type === "success" ? (
+                <CheckCircle2 className="h-8 w-8" />
+              ) : (
+                <CircleX className="h-8 w-8" />
+              )}
+            </div>
 
-      <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
-        <div className="flex items-center gap-2 text-sm text-white/80">
-          <Clock className="h-4 w-4 text-red-400" />
-          <span>
-            Tiempo trabajado este mes:{" "}
-            <strong>{currentMonthFormatted}</strong>
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
+            {modal.type === "success" && modal.stationName && (
+              <div className="w-full space-y-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 text-left text-xs font-[family-name:var(--font-barlow)]">
+                <div className="flex items-center justify-between py-1 border-b border-white/[0.04]">
+                  <span className="text-white/50">Cuartel</span>
+                  <span className="font-semibold text-white">{modal.stationName}</span>
+                </div>
 
-function AttendanceModal({
-  modal,
-  onClose,
-}: {
-  modal: AttendanceModalState;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-md rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-2 text-white/50 transition hover:bg-white/10 hover:text-white"
-        >
-          <X className="h-5 w-5" />
-        </button>
+                {typeof modal.distanceMeters === "number" && (
+                  <div className="flex items-center justify-between py-1 border-b border-white/[0.04]">
+                    <span className="text-white/50">Distancia registrada</span>
+                    <span className="font-semibold text-white">{modal.distanceMeters} metros</span>
+                  </div>
+                )}
 
-        <div className="flex flex-col items-center text-center">
-          <div
-            className={`mb-4 flex h-16 w-16 items-center justify-center rounded-full ${
-              modal.type === "success"
-                ? "bg-emerald-500/15 text-emerald-400"
-                : "bg-red-500/15 text-red-400"
-            }`}
-          >
-            {modal.type === "success" ? (
-              <CheckCircle2 className="h-9 w-9" />
+                {modal.action === "CHECK_OUT" && typeof modal.workedMinutes === "number" && (
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-white/50">Duración de guardia</span>
+                    <span className="font-semibold text-emerald-400">
+                      {formatWorkedTimeHM(modal.workedMinutes)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {modal.shouldPromptAvailability ? (
+              <div className="w-full space-y-3">
+                <p className="text-sm text-white/70">
+                  Tu disponibilidad figura como no disponible o todavía no la confirmaste.
+                  ¿Querés activarla para recibir nuevas alertas?
+                </p>
+                {availabilityError && <p role="alert" className="text-sm text-red-300">{availabilityError}</p>}
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button variant="primary" size="md" onClick={() => void activateAvailability()} disabled={availabilityBusy} loading={availabilityBusy} className="w-full">
+                    Sí, estoy disponible
+                  </Button>
+                  <Button variant="secondary" size="md" onClick={closeModal} disabled={availabilityBusy} className="w-full">
+                    No, mantener mi estado
+                  </Button>
+                </div>
+              </div>
             ) : (
-              <CircleX className="h-9 w-9" />
+              <Button
+                variant="primary"
+                size="md"
+                onClick={closeModal}
+                className="w-full"
+              >
+                Entendido
+              </Button>
             )}
           </div>
-
-          <h2 className="text-2xl font-black text-white">{modal.title}</h2>
-          <p className="mt-3 text-sm leading-6 text-white/65">
-            {modal.description}
-          </p>
-
-          {modal.type === "success" && modal.stationName && (
-            <div className="mt-6 w-full space-y-3 rounded-2xl border border-white/10 bg-black/20 p-4 text-left">
-              <InfoLine
-                icon={<MapPin className="h-4 w-4 text-red-400" />}
-                label="Cuartel"
-                value={modal.stationName}
-              />
-
-              {typeof modal.distanceMeters === "number" && (
-                <InfoLine
-                  icon={<MapPin className="h-4 w-4 text-red-400" />}
-                  label="Distancia detectada"
-                  value={`${modal.distanceMeters} m`}
-                />
-              )}
-
-              {modal.action === "CHECK_OUT" &&
-                typeof modal.workedMinutes === "number" && (
-                  <InfoLine
-                    icon={<Timer className="h-4 w-4 text-red-400" />}
-                    label="Tiempo trabajado"
-                    value={formatWorkedTimeHM(modal.workedMinutes)}
-                  />
-                )}
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-6 h-12 w-full rounded-2xl bg-red-500 font-black uppercase text-white transition hover:brightness-110"
-          >
-            Entendido
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function InfoLine({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 text-sm text-white/80">
-      {icon}
-      <span>
-        {label}: <strong>{value}</strong>
-      </span>
-    </div>
+        </Modal>
+      </AnimatedPage>
+    </ProtectedLayout>
   );
 }

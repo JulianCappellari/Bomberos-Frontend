@@ -1,15 +1,13 @@
 import { Asset } from "@/types/asset";
 import { VehicleCompartment, VehicleInventoryResponse } from "@/types/equipment";
+import { formatOperationalDate } from "@/lib/operational-dates";
 
 export function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
 export function formatDate(date: string | null | undefined) {
-  if (!date) return "Sin fecha";
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) return date;
-  return parsed.toLocaleDateString("es-AR");
+  return formatOperationalDate(date, true);
 }
 
 export function getEquipmentStats(assets: Asset[]) {
@@ -37,6 +35,7 @@ export function flattenInventoryItems(inventory: VehicleInventoryResponse) {
 
 export function countInventoryOkFromCompartments(compartments: VehicleCompartment[]) {
   const allItems = compartments.flatMap((c) => c.items);
-  const ok = allItems.filter((i) => i.state === "OK").length;
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const ok = allItems.filter((i) => i.state === "OK" && (!i.expiresOn || i.expiresOn.slice(0, 10) >= today)).length;
   return { ok, total: allItems.length };
 }

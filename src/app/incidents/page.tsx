@@ -1,28 +1,25 @@
 "use client";
+import Link from "next/link";
 
 import { FormEvent, useMemo, useState } from "react";
 import {
-  CheckCircle2,
   ClipboardPenLine,
-  Flame,
+  MapPin,
+  MessageSquarePlus,
   Plus,
   Save,
   Siren,
-  UserPlus,
-  Users,
   X,
 } from "lucide-react";
 import { ProtectedLayout } from "@/components/layout/protected-layout";
 import { useAuth } from "@/features/auth/auth-context";
 import { useAlerts } from "@/hooks/use-alerts";
 import {
-  useAssignIncidentUsers,
-  useCloseIncident,
   useCreateIncident,
+  useCreateIncidentUpdate,
   useIncidents,
   useUpdateIncident,
 } from "@/hooks/use-incidents";
-import { useUserRoster } from "@/hooks/use-shifts";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { BackendAlert } from "@/services/alerts.service";
 import {
@@ -44,13 +41,13 @@ const incidentTypes: IncidentType[] = [
 ];
 
 const statusFilters: Array<{ id: "ALL" | IncidentStatus; label: string }> = [
-  { id: "ALL", label: "Todos" },
-  { id: "OPEN", label: "Abiertos" },
-  { id: "CLOSED", label: "Cerrados" },
+  { id: "OPEN", label: "Abiertas" },
+  { id: "CLOSED", label: "Cerradas" },
+  { id: "ALL", label: "Todas" },
 ];
 
 function isManager(role?: string) {
-  return role === "ADMIN" || role === "OPERATOR";
+  return role === "ADMIN" || role === "OPERATOR" || role === "GUARD";
 }
 
 function typeLabel(type: IncidentType) {
@@ -58,17 +55,17 @@ function typeLabel(type: IncidentType) {
     FIRE: "Incendio",
     RESCUE: "Rescate",
     ACCIDENT: "Accidente",
-    CHEMICAL: "Quimico",
-    MEDICAL: "Medico",
-    FLOOD: "Inundacion",
-    OTHER: "Otro",
+    CHEMICAL: "Riesgo químico",
+    MEDICAL: "Emergencia médica",
+    FLOOD: "Inundación",
+    OTHER: "Otra emergencia",
   };
 
   return labels[type];
 }
 
 function statusLabel(status: IncidentStatus) {
-  return status === "OPEN" ? "Abierto" : "Cerrado";
+  return status === "OPEN" ? "Abierta" : "Cerrada";
 }
 
 function memberName(member: UserRosterItem) {
@@ -93,80 +90,47 @@ export default function IncidentsPage() {
   const { data: incidents = [], isLoading, isError } = useIncidents(
     statusFilter === "ALL" ? undefined : statusFilter,
   );
-  const { data: roster = [] } = useUserRoster();
   const { data: alerts = [] } = useAlerts();
 
-  const stats = useMemo(() => {
-    return {
-      open: incidents.filter((incident) => incident.status === "OPEN").length,
-      assigned: incidents.reduce(
-        (acc, incident) => acc + incident.assignments.length,
-        0,
-      ),
-    };
-  }, [incidents]);
+  const openCount = useMemo(() => incidents.filter((incident) => incident.status === "OPEN").length, [incidents]);
 
   return (
     <ProtectedLayout>
       <main className="screen-body">
-        <section className="card">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="section-title mb-1 mt-0">Incidentes</div>
-              <p className="text-sm text-[var(--mut)]">
-                Seguimiento operativo, dotaciones asignadas y cierre de salidas.
-              </p>
-            </div>
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] bg-red-500/10 text-red-400">
-              <Siren className="h-5 w-5" />
-            </div>
-          </div>
+        <header className="mb-4">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-white"><Siren className="h-6 w-6 text-red-400" aria-hidden /> Intervenciones</h1>
+          <p className="mt-1 text-sm text-[var(--mut)]">Cada emergencia tiene una planilla única: móviles, dotación, horarios y novedades.</p>
+        </header>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <MiniMetric label="Abiertos" value={stats.open} />
-            <MiniMetric label="Asignaciones" value={stats.assigned} />
-          </div>
-        </section>
+        {manager && <CreateIncidentPanel alerts={alerts} />}
 
-        {manager && <CreateIncidentPanel alerts={alerts} roster={roster} />}
-
-        <section className="mb-3 flex gap-2 overflow-x-auto pb-1">
+        <div role="tablist" aria-label="Estado de las intervenciones" className="mb-4 flex gap-1 rounded-xl border border-[var(--bord)] bg-black/20 p-1">
           {statusFilters.map((filter) => {
             const active = statusFilter === filter.id;
-
             return (
-              <button
-                key={filter.id}
-                type="button"
-                onClick={() => setStatusFilter(filter.id)}
-                className={[
-                  "shrink-0 rounded-full border px-4 py-2 text-xs font-bold uppercase tracking-[0.08em]",
-                  active
-                    ? "border-red-500 bg-red-500 text-white"
-                    : "border-[var(--bord)] bg-[var(--card)] text-[var(--mut)]",
-                ].join(" ")}
-              >
-                {filter.label}
+              <button key={filter.id} type="button" role="tab" aria-selected={active} onClick={() => setStatusFilter(filter.id)}
+                className={`flex-1 whitespace-nowrap rounded-lg px-2 py-2 text-sm font-semibold transition-colors ${active ? "bg-red-600 text-white" : "text-white/70 hover:bg-white/[0.06]"}`}>
+                {filter.label}{filter.id === "OPEN" && openCount > 0 ? ` (${openCount})` : ""}
               </button>
             );
           })}
-        </section>
+        </div>
 
         {isLoading && (
           <div className="card text-sm text-[var(--mut)]">
-            Cargando incidentes...
+            Cargando intervenciones…
           </div>
         )}
 
         {isError && (
           <div className="card border-red-500/30 bg-red-500/10 text-sm text-red-300">
-            No se pudieron cargar los incidentes.
+            No se pudieron cargar las intervenciones. Revisá la conexión y volvé a intentar.
           </div>
         )}
 
         {!isLoading && !isError && incidents.length === 0 && (
           <div className="card text-sm text-[var(--mut)]">
-            No hay incidentes para este filtro.
+            {statusFilter === "OPEN" ? "No hay intervenciones abiertas." : "No hay intervenciones para este filtro."}
           </div>
         )}
 
@@ -175,7 +139,6 @@ export default function IncidentsPage() {
             <IncidentCard
               key={incident.id}
               incident={incident}
-              roster={roster}
               canManage={manager}
             />
           ))}
@@ -185,25 +148,10 @@ export default function IncidentsPage() {
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-[10px] border border-[var(--bord)] bg-[var(--card2)] p-3 text-center">
-      <div className="font-['Bebas_Neue'] text-3xl text-red-400">
-        {value}
-      </div>
-      <div className="text-xs uppercase tracking-[0.08em] text-[var(--mut)]">
-        {label}
-      </div>
-    </div>
-  );
-}
-
 function CreateIncidentPanel({
   alerts,
-  roster,
 }: {
   alerts: BackendAlert[];
-  roster: UserRosterItem[];
 }) {
   const createMutation = useCreateIncident();
   const [isOpen, setIsOpen] = useState(false);
@@ -212,8 +160,8 @@ function CreateIncidentPanel({
     title: "",
     type: "OTHER",
     description: "",
+    location: "",
     losses: "",
-    assignedUserIds: [],
   });
 
   const availableAlerts = alerts.filter((alert) => alert.status !== "CANCELLED");
@@ -235,15 +183,7 @@ function CreateIncidentPanel({
       type: selectedAlert.type,
       title: current.title || `${typeLabel(selectedAlert.type)} - ${selectedAlert.location}`,
       description: current.description || selectedAlert.description || "",
-    }));
-  }
-
-  function toggleAssigned(userId: string) {
-    setForm((current) => ({
-      ...current,
-      assignedUserIds: current.assignedUserIds?.includes(userId)
-        ? current.assignedUserIds.filter((id) => id !== userId)
-        : [...(current.assignedUserIds || []), userId],
+      location: selectedAlert.location,
     }));
   }
 
@@ -257,12 +197,12 @@ function CreateIncidentPanel({
         title: "",
         type: "OTHER",
         description: "",
+        location: "",
         losses: "",
-        assignedUserIds: [],
       });
       setIsOpen(false);
     } catch (error: unknown) {
-      window.alert(getErrorMessage(error, "No se pudo crear el incidente."));
+      window.alert(getErrorMessage(error, "No se pudo crear la intervención."));
     }
   }
 
@@ -271,14 +211,15 @@ function CreateIncidentPanel({
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="flex w-full items-center justify-between gap-3"
+        aria-expanded={isOpen}
+        className="flex min-h-11 w-full items-center justify-between gap-3"
       >
         <span className="flex items-center gap-2 font-bold text-white">
           <Plus className="h-5 w-5 text-red-400" />
-          Nuevo incidente
+          Registrar intervención manual
         </span>
         <span className="text-sm text-[var(--mut)]">
-          {isOpen ? "Cerrar" : "Crear"}
+          {isOpen ? "Ocultar" : "Abrir formulario"}
         </span>
       </button>
 
@@ -340,6 +281,19 @@ function CreateIncidentPanel({
           </div>
 
           <label>
+            <span className="app-label">Ubicacion</span>
+            <input
+              value={form.location}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, location: event.target.value }))
+              }
+              className="app-input"
+              required
+              maxLength={180}
+            />
+          </label>
+
+          <label>
             <span className="app-label">Descripcion</span>
             <textarea
               value={form.description}
@@ -368,42 +322,12 @@ function CreateIncidentPanel({
             />
           </label>
 
-          <div>
-            <span className="app-label">Dotacion</span>
-            <div className="grid max-h-[220px] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-              {roster.map((member) => {
-                const selected = form.assignedUserIds?.includes(member.id);
-
-                return (
-                  <button
-                    key={member.id}
-                    type="button"
-                    onClick={() => toggleAssigned(member.id)}
-                    className={[
-                      "rounded-[10px] border px-3 py-2 text-left transition",
-                      selected
-                        ? "border-red-500 bg-red-500/10"
-                        : "border-[var(--bord)] bg-[var(--card2)]",
-                    ].join(" ")}
-                  >
-                    <div className="text-sm font-bold text-white">
-                      {memberName(member)}
-                    </div>
-                    <div className="text-xs text-[var(--mut)]">
-                      {member.profile?.rank || member.role}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           <button
             type="submit"
             disabled={createMutation.isPending}
             className="app-button app-button-red disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Crear incidente
+            Crear intervención
           </button>
         </form>
       )}
@@ -413,334 +337,167 @@ function CreateIncidentPanel({
 
 function IncidentCard({
   incident,
-  roster,
   canManage,
 }: {
   incident: Incident;
-  roster: UserRosterItem[];
   canManage: boolean;
 }) {
   const updateMutation = useUpdateIncident();
-  const closeMutation = useCloseIncident();
-  const assignMutation = useAssignIncidentUsers();
   const [isEditing, setIsEditing] = useState(false);
-  const [isAssigning, setIsAssigning] = useState(false);
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [editError, setEditError] = useState("");
   const [draft, setDraft] = useState({
     title: incident.title,
     type: incident.type,
     description: incident.description,
+    location: incident.location,
+    responseTimeMinutes: incident.responseTimeMinutes || undefined,
     losses: incident.losses || "",
   });
-
-  const assignedIds = new Set(
-    incident.assignments.map((assignment) => assignment.userId),
-  );
-  const assignableRoster = roster.filter((member) => !assignedIds.has(member.id));
   const isOpen = incident.status === "OPEN";
+  const vehicles = incident.vehicles?.length ?? 0;
+  const people = incident.assignments.length;
 
   async function saveEdit() {
+    setEditError("");
     try {
-      await updateMutation.mutateAsync({
-        id: incident.id,
-        ...draft,
-      });
+      await updateMutation.mutateAsync({ id: incident.id, ...draft });
       setIsEditing(false);
     } catch (error: unknown) {
-      window.alert(getErrorMessage(error, "No se pudo actualizar el incidente."));
+      setEditError(getErrorMessage(error, "No se pudieron guardar los cambios."));
     }
-  }
-
-  async function closeIncident() {
-    const confirmed = window.confirm(
-      "Cerrar este incidente? Si tiene una alerta activa vinculada, tambien se marcara como resuelta.",
-    );
-
-    if (!confirmed) return;
-
-    try {
-      await closeMutation.mutateAsync(incident.id);
-    } catch (error: unknown) {
-      window.alert(getErrorMessage(error, "No se pudo cerrar el incidente."));
-    }
-  }
-
-  async function assignUsers() {
-    if (selectedUsers.length === 0) return;
-
-    try {
-      await assignMutation.mutateAsync({
-        id: incident.id,
-        userIds: selectedUsers,
-      });
-      setSelectedUsers([]);
-      setIsAssigning(false);
-    } catch (error: unknown) {
-      window.alert(getErrorMessage(error, "No se pudo asignar personal."));
-    }
-  }
-
-  function toggleSelection(userId: string) {
-    setSelectedUsers((current) =>
-      current.includes(userId)
-        ? current.filter((id) => id !== userId)
-        : [...current, userId],
-    );
   }
 
   return (
-    <article
-      className={[
-        "rounded-xl border p-4",
-        isOpen
-          ? "border-red-500/25 bg-[var(--card)]"
-          : "border-[var(--bord)] bg-[var(--card)] opacity-90",
-      ].join(" ")}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`badge ${
-                isOpen ? "badge-red" : "badge-green"
-              }`}
-            >
-              {statusLabel(incident.status)}
-            </span>
-            <span className="badge badge-gray">{typeLabel(incident.type)}</span>
-            {incident.alertId && <span className="badge badge-blue">Alerta</span>}
-          </div>
-          <h2 className="mt-2 text-lg font-bold leading-tight text-white">
-            {incident.title}
-          </h2>
-          <p className="mt-1 text-xs text-[var(--mut)]">
-            Inicio {formatDateTime(incident.occurredAt)}
-            {incident.closedAt ? ` - cierre ${formatDateTime(incident.closedAt)}` : ""}
-          </p>
-        </div>
+    <article className={`rounded-xl border bg-[var(--card)] p-4 ${isOpen ? "border-red-500/30 border-l-4 border-l-red-500" : "border-[var(--bord)]"}`}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`badge ${isOpen ? "badge-red" : "badge-green"}`}>{statusLabel(incident.status)}</span>
+        <span className="badge badge-gray">{typeLabel(incident.type)}</span>
+        {incident.alertId && <span className="badge badge-blue">Desde una alerta</span>}
+      </div>
+      <h2 className="mt-2 text-lg font-bold leading-tight text-white">
+        <Link href={`/incidents/${incident.id}/sheet`} className="hover:underline underline-offset-4">{incident.title}</Link>
+      </h2>
+      <p className="mt-1 flex items-center gap-1.5 text-sm text-[var(--mut)]"><MapPin className="h-4 w-4 shrink-0 text-red-400" aria-hidden /><span className="truncate">{incident.location}</span></p>
+      <p className="mt-1 text-xs text-[var(--mut)]">
+        Inicio {formatDateTime(incident.occurredAt)}{incident.closedAt ? ` · Cierre ${formatDateTime(incident.closedAt)}` : ""}
+        {" · "}{vehicles} {vehicles === 1 ? "móvil" : "móviles"} · {people} {people === 1 ? "persona" : "personas"}
+      </p>
 
-        <div className="flex shrink-0 items-center gap-1">
-          <Flame className="h-5 w-5 text-red-400" />
-        </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link href={`/incidents/${incident.id}/sheet`} className={`app-button w-auto ${isOpen ? "app-button-red" : ""}`}>
+          {isOpen ? "Abrir planilla" : "Ver planilla"}
+        </Link>
+        {canManage && isOpen && !isEditing && (
+          <button type="button" onClick={() => setIsEditing(true)} className="app-button app-button-outline w-auto">
+            <ClipboardPenLine className="h-4 w-4" aria-hidden /> Editar datos
+          </button>
+        )}
       </div>
 
-      {isEditing ? (
-        <div className="mt-4 space-y-3">
+      {isEditing && (
+        <div className="mt-4 space-y-3 rounded-xl border border-[var(--bord)] bg-[var(--card2)] p-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <label>
               <span className="app-label">Tipo</span>
-              <select
-                value={draft.type}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    type: event.target.value as IncidentType,
-                  }))
-                }
-                className="app-input"
-                disabled={Boolean(incident.alertId)}
-              >
-                {incidentTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {typeLabel(type)}
-                  </option>
-                ))}
+              <select value={draft.type} onChange={(event) => setDraft((current) => ({ ...current, type: event.target.value as IncidentType }))} className="app-input" disabled={Boolean(incident.alertId)}>
+                {incidentTypes.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}
               </select>
             </label>
             <label>
-              <span className="app-label">Titulo</span>
-              <input
-                value={draft.title}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    title: event.target.value,
-                  }))
-                }
-                className="app-input"
-                maxLength={140}
-              />
+              <span className="app-label">Título</span>
+              <input value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} className="app-input" maxLength={140} />
             </label>
           </div>
-
-          <label>
-            <span className="app-label">Descripcion</span>
-            <textarea
-              value={draft.description}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  description: event.target.value,
-                }))
-              }
-              className="app-input min-h-[90px] resize-none"
-            />
-          </label>
-
-          <label>
-            <span className="app-label">Perdidas</span>
-            <textarea
-              value={draft.losses}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  losses: event.target.value,
-                }))
-              }
-              className="app-input min-h-[72px] resize-none"
-            />
-          </label>
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setDraft({
-                  title: incident.title,
-                  type: incident.type,
-                  description: incident.description,
-                  losses: incident.losses || "",
-                });
-                setIsEditing(false);
-              }}
-              className="app-button app-button-outline"
-            >
-              <X className="h-4 w-4" />
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={saveEdit}
-              disabled={updateMutation.isPending}
-              className="app-button app-button-red disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Save className="h-4 w-4" />
-              Guardar
-            </button>
+          <label className="block"><span className="app-label">Ubicación</span><input value={draft.location} onChange={(event) => setDraft((current) => ({ ...current, location: event.target.value }))} className="app-input" maxLength={180} /></label>
+          <label className="block"><span className="app-label">Descripción</span><textarea value={draft.description} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} className="app-input min-h-[90px]" /></label>
+          <label className="block"><span className="app-label">Pérdidas</span><textarea value={draft.losses} onChange={(event) => setDraft((current) => ({ ...current, losses: event.target.value }))} className="app-input min-h-[72px]" /></label>
+          {editError && <p role="alert" className="text-sm text-red-300">{editError}</p>}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={saveEdit} disabled={updateMutation.isPending} className="app-button app-button-red w-auto"><Save className="h-4 w-4" aria-hidden /> Guardar</button>
+            <button type="button" onClick={() => { setDraft({ title: incident.title, type: incident.type, description: incident.description, location: incident.location, responseTimeMinutes: incident.responseTimeMinutes || undefined, losses: incident.losses || "" }); setIsEditing(false); }} className="app-button app-button-outline w-auto"><X className="h-4 w-4" aria-hidden /> Cancelar</button>
           </div>
         </div>
-      ) : (
-        <>
-          <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-[var(--txt)]">
-            {incident.description}
-          </p>
-
-          {incident.losses && (
-            <div className="mt-3 rounded-[10px] border border-[var(--bord)] bg-[var(--card2)] p-3 text-sm text-[var(--mut)]">
-              <span className="font-bold text-white">Perdidas: </span>
-              {incident.losses}
-            </div>
-          )}
-        </>
       )}
 
-      <div className="mt-4">
-        <div className="mb-2 flex items-center gap-2 text-sm font-bold text-white">
-          <Users className="h-4 w-4 text-red-400" />
-          Dotacion asignada
-        </div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {incident.assignments.length === 0 ? (
-            <div className="rounded-[10px] border border-[var(--bord)] bg-[var(--card2)] p-3 text-sm text-[var(--mut)]">
-              Sin personal asignado.
-            </div>
-          ) : (
-            incident.assignments.map((assignment) => (
-              <div
-                key={assignment.id}
-                className="rounded-[10px] border border-[var(--bord)] bg-[var(--card2)] p-3"
-              >
-                <div className="text-sm font-bold text-white">
-                  {memberName(assignment.user)}
-                </div>
-                <div className="text-xs text-[var(--mut)]">
-                  {assignment.user.profile?.rank || assignment.user.role}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {canManage && isOpen && (
-        <div className="mt-4 grid gap-2 sm:grid-cols-3">
-          <button
-            type="button"
-            onClick={() => setIsEditing((current) => !current)}
-            className="app-button app-button-outline"
-          >
-            <ClipboardPenLine className="h-4 w-4" />
-            Editar
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsAssigning((current) => !current)}
-            className="app-button app-button-outline"
-          >
-            <UserPlus className="h-4 w-4" />
-            Asignar
-          </button>
-          <button
-            type="button"
-            onClick={closeIncident}
-            disabled={closeMutation.isPending}
-            className="app-button app-button-green disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            Cerrar
-          </button>
-        </div>
+      {incident.closingReport && (
+        <p className="mt-3 rounded-lg border border-green-500/25 bg-green-500/10 p-3 text-sm text-green-100"><span className="font-bold">Informe de cierre: </span>{incident.closingReport}</p>
       )}
 
-      {canManage && isOpen && isAssigning && (
-        <div className="mt-4 rounded-[10px] border border-[var(--bord)] bg-[var(--card2)] p-3">
-          <div className="mb-2 text-sm font-bold text-white">
-            Agregar personal
-          </div>
-
-          {assignableRoster.length === 0 ? (
-            <p className="text-sm text-[var(--mut)]">
-              Todo el personal activo ya esta asignado.
-            </p>
-          ) : (
-            <div className="grid max-h-[220px] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-              {assignableRoster.map((member) => {
-                const selected = selectedUsers.includes(member.id);
-
-                return (
-                  <button
-                    key={member.id}
-                    type="button"
-                    onClick={() => toggleSelection(member.id)}
-                    className={[
-                      "rounded-[10px] border px-3 py-2 text-left transition",
-                      selected
-                        ? "border-red-500 bg-red-500/10"
-                        : "border-[var(--bord)] bg-[var(--card)]",
-                    ].join(" ")}
-                  >
-                    <div className="text-sm font-bold text-white">
-                      {memberName(member)}
-                    </div>
-                    <div className="text-xs text-[var(--mut)]">
-                      {member.profile?.rank || member.role}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={assignUsers}
-            disabled={assignMutation.isPending || selectedUsers.length === 0}
-            className="app-button app-button-red mt-3 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Asignar seleccionados
-          </button>
-        </div>
-      )}
+      <details className="mt-3 rounded-lg border border-[var(--bord)] p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-white/80">Descripción y bitácora rápida</summary>
+        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--txt)]">{incident.description}</p>
+        {incident.losses && <p className="mt-2 text-sm text-[var(--mut)]"><span className="font-bold text-white">Pérdidas: </span>{incident.losses}</p>}
+        <IncidentTimeline incident={incident} canWrite={isOpen} />
+      </details>
     </article>
+  );
+}
+
+function IncidentTimeline({
+  incident,
+  canWrite,
+}: {
+  incident: Incident;
+  canWrite: boolean;
+}) {
+  const { user } = useAuth();
+  const createMutation = useCreateIncidentUpdate();
+  const [body, setBody] = useState("");
+  const isParticipant = incident.assignments.some(
+    (assignment) => assignment.userId === user?.id,
+  );
+  const allowed = canWrite && (isManager(user?.role) || isParticipant || incident.createdByUserId === user?.id);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = body.trim();
+    if (value.length < 3) return;
+    try {
+      await createMutation.mutateAsync({ id: incident.id, body: value });
+      setBody("");
+    } catch (error: unknown) {
+      window.alert(getErrorMessage(error, "No se pudo registrar la novedad."));
+    }
+  }
+
+  return (
+    <section className="mt-4 rounded-[10px] border border-[var(--bord)] bg-[var(--card2)] p-3">
+      <div className="mb-2 flex items-center gap-2 text-sm font-bold text-white">
+        <MessageSquarePlus className="h-4 w-4 text-red-400" />
+        Bitacora operativa
+      </div>
+      <div className="space-y-2">
+        {(incident.updates || []).length === 0 ? (
+          <p className="text-sm text-[var(--mut)]">Sin novedades registradas.</p>
+        ) : (
+          incident.updates.map((update) => (
+            <div key={update.id} className="border-l-2 border-red-500/40 pl-3">
+              <p className="whitespace-pre-wrap text-sm text-[var(--txt)]">{update.body}</p>
+              <p className="mt-1 text-[11px] text-[var(--mut)]">
+                {memberName(update.author)} - {formatDateTime(update.createdAt)}
+              </p>
+            </div>
+          ))
+        )}
+      </div>
+      {allowed && (
+        <form onSubmit={submit} className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+            className="app-input min-w-0 flex-1"
+            placeholder="Registrar novedad del operativo..."
+            maxLength={4000}
+          />
+          <button
+            type="submit"
+            disabled={createMutation.isPending || body.trim().length < 3}
+            className="app-button app-button-red sm:w-auto"
+          >
+            Agregar
+          </button>
+        </form>
+      )}
+    </section>
   );
 }

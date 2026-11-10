@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   assignIncidentUsersRequest,
   closeIncidentRequest,
+  createIncidentUpdateRequest,
   createIncidentRequest,
+  dispatchIncidentFromAlertRequest,
   getIncidentsRequest,
   updateIncidentRequest,
 } from "@/services/incidents.service";
@@ -22,6 +24,16 @@ function invalidateOperationalQueries(queryClient: ReturnType<typeof useQueryCli
   queryClient.invalidateQueries({ queryKey: ["incidents"] });
   queryClient.invalidateQueries({ queryKey: ["alerts"] });
   queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+  queryClient.invalidateQueries({ queryKey: ["operational-readiness"] });
+}
+
+export function useDispatchIncidentFromAlert() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: dispatchIncidentFromAlertRequest,
+    onSuccess: () => invalidateOperationalQueries(queryClient),
+  });
 }
 
 export function useCreateIncident() {
@@ -56,6 +68,14 @@ export function useAssignIncidentUsers() {
 
   return useMutation({
     mutationFn: assignIncidentUsersRequest,
+    onSuccess: () => invalidateOperationalQueries(queryClient),
+  });
+}
+
+export function useCreateIncidentUpdate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createIncidentUpdateRequest,
     onSuccess: () => invalidateOperationalQueries(queryClient),
   });
 }

@@ -48,9 +48,10 @@ export async function updateInventoryItemRequest(
   return response.data;
 }
 
-export async function deleteInventoryItemRequest(itemId: string) {
+export async function deleteInventoryItemRequest(itemId: string, revision: number) {
   const response = await api.delete<{ message: string }>(
     `/equipment/items/${itemId}`,
+    { data: { revision } },
   );
   return response.data;
 }

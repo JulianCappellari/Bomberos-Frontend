@@ -30,7 +30,7 @@ export function VehiclesTable({ vehicles }: { vehicles: Asset[] }) {
               </td>
               <td className="px-4 py-3 text-right">
                 <Link
-                  href={`/dashboard/vehicles/${asset.vehicle?.id}`}
+                  href={`/equipment/${asset.id}`}
                   className="rounded-lg border px-3 py-2 text-sm font-medium transition hover:bg-slate-50"
                 >
                   Ver detalle

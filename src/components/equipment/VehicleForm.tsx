@@ -4,13 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { useUpdateAsset, useUpsertVehicleData } from "@/hooks/use-assets";
-import { Asset, AssetStatus, AssetType } from "@/types/asset";
+import { Asset, AssetStatus, AssetType, vehicleKinds, VehicleKind } from "@/types/asset";
 
 type Props = {
   asset: Asset;
 };
 
 type FormState = {
+  kind: VehicleKind;
   name: string;
   assetType: AssetType;
   status: AssetStatus;
@@ -44,6 +45,7 @@ export default function VehicleForm({ asset }: Props) {
   const [error, setError] = useState("");
 
   const [form, setForm] = useState<FormState>({
+    kind: asset.vehicle?.kind || "UNCLASSIFIED",
     name: asset.name ?? "",
     assetType: asset.assetType,
     status: asset.status,
@@ -73,11 +75,12 @@ export default function VehicleForm({ asset }: Props) {
         assetType: form.assetType,
         status: form.status,
         notes: form.notes.trim() ? form.notes.trim() : null,
-        lastCheckDate: form.lastCheckDate || null,
+        lastCheckDate: form.lastCheckDate ? `${form.lastCheckDate}T00:00:00.000Z` : null,
       });
 
       if (form.assetType === "VEHICLE") {
         await upsertVehicleMutation.mutateAsync({
+          kind: form.kind,
           unitNumber: form.unitNumber.trim() || undefined,
           plate: form.plate.trim() ? form.plate.trim() : null,
           year: parseOptionalNumber(form.year),
@@ -200,6 +203,7 @@ export default function VehicleForm({ asset }: Props) {
               />
             </Field>
 
+            <Field label="Tipo de movil"><select className="input-dark" value={form.kind} onChange={(e) => setField("kind", e.target.value as VehicleKind)}>{Object.entries(vehicleKinds).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></Field>
             <Field label="Patente">
               <input
                 className="input-dark"

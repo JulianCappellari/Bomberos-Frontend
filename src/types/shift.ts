@@ -14,6 +14,7 @@ export type Shift = {
   startTime: string;
   endTime: string;
   shiftType: string;
+  period: "DAY" | "NIGHT" | null;
   notes: string | null;
   createdByUserId: string;
   createdAt: string;
@@ -23,9 +24,9 @@ export type Shift = {
 
 export type CreateShiftPayload = {
   date: string;
-  startTime: string;
-  endTime: string;
-  shiftType: string;
+  period: "DAY" | "NIGHT";
   notes?: string;
   assignedUserIds?: string[];
 };
+
+export type UpdateShiftPayload = CreateShiftPayload & { id: string };

@@ -2,7 +2,7 @@ export type User = {
   id: string;
   username: string;
   email: string | null;
-  role: "ADMIN" | "FIREFIGHTER" | "OPERATOR";
+  role: "ADMIN" | "FIREFIGHTER" | "OPERATOR" | "GUARD";
   isActive: boolean;
   isPendingApproval: boolean;
   profile: {
@@ -15,7 +15,7 @@ export type User = {
 export type UserRosterItem = {
   id: string;
   username: string;
-  role: "ADMIN" | "FIREFIGHTER" | "OPERATOR";
+  role: "ADMIN" | "FIREFIGHTER" | "OPERATOR" | "GUARD";
   profile: {
     fullName: string;
     rank: string;

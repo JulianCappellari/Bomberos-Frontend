@@ -1,0 +1,22 @@
+import { UserRosterItem } from "./user";
+export type Page<T> = { items: T[]; total: number; page: number; pageSize: number };
+export type WorkStatus = "ASSIGNED" | "SUBMITTED" | "RETURNED" | "VERIFIED" | "CANCELLED";
+export type WorkTask = {
+  requiresPresence: boolean;
+  state: "OPEN" | "ASSIGNED" | "TAKEN" | "IN_REVIEW" | "VERIFIED" | "EXPIRED" | "CANCELLED" | "RETURNED";
+  transfers?: Array<{id:string;fromUserId:string;toUserId:string}>;
+  officerApproved?: boolean;
+  maintenanceJob?: {responsibleUserId:string|null}|null;
+  priority?: string;
+  maintenanceJobId?: string | null;
+  photos?: Array<{ id: string; submissionRevision: number; createdAt: string }>;
+  id: string; title: string; description: string; dueOn: string | null; status: WorkStatus; isSelfReported: boolean;
+  completionNotes: string | null; evidenceUrls: string[] | null; completedAt: string | null;
+  reviewedAt: string | null; reviewNotes: string | null; revision: number;
+  createdByUserId: string; createdBy: UserRosterItem; reviewedBy: UserRosterItem | null;
+  members: Array<{ userId: string; declinedAt: string | null; user: UserRosterItem }>;
+};
+export type NotebookCategory = "PLACE" | "PERSON" | "VEHICLE" | "AGENCY" | "NOTE" | "NOVELTY" | "THIRD_PARTY" | "CORRECTION" | "DAMAGE";
+export type NotebookEntry = { id: string; category: NotebookCategory; title: string; body: string; occurredAt: string; authorUserId: string; author: UserRosterItem; revision: number };
+export type FuelRecord = { revision: number; replacesId?:string|null; correctionReason?:string|null; id: string; assetId: string; occurredAt: string; volumeMilliliters: number; costCents: number | null; odometer: number | null; reason: string; notes: string; voidedAt: string | null; voidReason: string | null; asset: { id: string; name: string }; createdBy: UserRosterItem };
+export type WaterTrip = { earningsApprovedAt?:string|null; replacesId?:string|null; correctionReason?:string|null; id: string; assetId: string; customer: string; destination: string; departedAt: string; returnedAt: string; startOdometer: number; endOdometer: number; tripCount: number; chargeCents: number | null; clientPaidAt: string | null; revision: number; notes: string; voidedAt: string | null; voidReason: string | null; asset: { id: string; name: string }; leader: UserRosterItem; crew: Array<{ userId: string; compensationCents: number; paidAt: string | null; user: UserRosterItem }> };

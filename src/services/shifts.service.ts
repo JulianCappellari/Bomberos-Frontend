@@ -1,5 +1,5 @@
 import { api } from "@/lib/api-client";
-import { CreateShiftPayload, Shift } from "@/types/shift";
+import { CreateShiftPayload, Shift, UpdateShiftPayload } from "@/types/shift";
 
 export async function getShiftsRequest(params?: {
   date?: string;
@@ -17,5 +17,11 @@ export async function createShiftRequest(payload: CreateShiftPayload) {
 
 export async function deleteShiftRequest(id: string) {
   const response = await api.delete<{ message: string }>(`/shifts/${id}`);
+  return response.data;
+}
+
+export async function updateShiftRequest(payload: UpdateShiftPayload) {
+  const { id, ...data } = payload;
+  const response = await api.put<Shift>(`/shifts/${id}`, data);
   return response.data;
 }

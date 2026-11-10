@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Droplets,
@@ -9,11 +9,16 @@ import {
   Siren,
   Stethoscope,
   TestTube2,
+  Send,
+  MapPin,
 } from "lucide-react";
 import { useCreateAlert } from "@/hooks/use-alerts";
 import AlertStatus from "@/components/ui/alert-status";
 import { getErrorMessage } from "@/lib/get-error-message";
-import { BackButton, HomeButton } from "@/components/layout/navigation-buttons";
+import { ProtectedLayout } from "@/components/layout/protected-layout";
+import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@/components/ui/button";
+import { AnimatedPage } from "@/components/ui/animated-layout";
 
 type EmergencyType =
   | "incendio"
@@ -70,320 +75,341 @@ const priorityMap: Record<Priority, "HIGH" | "MEDIUM" | "LOW"> = {
   baja: "LOW",
 };
 
-export default function EmergencyAlertPage() {
+const HOLD_TO_CONFIRM_MS = 1500;
+
+export default function NewAlertPage() {
   const [selectedEmergency, setSelectedEmergency] =
     useState<EmergencyType>("incendio");
   const [selectedPriority, setSelectedPriority] = useState<Priority>("alta");
-  const [description, setDescription] = useState("");
-  const [location, setLocation] = useState("");
-  const [phone, setPhone] = useState("");
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [feedbackType, setFeedbackType] = useState<"success" | "error">(
-    "success",
-  );
-  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [title, setTitle] = useState("");
+  const [address, setAddress] = useState("");
+  const [notes, setNotes] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [statusType, setStatusType] = useState<"success" | "error" | "">("");
+  const [holding, setHolding] = useState(false);
+  const [holdProgress, setHoldProgress] = useState(false);
+  const alertForm = useRef<HTMLFormElement>(null);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holdingRef = useRef(false);
+  const submitArmed = useRef(false);
 
   const createAlertMutation = useCreateAlert();
 
-  const isSubmitDisabled = useMemo(() => {
-    return location.trim().length < 4 || createAlertMutation.isPending;
-  }, [location, createAlertMutation.isPending]);
+  const selectedEmergencyLabel = useMemo(
+    () =>
+      emergencyTypes.find((item) => item.id === selectedEmergency)?.label ??
+      "Emergencia",
+    [selectedEmergency]
+  );
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-  e.preventDefault();
+  const isFormValid = address.trim().length > 0 && Boolean(title.trim() || notes.trim());
 
-  setFeedbackOpen(false);
+  const cancelHold = useCallback(() => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+    if (holdingRef.current) {
+      holdingRef.current = false;
+      setHolding(false);
+      setHoldProgress(false);
+    }
+  }, []);
 
-  if (location.trim().length < 4) {
-    setFeedbackType("error");
-    setFeedbackMessage("Ingresá una ubicación válida.");
-    setFeedbackOpen(true);
-    return;
-  }
+  useEffect(() => {
+    window.addEventListener("pointerup", cancelHold);
+    window.addEventListener("pointercancel", cancelHold);
+    window.addEventListener("keyup", cancelHold);
+    window.addEventListener("blur", cancelHold);
+    return () => {
+      window.removeEventListener("pointerup", cancelHold);
+      window.removeEventListener("pointercancel", cancelHold);
+      window.removeEventListener("keyup", cancelHold);
+      window.removeEventListener("blur", cancelHold);
+      if (holdTimer.current) clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+      holdingRef.current = false;
+    };
+  }, [cancelHold]);
 
-  try {
-    await createAlertMutation.mutateAsync({
-      type: emergencyTypeMap[selectedEmergency],
-      description: description.trim() || undefined,
-      location: location.trim(),
-      contactPhone: phone.trim() || undefined,
-      priority: priorityMap[selectedPriority],
+  function startHold() {
+    if (!isFormValid || createAlertMutation.isPending || holdingRef.current) return;
+    holdingRef.current = true;
+    setHolding(true);
+    setHoldProgress(false);
+    requestAnimationFrame(() => {
+      if (holdingRef.current) setHoldProgress(true);
     });
-
-    setDescription("");
-    setLocation("");
-    setPhone("");
-    setSelectedEmergency("incendio");
-    setSelectedPriority("alta");
-
-    setFeedbackType("success");
-    setFeedbackMessage("La alerta fue enviada correctamente.");
-    setFeedbackOpen(true);
-  } catch (error: unknown) {
-    setFeedbackType("error");
-    setFeedbackMessage(getErrorMessage(error, "No se pudo enviar la alerta."));
-    setFeedbackOpen(true);
+    holdTimer.current = setTimeout(() => {
+      holdTimer.current = null;
+      holdingRef.current = false;
+      setHolding(false);
+      setHoldProgress(false);
+      submitArmed.current = true;
+      alertForm.current?.requestSubmit();
+      submitArmed.current = false;
+    }, HOLD_TO_CONFIRM_MS);
   }
-}
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!submitArmed.current) {
+      setStatusType("error");
+      setStatusMessage("Mantené presionado el botón de despacho para confirmar la alerta.");
+      return;
+    }
+    submitArmed.current = false;
+
+    if (!address.trim() || (!title.trim() && !notes.trim())) {
+      setStatusType("error");
+      setStatusMessage("Completá la ubicación y una descripción antes de despachar.");
+      return;
+    }
+
+    setStatusMessage("");
+    setStatusType("");
+
+    const fullDescription = [
+      title.trim(),
+      notes.trim(),
+    ].filter(Boolean).join(" · ");
+
+    try {
+      await createAlertMutation.mutateAsync({
+        description: fullDescription,
+        location: address.trim(),
+        type: emergencyTypeMap[selectedEmergency],
+        priority: priorityMap[selectedPriority],
+      });
+
+      setStatusType("success");
+      setStatusMessage(`Alerta de ${selectedEmergencyLabel.toLowerCase()} emitida correctamente.`);
+      setTitle("");
+      setAddress("");
+      setNotes("");
+    } catch (error: unknown) {
+      setStatusType("error");
+      setStatusMessage(
+        getErrorMessage(
+          error,
+          "No se pudo crear la alerta. Verificá tu conexión e intentá nuevamente."
+        )
+      );
+    }
+  }
+
   return (
-    <main className="min-h-screen bg-[#09090b] text-white">
-      <div className="mx-auto min-h-screen w-full max-w-[1600px]">
-        <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.1fr_0.9fr]">
-          <section className="relative overflow-hidden border-white/5 bg-[radial-gradient(circle_at_top,rgba(255,77,79,0.14),transparent_28%),linear-gradient(180deg,#101114_0%,#09090b_100%)]">
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:32px_32px] opacity-[0.08]" />
+    <ProtectedLayout>
+      <AnimatedPage className="space-y-6 max-w-4xl mx-auto">
+        <PageHeader
+          title="Despachar Nueva Alerta"
+          subtitle="Emisión inmediata de llamada de emergencia a la dotación de bomberos"
+          icon={<AlertTriangle className="h-6 w-6" />}
+        />
 
-            <div className="relative flex h-full flex-col">
-              <header className="border-b border-white/5 bg-[#0d0e11]/90 backdrop-blur">
-                <div className="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
-                  <BackButton
-                    className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10"
-                  />
+        {statusMessage && statusType && (
+          <AlertStatus
+            feedbackType={statusType}
+            feedbackMessage={statusMessage}
+            onClose={() => {
+              setStatusMessage("");
+              setStatusType("");
+            }}
+          />
+        )}
 
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <AlertTriangle className="h-5 w-5 text-[#ff5a52] sm:h-6 sm:w-6" />
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45 sm:text-xs">
-                        Sistema de emergencias
-                      </p>
-                      <h1 className="text-sm font-black uppercase tracking-[0.16em] text-[#ff5a52] sm:text-base">
-                        Nueva alerta
-                      </h1>
+        <form ref={alertForm} onSubmit={handleSubmit} className="space-y-6">
+          {/* Emergency type selector */}
+          <div className="rounded-3xl border border-white/[0.08] bg-[#121316] p-5 sm:p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+              <label className="font-[family-name:var(--font-bebas)] text-xl uppercase tracking-wider text-white">
+                1. Tipo de Siniestro
+              </label>
+              <span className="font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-wider text-red-400">
+                Seleccionado: {selectedEmergencyLabel}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
+              {emergencyTypes.map((item) => {
+                const Icon = item.icon;
+                const isActive = selectedEmergency === item.id;
+
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setSelectedEmergency(item.id)}
+                    className={`flex flex-col items-center justify-center gap-2.5 rounded-2xl border p-4 text-center transition-all ${
+                      isActive
+                        ? "border-red-500 bg-red-500/15 text-white shadow-lg shadow-red-900/30 ring-1 ring-red-400"
+                        : "border-white/[0.08] bg-white/[0.02] text-white/60 hover:border-white/20 hover:text-white"
+                    }`}
+                  >
+                    <div
+                      className={`flex h-11 w-11 items-center justify-center rounded-xl transition-transform ${
+                        isActive
+                          ? "bg-red-500 text-white"
+                          : "bg-white/[0.04] text-white/70"
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
                     </div>
-                  </div>
-
-                  <HomeButton className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10" />
-                </div>
-              </header>
-
-              <div className="relative flex flex-1 items-center px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-                <div className="max-w-2xl">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-[#ff4d4f]/20 bg-[#ff4d4f]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-[#ff928a] sm:text-xs">
-                    <span className="h-2 w-2 rounded-full bg-[#ff4d4f]" />
-                    Respuesta rápida
-                  </div>
-
-                  <h2 className="mt-5 text-3xl font-black uppercase leading-none tracking-[0.08em] text-white sm:text-4xl lg:text-5xl">
-                    Reportá una emergencia
-                    <span className="mt-2 block text-2xl text-white/45">
-                      de forma clara y rápida
+                    <span className="font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-wider">
+                      {item.label}
                     </span>
-                  </h2>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Priority selector */}
+          <div className="rounded-3xl border border-white/[0.08] bg-[#121316] p-5 sm:p-6 shadow-xl space-y-4">
+            <label className="font-[family-name:var(--font-bebas)] text-xl uppercase tracking-wider text-white block border-b border-white/[0.06] pb-3">
+              2. Nivel de Prioridad
+            </label>
+
+            <div className="grid grid-cols-3 gap-3">
+              {priorities.map((item) => {
+                const isActive = selectedPriority === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setSelectedPriority(item.id)}
+                    className={`flex items-center justify-center gap-2.5 rounded-xl border py-3 text-xs font-bold uppercase tracking-wider font-[family-name:var(--font-barlow-condensed)] transition-all ${
+                      isActive
+                        ? "border-white/30 bg-white/10 text-white ring-1 ring-white/20"
+                        : "border-white/[0.08] bg-white/[0.02] text-white/50 hover:text-white"
+                    }`}
+                  >
+                    <span className={`h-2.5 w-2.5 rounded-full ${item.dotClassName}`} />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Location and details */}
+          <div className="rounded-3xl border border-white/[0.08] bg-[#121316] p-5 sm:p-6 shadow-xl space-y-4">
+            <label className="font-[family-name:var(--font-bebas)] text-xl uppercase tracking-wider text-white block border-b border-white/[0.06] pb-3">
+              3. Datos del Despacho
+            </label>
+
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="location"
+                  className="block font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-wider text-white/60 mb-1.5"
+                >
+                  Ubicación / Dirección exacta <span className="text-red-400">*</span>
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-red-400" />
+                  <input
+                    id="location"
+                    type="text"
+                    required
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Ej. Ruta 8 Km 612 / Calle San Martín 450"
+                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] pl-10 pr-4 py-3 text-sm text-white placeholder:text-white/20 outline-none transition-all focus:border-red-500/50 focus:ring-2 focus:ring-red-500/15"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="title"
+                  className="block font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-wider text-white/60 mb-1.5"
+                >
+                  Título descriptivo (opcional)
+                </label>
+                <input
+                  id="title"
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={`Por defecto: ${selectedEmergencyLabel}`}
+                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none transition-all focus:border-red-500/50 focus:ring-2 focus:ring-red-500/15"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="notes"
+                  className="block font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-wider text-white/60 mb-1.5"
+                >
+                  Observaciones / Novedades iniciales
+                </label>
+                <div className="relative">
+                  <textarea
+                    id="notes"
+                    rows={3}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Detalles de víctimas, vehículos involucrados, dotaciones requeridas..."
+                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] p-4 text-sm text-white placeholder:text-white/20 outline-none transition-all focus:border-red-500/50 focus:ring-2 focus:ring-red-500/15"
+                  />
                 </div>
               </div>
             </div>
-          </section>
+          </div>
 
-          <section className="flex min-h-screen items-center justify-center px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-10">
-            <div className="w-full max-w-2xl rounded-[28px] border border-white/10 bg-[#111214] p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_30px_80px_rgba(0,0,0,0.5)] sm:p-6 lg:p-7">
-              <form className="space-y-6" onSubmit={handleSubmit}>
-                <div>
-                  <FormSectionTitle title="Tipo de emergencia" />
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                    {emergencyTypes.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = selectedEmergency === item.id;
-
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setSelectedEmergency(item.id)}
-                          className={[
-                            "group min-h-[108px] rounded-2xl border px-3 py-4 text-left transition duration-200",
-                            "focus:outline-none focus:ring-2 focus:ring-[#ff4d4f]/30",
-                            isActive
-                              ? "border-[#ff4d4f] bg-[linear-gradient(180deg,rgba(255,77,79,0.18),rgba(255,77,79,0.08))] shadow-[0_0_0_1px_rgba(255,77,79,0.15)]"
-                              : "border-white/10 bg-[#141518] hover:border-white/20 hover:bg-[#17181c]",
-                          ].join(" ")}
-                          aria-pressed={isActive}
-                        >
-                          <div className="flex h-full flex-col justify-between gap-4">
-                            <div
-                              className={[
-                                "flex h-11 w-11 items-center justify-center rounded-xl border transition",
-                                isActive
-                                  ? "border-[#ff6a6c]/30 bg-[#ff4d4f]/15 text-[#ff7c7d]"
-                                  : "border-white/10 bg-white/5 text-white/80",
-                              ].join(" ")}
-                            >
-                              <Icon className="h-5 w-5" />
-                            </div>
-
-                            <div>
-                              <div className="text-[11px] font-black uppercase tracking-[0.12em] text-white sm:text-xs">
-                                {item.label}
-                              </div>
-                              <div className="mt-1 text-[11px] text-white/35">
-                                {isActive
-                                  ? "Seleccionado"
-                                  : "Tocar para elegir"}
-                              </div>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <FormSectionTitle title="Prioridad" />
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    {priorities.map((item) => {
-                      const isActive = selectedPriority === item.id;
-
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setSelectedPriority(item.id)}
-                          className={[
-                            "flex h-14 items-center justify-center gap-2 rounded-2xl border bg-[#141518] px-4 text-sm font-extrabold uppercase tracking-[0.08em] transition",
-                            "focus:outline-none focus:ring-2 focus:ring-[#ff4d4f]/30",
-                            isActive
-                              ? "border-[#ff4d4f] bg-[linear-gradient(180deg,rgba(255,77,79,0.18),rgba(255,77,79,0.08))] text-[#ff9a9a]"
-                              : "border-white/10 text-white hover:border-white/20 hover:bg-[#17181c]",
-                          ].join(" ")}
-                          aria-pressed={isActive}
-                        >
-                          <span
-                            className={[
-                              "h-3 w-3 rounded-full",
-                              item.dotClassName,
-                            ].join(" ")}
-                          />
-                          {item.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="space-y-5">
-                  <Field
-                    label="Descripción de la emergencia (opcional)"
-                    textarea
-                    placeholder="Describe la situación..."
-                    value={description}
-                    onChange={setDescription}
-                  />
-
-                  <Field
-                    label="📍 Ubicación / Dirección "
-                    placeholder="Ej: Av. San Martín 1234"
-                    value={location}
-                    onChange={setLocation}
-                  />
-
-                  <Field
-                    label="Teléfono de contacto (opcional)"
-                    placeholder="+54 11 xxxx-xxxx"
-                    value={phone}
-                    onChange={setPhone}
-                  />
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-white/45">
-                    Resumen actual
-                  </p>
-                  <div className="mt-3 grid gap-2 text-sm text-white/75 sm:grid-cols-3">
-                    <SummaryBadge
-                      label="Emergencia"
-                      value={selectedEmergency}
-                    />
-                    <SummaryBadge label="Prioridad" value={selectedPriority} />
-                    <SummaryBadge
-                      label="Direccion"
-                      value={location || "Sin direccion"}
-                    />
-                  </div>
-                </div>
-
-                {feedbackOpen && (
-                  <AlertStatus
-                    feedbackType={feedbackType}
-                    feedbackMessage={feedbackMessage}
-                    onClose={() => setFeedbackOpen(false)}
-                  />
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isSubmitDisabled}
-                  className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#ff4d4f] text-sm font-black uppercase tracking-[0.12em] text-white shadow-[0_12px_30px_rgba(255,77,79,0.35)] transition hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
-                >
-                  <AlertTriangle className="h-4 w-4" />
-                  {createAlertMutation.isPending
-                    ? "Enviando..."
-                    : "Enviar alerta"}
-                </button>
-              </form>
-            </div>
-          </section>
-        </div>
-      </div>
-    </main>
-  );
-}
-
-function FormSectionTitle({ title }: { title: string }) {
-  return (
-    <h2 className="mb-3 text-[11px] font-black uppercase tracking-[0.14em] text-white/45 sm:text-xs">
-      {title}
-    </h2>
-  );
-}
-
-function Field({
-  label,
-  placeholder,
-  textarea = false,
-  value,
-  onChange,
-}: {
-  label: string;
-  placeholder: string;
-  textarea?: boolean;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-[11px] font-black uppercase tracking-[0.12em] text-white/55">
-        {label}
-      </span>
-
-      {textarea ? (
-        <textarea
-          rows={5}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full resize-none rounded-2xl border border-white/10 bg-[#141518] px-4 py-4 text-sm text-white placeholder:text-white/25 outline-none transition focus:border-[#ff4d4f]/70 focus:ring-2 focus:ring-[#ff4d4f]/15"
-        />
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="h-14 w-full rounded-2xl border border-white/10 bg-[#141518] px-4 text-sm text-white placeholder:text-white/25 outline-none transition focus:border-[#ff4d4f]/70 focus:ring-2 focus:ring-[#ff4d4f]/15"
-        />
-      )}
-    </label>
-  );
-}
-
-function SummaryBadge({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-[#141518] px-3 py-3">
-      <p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/40">
-        {label}
-      </p>
-      <p className="mt-1 text-sm font-semibold capitalize text-white">
-        {value}
-      </p>
-    </div>
+          {/* Submit button */}
+          <div className="pt-2">
+            <p className="mb-2 text-sm text-white/60">
+              La ubicación y una descripción (título u observaciones) son obligatorias.
+            </p>
+            <p id="hold-to-confirm-instructions" className="mb-2 text-sm text-white/60">
+              Mantené presionado durante 1,5 segundos. Soltá antes para cancelar.
+            </p>
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              disabled={!isFormValid || createAlertMutation.isPending}
+              loading={createAlertMutation.isPending}
+              icon={createAlertMutation.isPending ? undefined : <Send className="h-5 w-5" />}
+              className={`relative w-full touch-none overflow-hidden ${holding ? "ring-2 ring-red-300" : ""}`}
+              aria-pressed={holding}
+              aria-describedby="hold-to-confirm-instructions"
+              onPointerDown={(event) => {
+                if (event.button !== 0 || !event.isPrimary) return;
+                event.preventDefault();
+                startHold();
+              }}
+              onPointerLeave={cancelHold}
+              onKeyDown={(event) => {
+                if (event.key !== " " && event.key !== "Enter") return;
+                event.preventDefault();
+                startHold();
+              }}
+              onKeyUp={cancelHold}
+            >
+              {holding && (
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-y-0 left-0 bg-white/20 transition-[width] ease-linear"
+                  style={{
+                    width: holdProgress ? "100%" : "0%",
+                    transitionDuration: `${HOLD_TO_CONFIRM_MS}ms`,
+                  }}
+                />
+              )}
+              <span className="relative">
+                {createAlertMutation.isPending
+                  ? "Transmitiendo Alerta a la Dotación..."
+                  : holding
+                    ? "Mantené presionado..."
+                    : "Mantener presionado para despachar alerta"}
+              </span>
+            </Button>
+          </div>
+        </form>
+      </AnimatedPage>
+    </ProtectedLayout>
   );
 }

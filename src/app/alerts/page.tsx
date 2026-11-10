@@ -2,6 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api-client";
+import { isCommand, isDutyManager } from "@/lib/permissions";
+import { motion } from "framer-motion";
 import {
   Bell,
   CheckCircle2,
@@ -19,10 +24,17 @@ import { useAuth } from "@/features/auth/auth-context";
 import { getErrorMessage } from "@/lib/get-error-message";
 import {
   useAlerts,
+  useCancelAlert,
   useRespondAlert,
   useResolveAlert,
 } from "@/hooks/use-alerts";
-import { BackButton, HomeButton } from "@/components/layout/navigation-buttons";
+import { useDispatchIncidentFromAlert } from "@/hooks/use-incidents";
+import { ProtectedLayout } from "@/components/layout/protected-layout";
+import { PageHeader } from "@/components/ui/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { AnimatedPage } from "@/components/ui/animated-layout";
 import type { BackendAlert } from "@/services/alerts.service";
 
 type EmergencyType =
@@ -35,7 +47,7 @@ type EmergencyType =
   | "inundacion"
   | "otro";
 
-type AlertStatus = "activa" | "resuelta";
+type AlertStatus = "activa" | "resuelta" | "cancelada";
 type AlertPriority = "alta" | "media" | "baja";
 
 type AlertItem = {
@@ -49,18 +61,27 @@ type AlertItem = {
   priority: AlertPriority;
   status: AlertStatus;
   responsesCount: number;
+  goingCount: number;
+  notGoingCount: number;
   myResponse: "GOING" | "NOT_GOING" | null;
+  canRespond: boolean;
+  myAttendanceOutcome: "NO_SHOW" | null;
+  incident: BackendAlert["incident"];
 };
 
-const filters = [
-  { id: "todas", label: "Todas" },
+// Estado y tipo son filtros independientes: antes compartian una fila de chips cortada en celular.
+const statusFilters = [
   { id: "activa", label: "Activas" },
   { id: "resuelta", label: "Resueltas" },
-  { id: "incendio", label: "Incendio" },
-  { id: "rescate", label: "Rescate" },
+  { id: "cancelada", label: "Canceladas" },
+  { id: "todas", label: "Todas" },
 ] as const;
-
-type FilterId = (typeof filters)[number]["id"];
+type StatusFilter = (typeof statusFilters)[number]["id"];
+const typeOptions: Array<{ id: EmergencyType; label: string }> = [
+  { id: "todas", label: "Todos los tipos" }, { id: "incendio", label: "Incendio" }, { id: "rescate", label: "Rescate" },
+  { id: "accidente", label: "Accidente" }, { id: "quimico", label: "Riesgo químico" }, { id: "medico", label: "Emergencia médica" },
+  { id: "inundacion", label: "Inundación / clima" }, { id: "otro", label: "Otra emergencia" },
+];
 
 function mapBackendType(type: BackendAlert["type"]): AlertItem["type"] {
   switch (type) {
@@ -88,7 +109,8 @@ function mapBackendPriority(priority: BackendAlert["priority"]): AlertPriority {
 }
 
 function mapBackendStatus(status: BackendAlert["status"]): AlertStatus {
-  return status === "ACTIVE" ? "activa" : "resuelta";
+  if (status === "ACTIVE") return "activa";
+  return status === "CANCELLED" ? "cancelada" : "resuelta";
 }
 
 function formatTimeAgo(dateString: string) {
@@ -117,6 +139,7 @@ function getAuthorName(alert: BackendAlert) {
 function mapAlert(alert: BackendAlert, userId?: string): AlertItem {
   const mappedType = mapBackendType(alert.type);
 
+  const myVote = alert.responses?.find((response) => response.userId === userId);
   return {
     id: alert.id,
     type: mappedType,
@@ -125,110 +148,102 @@ function mapAlert(alert: BackendAlert, userId?: string): AlertItem {
         incendio: "Incendio",
         rescate: "Rescate",
         accidente: "Accidente",
-        quimico: "Químico",
-        medico: "Médico",
-        inundacion: "Inundación",
-        otro: "Alerta",
+        quimico: "Riesgo Químico",
+        medico: "Emergencia Médica",
+        inundacion: "Inundación / Clima",
+        otro: "Alerta Operativa",
       }[mappedType] || "Alerta",
     address: alert.location,
-    description: alert.description || "Sin descripción",
+    description: alert.description || "Sin descripción proporcionada",
     author: getAuthorName(alert),
     timeAgo: formatTimeAgo(alert.createdAt),
     priority: mapBackendPriority(alert.priority),
     status: mapBackendStatus(alert.status),
     responsesCount: alert.responses?.length ?? 0,
-    myResponse:
-      alert.responses?.find((response) => response.userId === userId)
-        ?.response ?? null,
+    goingCount: alert.responses?.filter((response) => response.response === "GOING").length ?? 0,
+    notGoingCount: alert.responses?.filter((response) => response.response === "NOT_GOING").length ?? 0,
+    myResponse: myVote?.response ?? null,
+    canRespond: Boolean(alert.viewerIsRecipient),
+    myAttendanceOutcome: myVote?.attendanceOutcome ?? null,
+    incident: alert.incident ?? null,
   };
 }
 
 export default function AlertsListPage() {
   const { user } = useAuth();
   const { data, isLoading, isError } = useAlerts();
-  const [activeFilter, setActiveFilter] = useState<FilterId>("todas");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("activa");
+  const [typeFilter, setTypeFilter] = useState<EmergencyType>("todas");
 
   const alerts = useMemo(() => {
     return (data || []).map((alert) => mapAlert(alert, user?.id));
   }, [data, user?.id]);
 
-  const filteredAlerts = useMemo(() => {
-    if (activeFilter === "todas") return alerts;
-    if (activeFilter === "activa" || activeFilter === "resuelta") {
-      return alerts.filter((alert) => alert.status === activeFilter);
-    }
-    return alerts.filter((alert) => alert.type === activeFilter);
-  }, [activeFilter, alerts]);
+  const filteredAlerts = useMemo(
+    () => alerts.filter((alert) => (statusFilter === "todas" || alert.status === statusFilter) && (typeFilter === "todas" || alert.type === typeFilter)),
+    [statusFilter, typeFilter, alerts],
+  );
 
   const activeCount = alerts.filter((alert) => alert.status === "activa").length;
 
   return (
-    <main className="min-h-screen bg-[#09090b] text-white">
-      <div className="mx-auto min-h-screen w-full max-w-4xl">
-        <header className="sticky top-0 z-20 border-b border-white/5 bg-[#0c0d10]/92 backdrop-blur-xl">
-          <div className="flex items-center justify-between px-3 py-3 sm:px-5 sm:py-4">
-            <BackButton
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10"
-            />
+    <ProtectedLayout>
+      <AnimatedPage className="space-y-6">
+        {/* Page Header */}
+        <PageHeader
+          title="Alertas"
+          subtitle="Convocatorias de emergencia: respondé si vas y seguí su estado"
+          icon={<Bell className="h-6 w-6" />}
+          actions={
+            <Link href="/alerts/new">
+              <Button variant="primary" size="md" icon={<Plus className="h-4 w-4" />}>
+                Nueva alerta
+              </Button>
+            </Link>
+          }
+        />
 
-            <div className="flex items-center gap-2">
-              <Bell className="h-5 w-5 text-[#ff5349]" />
-              <div className="text-center">
-                <h1 className="text-base font-black uppercase tracking-[0.14em] text-[#ff5349] sm:text-lg">
-                  Alertas
-                </h1>
-                <p className="text-[11px] text-white/40">
-                  {activeCount} activas
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <HomeButton className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10" />
-              <Link
-                href="/alerts/new"
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-[#ff4d4f] text-white transition hover:brightness-110"
-                aria-label="Nueva alerta"
-              >
-                <Plus className="h-5 w-5" />
-              </Link>
-            </div>
-          </div>
-        </header>
-
-        <section className="px-2.5 py-3 sm:px-4 sm:py-4">
-          <div className="no-scrollbar -mx-0.5 flex gap-2 overflow-x-auto px-0.5 pb-2">
-            {filters.map((filter) => {
-              const isActive = activeFilter === filter.id;
+        <div className="space-y-3">
+          <div role="tablist" aria-label="Estado de las alertas" className="flex gap-1 rounded-xl border border-white/[0.08] bg-black/20 p-1">
+            {statusFilters.map((filter) => {
+              const selected = statusFilter === filter.id;
+              const count = filter.id === "activa" ? activeCount : null;
               return (
-                <button
-                  key={filter.id}
-                  type="button"
-                  onClick={() => setActiveFilter(filter.id)}
-                  className={[
-                    "shrink-0 rounded-full border px-4 py-2 text-xs font-extrabold uppercase tracking-[0.05em] transition sm:text-sm",
-                    isActive
-                      ? "border-[#ff4d4f] bg-[#ff4d4f] text-white shadow-[0_10px_24px_rgba(255,77,79,0.24)]"
-                      : "border-white/10 bg-[#15161a] text-white/55 hover:border-white/20 hover:text-white",
-                  ].join(" ")}
-                >
-                  {filter.label}
+                <button key={filter.id} type="button" role="tab" aria-selected={selected} onClick={() => setStatusFilter(filter.id)}
+                  className={`flex-1 whitespace-nowrap rounded-lg px-1 py-2 text-sm font-semibold transition-colors ${selected ? "bg-red-600 text-white" : "text-white/70 hover:bg-white/[0.06]"}`}>
+                  {filter.label}{count !== null && count > 0 ? ` (${count})` : ""}
                 </button>
               );
             })}
           </div>
-        </section>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="min-w-0 flex-1 sm:max-w-xs"><span className="sr-only">Tipo de emergencia</span>
+              <select className="app-input" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as EmergencyType)}>
+                {typeOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+              </select>
+            </label>
+            {user && isDutyManager(user.role) && <Link className="app-button app-button-outline w-auto" href="/alerts/notices">Registro de llamadas</Link>}
+          </div>
+        </div>
 
-        <section className="space-y-3 px-2.5 pb-5 sm:px-4 sm:pb-6">
+        {/* Error message */}
+        {isError && (
+          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+            No se pudieron cargar las alertas. Verificá la conectividad con el servidor.
+          </div>
+        )}
+
+        {/* Alerts List */}
+        <section className="grid gap-4 xl:grid-cols-2">
           {isLoading && (
-            <PanelMessage message="Cargando alertas..." tone="neutral" />
-          )}
-
-          {isError && (
-            <PanelMessage
-              message="No se pudieron cargar las alertas."
-              tone="error"
-            />
+            <div className="xl:col-span-2 space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-44 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.02]"
+                />
+              ))}
+            </div>
           )}
 
           {!isLoading &&
@@ -237,41 +252,64 @@ export default function AlertsListPage() {
               <AlertCard
                 key={alert.id}
                 alert={alert}
-                canResolve={user?.role === "ADMIN" || user?.role === "OPERATOR"}
+                canResolve={isCommand(user?.role)}
+                canCancel={isDutyManager(user?.role)}
               />
             ))}
 
           {!isLoading && !isError && filteredAlerts.length === 0 && (
-            <PanelMessage
-              message="No hay alertas para este filtro."
-              tone="neutral"
-            />
+            <div className="xl:col-span-2">
+              <EmptyState
+                icon={<Bell className="h-8 w-8" />}
+                title={statusFilter === "activa" && typeFilter === "todas" ? "No hay emergencias activas" : "No hay alertas con estos filtros"}
+                description={statusFilter === "activa" && typeFilter === "todas" ? "Cuando se emita una alerta vas a verla acá y en tu inicio." : "Probá con otro estado o tipo de emergencia."}
+              />
+            </div>
           )}
         </section>
-      </div>
-    </main>
+      </AnimatedPage>
+    </ProtectedLayout>
   );
 }
 
 function AlertCard({
   alert,
   canResolve,
+  canCancel,
 }: {
   alert: AlertItem;
   canResolve: boolean;
+  canCancel: boolean;
 }) {
   const respondMutation = useRespondAlert();
+  const [pendingResponse, setPendingResponse] = useState<"GOING" | "NOT_GOING" | null>(null);
   const resolveMutation = useResolveAlert();
-  const { icon: Icon, accentClass, badgeClass } = getTypeStyles(alert.type);
-  const priorityClass = getPriorityClass(alert.priority);
-  const statusClass = getStatusClass(alert.status);
+  const cancelMutation = useCancelAlert();
+  const dispatchMutation = useDispatchIncidentFromAlert();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [activating, setActivating] = useState(false);
+  const [actionError, setActionError] = useState("");
+
+  // F09/D04: quien no figuraba disponible puede activarse y recibir la convocatoria en el momento.
+  async function becomeAvailable() {
+    setActivating(true); setActionError("");
+    try {
+      await api.post("/members/availability/available-now", {});
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ["alerts"] }), queryClient.invalidateQueries({ queryKey: ["emergency-availability"] })]);
+    } catch (error: unknown) { setActionError(getErrorMessage(error, "No se pudo activar tu disponibilidad.")); }
+    finally { setActivating(false); }
+  }
+  const { icon: Icon, borderColor, badgeBg } = getTypeStyles(alert.type);
   const isActive = alert.status === "activa";
 
   async function respond(response: "GOING" | "NOT_GOING") {
+    if (alert.myResponse === response) return;
     try {
       await respondMutation.mutateAsync({ id: alert.id, response });
+      setPendingResponse(null);
     } catch (error: unknown) {
-      window.alert(getErrorMessage(error, "No se pudo responder la alerta."));
+      setActionError(getErrorMessage(error, "No se pudo registrar tu respuesta."));
     }
   }
 
@@ -279,170 +317,207 @@ function AlertCard({
     try {
       await resolveMutation.mutateAsync(alert.id);
     } catch (error: unknown) {
-      window.alert(getErrorMessage(error, "No se pudo resolver la alerta."));
+      setActionError(getErrorMessage(error, "No se pudo resolver la alerta."));
+    }
+  }
+
+  async function cancel() {
+    const reason = window.prompt(
+      `${alert.incident ? "Se conservará la intervención y su acta de salida. " : ""}Motivo para cancelar la alerta (mínimo 10 caracteres):`
+    )?.trim();
+    if (!reason) return;
+    if (reason.length < 10) {
+      window.alert("El motivo debe tener al menos 10 caracteres.");
+      return;
+    }
+    try {
+      await cancelMutation.mutateAsync({ id: alert.id, reason });
+    } catch (error: unknown) {
+      setActionError(getErrorMessage(error, "No se pudo cancelar la alerta."));
+    }
+  }
+
+  async function dispatchIncident() {
+    const confirmed = window.confirm(
+      "Se abrirá la planilla de intervención de esta emergencia. Las dotaciones se cargan desde la planilla cuando sale cada móvil. ¿Continuar?"
+    );
+    if (!confirmed) return;
+
+    try {
+      const incident = await dispatchMutation.mutateAsync({
+        alertId: alert.id,
+        autoAssignResponders: true,
+      });
+      if (incident?.id) router.push(`/incidents/${incident.id}/sheet`);
+    } catch (error: unknown) {
+      setActionError(getErrorMessage(error, "No se pudo abrir la intervención."));
     }
   }
 
   return (
-    <article
-      className={[
-        "overflow-hidden rounded-[22px] border bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] shadow-[0_18px_50px_rgba(0,0,0,0.26)]",
-        accentClass,
-      ].join(" ")}
+    <motion.article
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className={`relative overflow-hidden rounded-3xl border border-white/[0.08] bg-[#121316] p-5 shadow-xl transition-all hover:border-white/20 ${
+        isActive ? borderColor : "opacity-75"
+      }`}
     >
-      <div className="flex flex-col gap-4 p-4 sm:p-5">
-        <div className="flex items-start gap-3">
+      <div className="space-y-4">
+        {/* Header row */}
+        <div className="flex items-start gap-3.5">
           <div
-            className={[
-              "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border",
-              badgeClass,
-            ].join(" ")}
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${badgeBg} shadow-inner`}
           >
-            <Icon className="h-5 w-5" />
+            <Icon className="h-6 w-6" />
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <h2 className="text-lg font-black leading-none text-white">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+              <div>
+                <h3 className="font-[family-name:var(--font-bebas)] text-2xl uppercase tracking-wider text-white">
                   {alert.title}
-                </h2>
-                <div className="mt-1 flex items-start gap-1.5 text-sm text-white/45">
-                  <MapPin className="mt-[2px] h-3.5 w-3.5 shrink-0 text-[#ff4d8d]" />
-                  <span className="truncate sm:whitespace-normal">
-                    {alert.address}
-                  </span>
+                </h3>
+                <div className="flex items-center gap-1.5 text-xs text-white/50 mt-0.5">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-red-400" />
+                  <span className="truncate">{alert.address}</span>
                 </div>
               </div>
 
-              <div className="flex shrink-0 flex-row gap-2 sm:flex-col sm:items-end">
-                <span
-                  className={[
-                    "inline-flex rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.08em]",
-                    priorityClass,
-                  ].join(" ")}
+              <div className="flex items-center gap-2 shrink-0">
+                <Badge
+                  variant={
+                    alert.priority === "alta"
+                      ? "red"
+                      : alert.priority === "media"
+                      ? "yellow"
+                      : "green"
+                  }
+                  size="sm"
                 >
-                  {alert.priority}
-                </span>
-                <span
-                  className={[
-                    "inline-flex rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.08em]",
-                    statusClass,
-                  ].join(" ")}
+                  Prioridad {alert.priority}
+                </Badge>
+                <Badge
+                  variant={alert.status === "activa" ? "red" : "gray"}
+                  pulse={alert.status === "activa"}
+                  size="sm"
                 >
                   {alert.status}
-                </span>
+                </Badge>
               </div>
             </div>
 
-            <p className="mt-4 text-sm leading-7 text-white/68 sm:text-[15px]">
+            <p className="mt-3 text-sm text-white/70 leading-relaxed font-[family-name:var(--font-barlow)]">
               {alert.description}
             </p>
+            {alert.myAttendanceOutcome === "NO_SHOW" && (
+              <p className="mt-2 text-sm font-semibold text-amber-300">
+                Resultado de asistencia: No asististe
+              </p>
+            )}
 
-            <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/35 sm:text-sm">
-              <span>{alert.author}</span>
+            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/40 border-t border-white/[0.04] pt-3 font-[family-name:var(--font-barlow-condensed)] uppercase tracking-wider">
+              <span>Despachó: {alert.author}</span>
               <span>·</span>
               <span>{alert.timeAgo}</span>
               <span>·</span>
-              <span>{alert.responsesCount} respuestas</span>
+              <span className="text-white/70 font-bold">{alert.goingCount} {alert.goingCount === 1 ? "va" : "van"} · {alert.notGoingCount} no {alert.notGoingCount === 1 ? "va" : "van"}</span>
             </div>
           </div>
         </div>
 
-        {isActive && (
-          <div className="grid gap-2 border-t border-white/10 pt-4 sm:grid-cols-3">
-            <ActionButton
-              active={alert.myResponse === "GOING"}
-              disabled={respondMutation.isPending}
-              onClick={() => respond("GOING")}
-              icon={<CheckCircle2 className="h-4 w-4" />}
-              label={alert.myResponse === "GOING" ? "Vas" : "Voy"}
-              tone="green"
-            />
-            <ActionButton
-              active={alert.myResponse === "NOT_GOING"}
-              disabled={respondMutation.isPending}
-              onClick={() => respond("NOT_GOING")}
-              icon={<XCircle className="h-4 w-4" />}
-              label={alert.myResponse === "NOT_GOING" ? "No vas" : "No voy"}
-              tone="gray"
-            />
+        {isActive && !alert.canRespond && (
+          <div className="flex flex-wrap items-center gap-3 border-t border-white/[0.06] pt-3">
+            <p className="min-w-0 flex-1 text-sm text-white/70">No estás convocado porque no figurabas disponible.</p>
+            <button type="button" disabled={activating} onClick={() => void becomeAvailable()} className="app-button app-button-green w-auto">{activating ? "Activando…" : "Estoy disponible"}</button>
+          </div>
+        )}
+        {/* Respuesta personal */}
+        {isActive && alert.canRespond && (
+          <div className="grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-3 sm:flex sm:items-center sm:justify-end">
+            <button
+              type="button"
+              disabled={respondMutation.isPending || alert.myResponse === "GOING"}
+              onClick={() => setPendingResponse("GOING")}
+              className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider font-[family-name:var(--font-barlow-condensed)] transition-all ${
+                alert.myResponse === "GOING"
+                  ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/30 ring-1 ring-emerald-400"
+                  : "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+              }`}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              {alert.myResponse === "GOING" ? "Confirmado (Voy)" : "Voy"}
+            </button>
+
+            <button
+              type="button"
+              disabled={respondMutation.isPending || alert.myResponse === "NOT_GOING"}
+              onClick={() => setPendingResponse("NOT_GOING")}
+              className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider font-[family-name:var(--font-barlow-condensed)] transition-all ${
+                alert.myResponse === "NOT_GOING"
+                  ? "bg-white/20 text-white ring-1 ring-white/40"
+                  : "border border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white"
+              }`}
+            >
+              <XCircle className="h-4 w-4" />
+              {alert.myResponse === "NOT_GOING" ? "No voy (Registrado)" : "No voy"}
+            </button>
+            {pendingResponse && pendingResponse !== alert.myResponse && <div role="group" aria-label="Confirmar respuesta a la alerta" className="col-span-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm sm:order-last sm:w-full"><span className="flex-1">{alert.myResponse ? "Cambiarás tu respuesta anterior; el cambio quedará registrado en el historial." : `Confirmar “${pendingResponse === "GOING" ? "Voy" : "No voy"}”. Podrás corregirla mientras la alerta siga activa.`}</span><button type="button" disabled={respondMutation.isPending} className="app-button app-button-red w-auto" onClick={() => void respond(pendingResponse)}>{respondMutation.isPending ? "Registrando..." : alert.myResponse ? "Confirmar cambio" : "Confirmar"}</button><button type="button" disabled={respondMutation.isPending} className="app-button app-button-outline w-auto" onClick={() => setPendingResponse(null)}>Cancelar</button></div>}
+
+          </div>
+        )}
+        {/* Gestion de la emergencia: no depende de haber sido convocado */}
+        {isActive && (canResolve || canCancel) && (
+          <div className="flex flex-wrap gap-2 border-t border-white/[0.06] pt-3">
             {canResolve && (
-              <ActionButton
-                active={false}
-                disabled={resolveMutation.isPending}
-                onClick={resolve}
-                icon={<CheckCircle2 className="h-4 w-4" />}
-                label="Resolver"
-                tone="red"
-              />
+              <>
+                {alert.incident ? (
+                  <Link
+                    href={`/incidents/${alert.incident.id}/sheet`}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-red-300 hover:bg-red-500/20 transition-all font-[family-name:var(--font-barlow-condensed)]"
+                  >
+                    <Siren className="h-4 w-4" />
+                    Ver planilla de intervención
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={dispatchMutation.isPending}
+                    onClick={dispatchIncident}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-red-900/30 hover:bg-red-700 transition-all font-[family-name:var(--font-barlow-condensed)]"
+                  >
+                    <ShieldPlus className="h-4 w-4" />
+                    {dispatchMutation.isPending ? "Abriendo…" : "Abrir intervención"}
+                  </button>
+                )}
+                {!alert.incident && (
+                  <button
+                    type="button"
+                    disabled={resolveMutation.isPending}
+                    onClick={resolve}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white/70 hover:bg-white/[0.08] transition-all font-[family-name:var(--font-barlow-condensed)]"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Resolver
+                  </button>
+                )}
+              </>
+            )}
+            {canCancel && (
+              <button
+                type="button"
+                disabled={cancelMutation.isPending}
+                onClick={() => void cancel()}
+                className="flex items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-amber-200 hover:bg-amber-500/20 transition-all font-[family-name:var(--font-barlow-condensed)]"
+              >
+                {cancelMutation.isPending ? "Cancelando..." : alert.incident ? "Cancelar alerta y conservar acta" : "Cancelar falsa alarma"}
+              </button>
             )}
           </div>
         )}
+        {actionError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{actionError}</p>}
       </div>
-    </article>
-  );
-}
-
-function ActionButton({
-  active,
-  disabled,
-  onClick,
-  icon,
-  label,
-  tone,
-}: {
-  active: boolean;
-  disabled: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-  tone: "green" | "gray" | "red";
-}) {
-  const toneClass = {
-    green: active
-      ? "border-emerald-500 bg-emerald-500 text-white"
-      : "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
-    gray: active
-      ? "border-slate-400 bg-slate-500 text-white"
-      : "border-white/10 bg-white/5 text-slate-300",
-    red: "border-red-500/30 bg-red-500/10 text-red-300",
-  }[tone];
-
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={[
-        "inline-flex h-11 items-center justify-center gap-2 rounded-2xl border px-4 text-xs font-black uppercase tracking-[0.1em] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60",
-        toneClass,
-      ].join(" ")}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
-
-function PanelMessage({
-  message,
-  tone,
-}: {
-  message: string;
-  tone: "neutral" | "error";
-}) {
-  return (
-    <div
-      className={[
-        "rounded-[22px] border px-5 py-12 text-center",
-        tone === "error"
-          ? "border-red-500/20 bg-red-500/10 text-red-300"
-          : "border-white/10 bg-[#111214] text-white/75",
-      ].join(" ")}
-    >
-      <p className="text-sm font-semibold">{message}</p>
-    </div>
+    </motion.article>
   );
 }
 
@@ -451,71 +526,44 @@ function getTypeStyles(type: AlertItem["type"]) {
     case "incendio":
       return {
         icon: Flame,
-        accentClass:
-          "border-l-4 border-l-[#ff4d4f] border-y-white/10 border-r-white/10",
-        badgeClass: "border-[#ff4d4f]/20 bg-[#2b1719] text-[#ff8a83]",
+        borderColor: "border-l-4 border-l-red-500",
+        badgeBg: "bg-red-500/15 border border-red-500/30 text-red-400",
       };
     case "rescate":
       return {
         icon: ShieldPlus,
-        accentClass:
-          "border-l-4 border-l-[#d1b300] border-y-white/10 border-r-white/10",
-        badgeClass: "border-[#d1b300]/20 bg-[#2c2712] text-[#f0d74a]",
+        borderColor: "border-l-4 border-l-amber-500",
+        badgeBg: "bg-amber-500/15 border border-amber-500/30 text-amber-400",
       };
     case "accidente":
       return {
         icon: Siren,
-        accentClass:
-          "border-l-4 border-l-[#6f7685] border-y-white/10 border-r-white/10",
-        badgeClass: "border-[#6f7685]/20 bg-[#22252c] text-[#d6dae4]",
+        borderColor: "border-l-4 border-l-blue-500",
+        badgeBg: "bg-blue-500/15 border border-blue-500/30 text-blue-400",
       };
     case "quimico":
       return {
         icon: TestTube2,
-        accentClass:
-          "border-l-4 border-l-[#b27cff] border-y-white/10 border-r-white/10",
-        badgeClass: "border-[#b27cff]/20 bg-[#241a34] text-[#c9a2ff]",
+        borderColor: "border-l-4 border-l-purple-500",
+        badgeBg: "bg-purple-500/15 border border-purple-500/30 text-purple-400",
       };
     case "medico":
       return {
         icon: Stethoscope,
-        accentClass:
-          "border-l-4 border-l-[#5fa8ff] border-y-white/10 border-r-white/10",
-        badgeClass: "border-[#5fa8ff]/20 bg-[#182332] text-[#8fc0ff]",
+        borderColor: "border-l-4 border-l-sky-500",
+        badgeBg: "bg-sky-500/15 border border-sky-500/30 text-sky-400",
       };
     case "inundacion":
       return {
         icon: Droplets,
-        accentClass:
-          "border-l-4 border-l-[#16c784] border-y-white/10 border-r-white/10",
-        badgeClass: "border-[#16c784]/20 bg-[#112921] text-[#53d9a4]",
+        borderColor: "border-l-4 border-l-emerald-500",
+        badgeBg: "bg-emerald-500/15 border border-emerald-500/30 text-emerald-400",
       };
-    case "otro":
+    default:
       return {
         icon: Bell,
-        accentClass:
-          "border-l-4 border-l-[#ff7a2f] border-y-white/10 border-r-white/10",
-        badgeClass: "border-[#ff7a2f]/20 bg-[#2c2118] text-[#ffad78]",
+        borderColor: "border-l-4 border-l-orange-500",
+        badgeBg: "bg-orange-500/15 border border-orange-500/30 text-orange-400",
       };
-  }
-}
-
-function getPriorityClass(priority: AlertPriority) {
-  switch (priority) {
-    case "alta":
-      return "border-[#7f2426] bg-[#2b1618] text-[#ff6669]";
-    case "media":
-      return "border-[#75620f] bg-[#2b2511] text-[#d9bc1b]";
-    case "baja":
-      return "border-[#196b49] bg-[#11271f] text-[#31d18b]";
-  }
-}
-
-function getStatusClass(status: AlertStatus) {
-  switch (status) {
-    case "activa":
-      return "border-[#7f2426] bg-[#1d1f25] text-[#ff5256]";
-    case "resuelta":
-      return "border-white/10 bg-[#1a1d22] text-white/45";
   }
 }

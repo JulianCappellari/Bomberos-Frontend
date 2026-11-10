@@ -85,7 +85,7 @@ export default function InventoryAccordion({ inventory }: Props) {
     setMessage(null);
 
     try {
-      await deleteMutation.mutateAsync(item.id);
+      await deleteMutation.mutateAsync({ itemId: item.id, revision: item.revision });
       setMessage({ type: "success", text: "Ítem eliminado." });
     } catch (error: unknown) {
       setMessage({
@@ -208,6 +208,8 @@ function InventoryItemRow({
             Cantidad esperada: {item.expectedQuantity}
           </p>
           <p className="mt-1 text-sm text-slate-300">{state.label}</p>
+          {(item.labelCode || item.expiresOn) && <p className="mt-1 text-xs text-sky-200">{item.labelCode && `Etiqueta: ${item.labelCode}`}{item.expiresOn && ` · Vence: ${item.expiresOn.slice(0, 10)}`}</p>}
+          {item.inspectionItems?.[0] && item.inspectionItems[0].observedQuantity < item.inspectionItems[0].expectedQuantity && <p className="mt-1 text-xs text-amber-200">Ultimo control: faltan {item.inspectionItems[0].expectedQuantity - item.inspectionItems[0].observedQuantity} unidades. Requiere nuevo control para confirmar reposicion.</p>}
           {item.notes && (
             <p className="mt-1 text-sm text-slate-500">{item.notes}</p>
           )}
@@ -287,6 +289,7 @@ function InventoryItemEditor({
     }
 
     await onSave({
+      revision: item.revision,
       name,
       compartmentId: form.compartmentId,
       expectedQuantity,

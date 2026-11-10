@@ -32,6 +32,8 @@ export default function AddInventoryItemForm({
     expectedQuantity: "1",
     state: "OK" as InventoryItemState,
     notes: "",
+    labelCode: "",
+    expiresOn: "",
   });
 
   const sortedCompartments = useMemo(
@@ -95,6 +97,8 @@ export default function AddInventoryItemForm({
         payload: {
           name: itemName,
           expectedQuantity,
+          labelCode: form.labelCode.trim().toUpperCase() || null,
+          expiresOn: form.expiresOn || null,
           state: form.state,
           notes: form.notes.trim() ? form.notes.trim() : null,
         },
@@ -104,6 +108,8 @@ export default function AddInventoryItemForm({
       setForm((prev) => ({
         ...prev,
         name: "",
+        labelCode: "",
+        expiresOn: "",
         expectedQuantity: "1",
         notes: "",
         newCompartmentName: "",
@@ -134,6 +140,7 @@ export default function AddInventoryItemForm({
           />
         </Field>
 
+        <div className="grid gap-3 sm:grid-cols-2"><Field label="Codigo de etiqueta"><input className="input-dark" maxLength={40} pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,39}" value={form.labelCode} onChange={(e) => updateField("labelCode", e.target.value)} /></Field><Field label="Vencimiento opcional"><input className="input-dark" type="date" value={form.expiresOn} onChange={(e) => updateField("expiresOn", e.target.value)} /></Field></div>
         <Field label="Compartimiento / baulera">
           <select
             className="input-dark"

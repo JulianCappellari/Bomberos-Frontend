@@ -23,6 +23,7 @@ import {
 import { getErrorMessage } from "@/lib/get-error-message";
 import { isCommandRank } from "@/lib/ranks";
 import { ChatMessage } from "@/types/chat";
+import { MessageAcknowledgement } from "@/components/operations/message-acknowledgement";
 
 function displayName(message: ChatMessage) {
   return (
@@ -46,7 +47,7 @@ export default function ChatPage() {
   const { data: messages = [], isLoading, isError } = useChatMessages();
   const createMutation = useCreateChatMessage();
   const [body, setBody] = useState("");
-  const userHasCommandRank = isCommandRank(user?.profile?.rank);
+  const userHasCommandRank = user?.role === "ADMIN" || user?.role === "OPERATOR";
 
   const pinnedCount = useMemo(
     () => messages.filter((message) => message.isPinned).length,
@@ -137,13 +138,15 @@ export default function ChatPage() {
 
         <section className="space-y-3">
           {messages.map((message) => (
+            <div key={message.id}>
             <ChatMessageCard
-              key={message.id}
               message={message}
               canEdit={message.author.id === user?.id}
-              canDelete={userHasCommandRank}
+              canDelete={userHasCommandRank || message.author.id === user?.id}
               canPin={userHasCommandRank}
             />
+            {user?.profile?.rank?.toLocaleLowerCase() !== "administrador" && <MessageAcknowledgement message={message} />}
+            </div>
           ))}
         </section>
       </main>

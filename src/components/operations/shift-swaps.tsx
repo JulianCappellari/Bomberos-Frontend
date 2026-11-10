@@ -1,0 +1,33 @@
+"use client";
+import { FormEvent, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/features/auth/auth-context";
+import { api } from "@/lib/api-client";
+import { getErrorMessage } from "@/lib/get-error-message";
+import { Shift } from "@/types/shift";
+import { UserRosterItem } from "@/types/user";
+import { ErrorNotice, Field, personName } from "./operations-ui";
+import { shiftAllowsSwap } from "@/lib/shift-swap-window";
+type Swap = { id: string; status: string; fromUserId: string; toUserId: string; reason: string; decisionNote: string | null; shift: Pick<Shift, "id" | "date" | "period" | "startTime" | "endTime">; from: UserRosterItem; to: UserRosterItem };
+const states: Record<string, string> = { PENDING: "Esperando respuesta del destinatario", ACCEPTED: "Aceptado; falta la aprobación de jefatura", APPROVED: "Aprobado", REJECTED: "Rechazado", CANCELLED: "Cancelado" };
+export function ShiftSwaps({ shifts, people }: { shifts: Shift[]; people: UserRosterItem[] }) {
+  const { user } = useAuth(), client = useQueryClient(), manager = user?.role === "ADMIN" || user?.role === "OPERATOR";
+  const [open, setOpen] = useState(false), [shiftId, setShift] = useState(""), [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
+  const query = useQuery({ queryKey: ["shift-swaps", user?.id], enabled: Boolean(user), queryFn: async () => (await api.get<Swap[]>("/shifts/swaps")).data, refetchInterval: 30000 });
+  const own = shifts.filter(s => s.assignments.some(a => a.userId === user?.id)), selected = own.find(s => s.id === shiftId);
+  async function action(path: string, data: unknown) {
+    setBusy(true); setError(""); setNotice("");
+    try { await api.post("/shifts" + path, data); await Promise.all([client.invalidateQueries({ queryKey: ["shift-swaps"] }), client.invalidateQueries({ queryKey: ["shifts"] })]); setNotice("Solicitud actualizada. El turno solo cambia al aprobarlo jefatura."); return true; }
+    catch (err) { setError(getErrorMessage(err, "No se pudo gestionar el intercambio")); return false; } finally { setBusy(false); }
+  }
+  async function request(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const form = new FormData(e.currentTarget); if (await action(`/${shiftId}/swap`, { toUserId: form.get("toUserId"), reason: form.get("reason") })) setOpen(false); }
+  return <section className="my-5 border-y border-[var(--bord)] py-4"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-bold">Intercambios de guardia</h2>{own.length > 0 && <button className="app-button w-auto" onClick={() => setOpen(!open)}>{open ? "Cerrar solicitud" : "Solicitar intercambio"}</button>}</div><p className="mt-2 text-sm text-[var(--mut)]">Proponé a otra persona que cubra tu turno: ella acepta y jefatura lo aprueba. No se puede a menos de 24 horas del turno.</p>
+    {error && <ErrorNotice>{error}</ErrorNotice>}{notice && <p role="status" className="my-3 text-sm">{notice}</p>}
+    {open && <form onSubmit={request} className="my-4"><fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2"><Field label="Mi guardia"><select className="app-input" required value={shiftId} onChange={e => setShift(e.target.value)}><option value="">Seleccionar turno del calendario visible</option>{own.map(s => <option key={s.id} value={s.id} disabled={!shiftAllowsSwap(s.date, s.startTime)}>{s.date.slice(0, 10)} · {s.period === "DAY" ? "Diurno" : "Nocturno"}{shiftAllowsSwap(s.date, s.startTime) ? "" : " · Fuera de plazo"}</option>)}</select></Field><Field label="Persona propuesta"><select name="toUserId" className="app-input" required disabled={!selected}><option value="">Seleccionar</option>{people.filter(p => p.id !== user?.id && !selected?.assignments.some(a => a.userId === p.id) && p.profile?.rank.toLowerCase() !== "administrador").map(p => <option key={p.id} value={p.id}>{personName(p)}</option>)}</select></Field><Field label="Motivo del intercambio"><textarea name="reason" required minLength={10} maxLength={1000} className="app-input" /></Field><button className="app-button w-auto self-end" disabled={!selected}>Enviar propuesta</button></fieldset></form>}
+    {query.isLoading && <p className="my-3">Consultando solicitudes...</p>}{query.isError && <ErrorNotice>No se pudieron cargar los intercambios. <button className="underline" onClick={() => query.refetch()}>Reintentar</button></ErrorNotice>}{query.data?.length === 0 && <p className="my-3 text-sm text-[var(--mut)]">No hay intercambios en trámite.</p>}
+    {query.data?.map(row => <article key={row.id} className="border-t border-[var(--bord)] py-4"><h3 className="font-bold">{row.shift.date.slice(0, 10)} · {row.shift.period === "DAY" ? "Diurno" : "Nocturno"}</h3><p className="my-2 text-sm">{personName(row.from)} propone a {personName(row.to)}.</p><p className="text-sm">{states[row.status] || "Estado no reconocido"}</p><p className="my-2 whitespace-pre-wrap break-words text-sm text-[var(--mut)]">{row.reason}</p>{row.decisionNote && <p className="my-2 text-sm">Resolucion: {row.decisionNote}</p>}
+      {row.status === "PENDING" && <div className="mt-3 flex flex-wrap gap-2">{row.toUserId === user?.id && <button disabled={busy || !shiftAllowsSwap(row.shift.date, row.shift.startTime)} className="app-button w-auto" onClick={() => action(`/swaps/${row.id}/answer`, { accept: true })}>Aceptar cobertura</button>}{[row.fromUserId, row.toUserId].includes(user!.id) && <button disabled={busy} className="app-button w-auto" onClick={() => action(`/swaps/${row.id}/answer`, { accept: false })}>{row.fromUserId === user?.id ? "Cancelar propuesta" : "Rechazar"}</button>}</div>}
+      {row.status === "ACCEPTED" && manager && ![row.fromUserId, row.toUserId].includes(user!.id) && <form className="mt-3" onSubmit={e => { e.preventDefault(); const values = new FormData(e.currentTarget); if (window.confirm("Registrar la decision de jefatura sobre este intercambio?")) void action(`/swaps/${row.id}/decide`, { approve: values.get("decision") === "approve", note: values.get("note") }); }}><fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2"><Field label="Decision de jefatura"><select name="decision" className="app-input"><option value="approve" disabled={!shiftAllowsSwap(row.shift.date, row.shift.startTime)}>Aprobar intercambio</option><option value="reject">Rechazar</option></select></Field><Field label="Motivo de la decision"><textarea name="note" required minLength={5} maxLength={1000} className="app-input" /></Field><button className="app-button w-auto">Guardar decision</button></fieldset></form>}
+    </article>)}
+  </section>;
+}

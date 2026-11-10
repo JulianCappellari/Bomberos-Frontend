@@ -3,6 +3,11 @@ export const FIREFIGHTER_RANKS = [
   "Sub oficial",
   "Bombero",
   "Aspirante",
+  "Comision directiva",
+  "Aspirante mayor",
+  "Aspirante menor",
+  "Administrador",
+  "Guardia",
 ] as const;
 
 export type FirefighterRank = (typeof FIREFIGHTER_RANKS)[number];
@@ -19,5 +24,5 @@ export function normalizeRank(value?: string | null) {
 
 export function isCommandRank(value?: string | null) {
   const normalized = normalizeRank(value).replace(/\s/g, "");
-  return normalized === "oficial" || normalized === "suboficial";
+  return normalized === "oficial" || normalized === "suboficial" || normalized === "administrador";
 }

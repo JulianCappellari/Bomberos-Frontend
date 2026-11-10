@@ -3,12 +3,12 @@ import CreateVehicleForm from "@/components/equipment/CreateVehicleForm";
 
 export default function NewVehiclePage() {
   return (
-    <main className="min-h-screen bg-[#0a0a0d] text-white">
+    <div className="space-y-4">
       <EquipmentPageHeader title="Nuevo vehículo" backHref="/equipment" />
 
-      <div className="mx-auto max-w-4xl px-4 py-6">
+      <div className="max-w-5xl">
         <CreateVehicleForm />
       </div>
-    </main>
+    </div>
   );
 }

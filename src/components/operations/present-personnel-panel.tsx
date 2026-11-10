@@ -1,0 +1,8 @@
+"use client";
+import Link from "next/link";
+import { Users } from "lucide-react";
+import { usePresentPersonnel } from "@/hooks/use-attendence";
+export function PresentPersonnelPanel() {
+  const query = usePresentPersonnel();
+  return <section className="min-w-0 space-y-3" aria-label="Personal presente en cuartel"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-xl font-bold"><Users size={20} className="text-emerald-300" /> En el cuartel {query.data && `(${query.data.length})`}</h2><Link href="/station" className="text-sm text-red-300 underline">Ver presentes</Link></div>{query.isLoading && <p>Cargando presentes...</p>}{query.isError && <p role="alert" className="text-sm text-amber-200">No se pudo actualizar el listado. <button className="underline" onClick={() => query.refetch()}>Reintentar</button></p>}{!query.isLoading && !query.isError && !query.data?.length && <p className="rounded-lg border border-[var(--bord)] p-4 text-sm text-[var(--mut)]">No hay personal registrado actualmente.</p>}<ul className="divide-y divide-[var(--bord)]">{query.data?.map((row) => <li key={row.id} className="flex items-start gap-3 py-3"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-400" /><div className="min-w-0"><p className="break-words font-bold">{row.user.profile?.fullName || row.user.username}</p><p className="text-xs text-[var(--mut)]">{row.user.profile?.rank} · Entrada {new Date(row.checkInAt).toLocaleTimeString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", hour: "2-digit", minute: "2-digit" })}</p></div></li>)}</ul><p className="text-xs text-[var(--mut)]">Solo permanencias abiertas. Actualizacion automatica y al recuperar foco.</p></section>;
+}

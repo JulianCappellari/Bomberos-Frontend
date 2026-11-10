@@ -1,0 +1,21 @@
+import assert from "node:assert/strict";
+import {createRequire} from "node:module";
+import {mkdir} from "node:fs/promises";
+import {fileURLToPath} from "node:url";
+const require=createRequire(import.meta.url),{chromium}=require(process.env.BOMBEROS_PLAYWRIGHT_PATH||"playwright");if(!process.env.BOMBEROS_TEST_PASSWORD)throw Error("Use solo el preview temporal de miembros");
+const output=fileURLToPath(new URL("../../tmp/ui/",import.meta.url));await mkdir(output,{recursive:true});const browser=await chromium.launch({channel:"chrome",headless:true}),errors=[];
+async function login(username){const ctx=await browser.newContext({viewport:{width:1440,height:1000}}),page=await ctx.newPage();page.on("pageerror",e=>errors.push(e.message));page.on("dialog",d=>d.accept());await page.goto("http://localhost:3217/login");await page.getByPlaceholder("Tu nombre de usuario").fill(username);await page.locator('input[type="password"]').fill(process.env.BOMBEROS_TEST_PASSWORD);await page.getByRole("button",{name:"Ingresar al Cuartel"}).click();await page.waitForURL(/\/(dashboard|admin)$/);return {ctx,page};}
+async function api(page,path,method="GET",body){const token=await page.evaluate(()=>localStorage.getItem("bomberos_access_token"));const response=await fetch("http://127.0.0.1:4000/api"+path,{method,headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},...(body?{body:JSON.stringify(body)}:{})});const data=await response.json();assert(response.ok,`${path}: ${response.status} ${JSON.stringify(data)}`);return data;}
+try{
+ const admin=await login("member_test_0"),owner=await login("member_test_2"),late=await login("member_test_3");
+ const roster=await api(admin.page,"/users/roster"),ownerId=roster.find(p=>p.username==="member_test_2").id,lateId=roster.find(p=>p.username==="member_test_3").id;
+ const groups=await api(admin.page,"/members/groups"),group=groups.find(g=>g.members.some(m=>m.userId===ownerId));await api(admin.page,"/members/groups/"+group.id,"PUT",{revision:group.revision,name:group.name,startsOn:group.startsOn.slice(0,10),repeatWeeks:group.repeatWeeks,userIds:[ownerId,lateId]});
+ for(const person of[owner,late]){const open=await api(person.page,"/attendance/me/open");if(open?.id)await api(admin.page,`/attendance/${open.id}/close`,"POST",{reason:"Preparar prueba temporal de selección por asistencia"});}
+ const stations=await api(admin.page,"/attendance/stations"),qr=await api(admin.page,"/attendance/qr-challenges","POST",{stationId:stations[0].id});
+ const scan={qrToken:qr.qrToken,latitude:-33,longitude:-64,accuracy:5};await api(owner.page,"/attendance/scan","POST",{...scan,deviceFingerprint:"control-ui-owner-device"});
+ const assets=await api(admin.page,"/assets"),asset=assets.find(a=>a.name==="Movil ficticio");assert(asset);await owner.page.goto(`http://localhost:3217/equipment/${asset.id}/inspection/new`);await owner.page.getByRole("button",{name:"Iniciar o recuperar control",exact:true}).click();await owner.page.getByRole("button",{name:"Descartar borrador",exact:true}).waitFor();
+ assert.equal(await owner.page.getByRole("button",{name:/Prueba personal 3/}).count(),0);
+ await api(late.page,"/attendance/scan","POST",{...scan,deviceFingerprint:"control-ui-late-device"});await owner.page.bringToFront();const candidate=owner.page.getByRole("button",{name:/Prueba personal 3/});await candidate.waitFor();await candidate.click();await owner.page.waitForFunction(()=>[...document.querySelectorAll('button[aria-pressed="true"]')].some(b=>b.textContent.includes("Prueba personal 3")));
+ for(const width of[1440,360]){await owner.page.setViewportSize({width,height:900});assert(await owner.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await owner.page.screenshot({path:output+`control-participante-tardio-${width}.png`,fullPage:true});}
+ await owner.page.getByRole("button",{name:"Descartar borrador",exact:true}).click();await owner.page.getByRole("button",{name:"Iniciar o recuperar control",exact:true}).waitFor();assert.deepEqual(errors,[]);console.log("Control UI: persona ausente oculta, incorporación tras QR, selección persistida y descarte seguro; PC/360px sin desbordes ni errores JS.");await admin.ctx.close();await owner.ctx.close();await late.ctx.close();
+}finally{await browser.close();}

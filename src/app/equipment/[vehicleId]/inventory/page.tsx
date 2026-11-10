@@ -9,10 +9,10 @@ export default function EquipmentInventoryPage() {
   const vehicleId = params.vehicleId;
 
   return (
-    <main className="min-h-screen bg-[#0a0a0d] text-white">
+    <div className="space-y-4">
       <EquipmentPageHeader title="Inventario" backHref={`/equipment/${vehicleId}`} />
 
-      <div className="mx-auto max-w-4xl px-4 py-6">
+      <div className="max-w-5xl">
         <section className="rounded-2xl border border-white/10 bg-[#16171b] p-6">
           <h1 className="text-xl font-black uppercase tracking-wide text-red-400">
             Inventario del vehiculo
@@ -30,6 +30,6 @@ export default function EquipmentInventoryPage() {
           </Link>
         </section>
       </div>
-    </main>
+    </div>
   );
 }

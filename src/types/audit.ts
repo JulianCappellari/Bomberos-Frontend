@@ -10,3 +10,12 @@ export type AuditLog = {
   createdAt: string;
   actor: UserRosterItem | null;
 };
+
+export type AuditLogQuery = {
+  limit?: number;
+  entityType?: string;
+  action?: string;
+  q?: string;
+  from?: string;
+  to?: string;
+};

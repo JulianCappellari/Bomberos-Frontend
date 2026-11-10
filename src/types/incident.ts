@@ -20,12 +20,29 @@ export type IncidentAssignment = {
   user: UserRosterItem;
 };
 
+export type IncidentVehicle = {
+  id: string;
+  assetId: string;
+  asset: { id: string; name: string; status: string; vehicle?: { unitNumber: string } | null };
+};
+
+export type IncidentUpdate = {
+  id: string;
+  body: string;
+  createdAt: string;
+  authorUserId: string;
+  author: UserRosterItem;
+};
+
 export type Incident = {
   id: string;
   alertId: string | null;
   title: string;
   type: IncidentType;
   description: string;
+  location: string;
+  responseTimeMinutes: number | null;
+  closingReport: string | null;
   status: IncidentStatus;
   occurredAt: string;
   losses: string | null;
@@ -36,6 +53,8 @@ export type Incident = {
   updatedAt: string;
   alert: BackendAlert | null;
   assignments: IncidentAssignment[];
+  vehicles: IncidentVehicle[];
+  updates: IncidentUpdate[];
   createdBy?: UserRosterItem | null;
   closedBy?: UserRosterItem | null;
 };
@@ -45,8 +64,11 @@ export type CreateIncidentPayload = {
   title: string;
   type: IncidentType;
   description: string;
+  location: string;
+  responseTimeMinutes?: number;
   losses?: string;
   assignedUserIds?: string[];
+  vehicleAssetIds?: string[];
 };
 
 export type UpdateIncidentPayload = {
@@ -54,5 +76,7 @@ export type UpdateIncidentPayload = {
   title?: string;
   type?: IncidentType;
   description?: string;
+  location?: string;
+  responseTimeMinutes?: number | null;
   losses?: string;
 };

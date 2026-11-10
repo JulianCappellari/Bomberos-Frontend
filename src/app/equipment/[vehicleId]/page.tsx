@@ -4,16 +4,21 @@ import { useParams } from "next/navigation";
 import AddInventoryItemForm from "@/components/equipment/AddInventoryItemForm";
 import EquipmentPageHeader from "@/components/equipment/EquipmentPageHeader";
 import InventoryAccordion from "@/components/equipment/InventoryAccordion";
+import { InventoryManagement } from "@/components/equipment/InventoryManagement";
 import VehicleHero from "@/components/equipment/VehicleHero";
 import { useAuth } from "@/features/auth/auth-context";
 import { useAsset } from "@/hooks/use-assets";
 import { useVehicleInventory } from "@/hooks/use-vehicle-inventory";
+import { useControlEligibility } from "@/hooks/use-control-eligibility";
+import { FleetStatus } from "@/components/operations/fleet-status";
 
 export default function VehicleDetailPage() {
   const { user } = useAuth();
   const params = useParams<{ vehicleId: string }>();
   const assetId = params.vehicleId;
   const canManageInventory = user?.role === "ADMIN" || user?.role === "OPERATOR";
+  const eligibility = useControlEligibility();
+  const canInspect = eligibility.data?.allowed;
 
   const {
     data: asset,
@@ -31,43 +36,44 @@ export default function VehicleDetailPage() {
 
   if (assetLoading) {
     return (
-      <main className="min-h-screen bg-[#0a0a0d] text-white">
+      <div className="space-y-4">
         <EquipmentPageHeader title="Vehículo" backHref="/equipment" />
-        <div className="mx-auto max-w-6xl px-4 py-6">
+        <div className="max-w-7xl">
           <div className="rounded-2xl border border-white/10 bg-[#16171b] p-6 text-slate-300">
             Cargando vehículo...
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
   if (assetError || !asset) {
     return (
-      <main className="min-h-screen bg-[#0a0a0d] text-white">
+      <div className="space-y-4">
         <EquipmentPageHeader title="Vehículo" backHref="/equipment" />
-        <div className="mx-auto max-w-6xl px-4 py-6">
+        <div className="max-w-7xl">
           <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-red-300">
             No se pudo cargar el vehículo.
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#0a0a0d] text-white">
+    <div className="space-y-4">
       <EquipmentPageHeader
         title={asset.name}
         backHref="/equipment"
         actionHref={
-          canManageInventory ? `/equipment/${asset.id}/inspection/new` : undefined
+          canInspect ? `/equipment/${asset.id}/inspection/new` : undefined
         }
-        actionLabel={canManageInventory ? "Control" : undefined}
+        actionLabel={canInspect ? "Iniciar control semanal" : undefined}
       />
 
-      <div className="mx-auto max-w-6xl space-y-6 px-4 py-6">
+      <div className="max-w-7xl space-y-6">
         <VehicleHero asset={asset} inventory={inventory} />
+        <FleetStatus asset={asset} />
 
         {asset.vehicle ? (
           inventoryLoading ? (
@@ -80,13 +86,16 @@ export default function VehicleDetailPage() {
             </div>
           ) : (
             <>
-              {canManageInventory && (
-                <AddInventoryItemForm
-                  vehicleId={realVehicleId}
-                  compartments={inventory.compartments}
-                />
-              )}
               <InventoryAccordion inventory={inventory} />
+              {canManageInventory && (
+                <details className="rounded-2xl border border-white/[0.08] bg-[var(--card)] p-4">
+                  <summary className="cursor-pointer font-semibold text-white">Administrar inventario: bauleras y herramientas</summary>
+                  <div className="mt-4 space-y-6">
+                    <InventoryManagement inventory={inventory} />
+                    <AddInventoryItemForm vehicleId={realVehicleId} compartments={inventory.compartments} />
+                  </div>
+                </details>
+              )}
             </>
           )
         ) : (
@@ -95,6 +104,6 @@ export default function VehicleDetailPage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

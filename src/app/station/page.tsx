@@ -1,9 +1,11 @@
 "use client";
+import {OperationalAvailability} from "@/components/operations/operational-availability";
 
 import { Clock3, ShieldCheck, UserCheck, Users } from "lucide-react";
 import { ProtectedLayout } from "@/components/layout/protected-layout";
 import { usePresentPersonnel } from "@/hooks/use-attendence";
 import { PresentPersonnelItem } from "@/services/attendance.service";
+import { AttendanceCorrections, CloseAttendance } from "@/components/operations/close-attendance";
 
 function displayName(item: PresentPersonnelItem) {
   return item.user.profile?.fullName || item.user.username;
@@ -42,6 +44,7 @@ export default function StationPage() {
   return (
     <ProtectedLayout>
       <main className="screen-body">
+        <OperationalAvailability />
         <section className="card">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -65,6 +68,8 @@ export default function StationPage() {
             />
           </div>
         </section>
+
+        <AttendanceCorrections />
 
         {isLoading && (
           <div className="card text-sm text-[var(--mut)]">
@@ -109,7 +114,7 @@ function MiniMetric({ label, value }: { label: string; value: number }) {
 
 function PresentCard({ item }: { item: PresentPersonnelItem }) {
   return (
-    <article className="card">
+    <article className="card"><CloseAttendance id={item.id} />
       <div className="flex items-start gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10 text-red-300">
           <Users className="h-5 w-5" />

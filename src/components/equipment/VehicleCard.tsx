@@ -1,129 +1,61 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, Truck, Wrench } from "lucide-react";
-import { getErrorMessage } from "@/lib/get-error-message";
-import { deleteAssetRequest } from "@/services/assets.service";
+import { ChevronRight, ClipboardCheck, Pencil, Truck } from "lucide-react";
 import { Asset } from "@/types/asset";
 import { assetStatusMap } from "./equipment.constants";
-import { cn, formatDate } from "./equipment.utils";
+import { useAuth } from "@/features/auth/auth-context";
+import { Badge } from "@/components/ui/badge";
 
 type Props = {
   asset: Asset;
 };
 
-function Badge({
-  className,
-  children,
-}: {
-  className: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide",
-        className,
-      )}
-    >
-      {children}
-    </span>
-  );
+// Dias desde el ultimo control; el control semanal vence a los 7 dias (H01/I11).
+function controlAge(value: string | null) {
+  if (!value) return { text: "Sin controles registrados", warn: true };
+  const days = Math.floor((Date.now() - new Date(value).getTime()) / 86400000);
+  const text = days <= 0 ? "Último control: hoy" : days === 1 ? "Último control: ayer" : `Último control: hace ${days} días`;
+  return { text, warn: days > 7 };
 }
 
 export default function VehicleCard({ asset }: Props) {
-  const router = useRouter();
-  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const manager = user?.role === "ADMIN" || user?.role === "OPERATOR";
   const status = assetStatusMap[asset.status];
   const StatusIcon = status.icon;
   const vehicle = asset.vehicle;
-
-  async function handleDelete() {
-    const confirmed = window.confirm(
-      `¿Seguro que querés eliminar ${asset.name}?`,
-    );
-
-    if (!confirmed) return;
-
-    try {
-      await deleteAssetRequest(asset.id);
-      await queryClient.invalidateQueries({ queryKey: ["assets"] });
-      router.refresh();
-    } catch (err: unknown) {
-      alert(getErrorMessage(err, "No se pudo eliminar el equipo"));
-    }
-  }
+  const control = controlAge(asset.lastCheckDate);
+  const badgeVariant = asset.status === "OPERATIONAL" ? "green" : asset.status === "MAINTENANCE" ? "yellow" : "red";
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-[#16171b] p-5 shadow-[0_15px_50px_rgba(0,0,0,0.35)]">
-      <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-        <div className="flex min-w-0 items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-500/10 text-red-300">
-            <Truck className="h-8 w-8" />
-          </div>
+    <article className="flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[var(--card)] p-4 transition-colors hover:border-white/20">
+      <Link href={`/equipment/${asset.id}`} className="group flex items-start gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-red-500/20 bg-red-500/10 text-red-400">
+          <Truck className="h-5 w-5" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block break-words font-bold leading-snug text-white group-hover:underline underline-offset-4">{asset.name}</span>
+          <span className="mt-0.5 block text-xs text-white/60">{vehicle?.plate ?? "Sin patente"} · {vehicle?.year ? `Año ${vehicle.year}` : "Año sin dato"}</span>
+          <span className="mt-2 flex flex-wrap items-center gap-2">
+            <Badge variant={badgeVariant} size="sm"><StatusIcon className="mr-1 inline h-3 w-3" aria-hidden />{status.label}</Badge>
+            <span className={`text-xs ${control.warn ? "text-amber-300" : "text-white/60"}`}>{control.text}{control.warn ? " · control vencido" : ""}</span>
+          </span>
+          {asset.notes && <span className="mt-2 block text-xs text-white/55 line-clamp-2">{asset.notes}</span>}
+        </span>
+        <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-white/30" aria-hidden />
+      </Link>
 
-          <div className="min-w-0">
-            <Link
-              href={`/equipment/${asset.id}`}
-              className="block truncate text-2xl font-black text-white transition hover:text-red-400"
-            >
-              {asset.name}
-            </Link>
-
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-400">
-              <span>{vehicle?.plate ?? "Sin patente"}</span>
-              <span>·</span>
-              <span>{vehicle?.year ?? "Sin año"}</span>
-              <span>·</span>
-              <span>Ctrl: {formatDate(asset.lastCheckDate)}</span>
-            </div>
-
-            {asset.notes && (
-              <p className="mt-2 text-sm text-slate-500">{asset.notes}</p>
-            )}
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Badge className={status.className}>
-                <StatusIcon className="h-4 w-4" />
-                {status.label}
-              </Badge>
-
-              <Badge className="border-sky-500/30 bg-sky-500/10 text-sky-300">
-                <Wrench className="h-4 w-4" />
-                Herramientas
-              </Badge>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-3 md:min-w-[360px] md:grid-cols-[1fr_1fr_auto]">
-          <Link
-            href={`/equipment/${asset.id}/edit`}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-[#111216] px-4 py-3 text-sm font-extrabold uppercase tracking-wide text-white transition hover:border-orange-400/40 hover:text-orange-300"
-          >
-            <Pencil className="h-4 w-4" />
-            Editar
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-white/[0.06] pt-3">
+        <Link href={`/equipment/${asset.id}/history`} className="app-button app-button-outline w-auto">
+          <ClipboardCheck className="h-4 w-4" aria-hidden /> Controles
+        </Link>
+        {manager && (
+          <Link href={`/equipment/${asset.id}/edit`} className="app-button app-button-outline w-auto">
+            <Pencil className="h-4 w-4" aria-hidden /> Editar
           </Link>
-
-          <Link
-            href={`/equipment/${asset.id}`}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm font-extrabold uppercase tracking-wide text-sky-300 transition hover:bg-sky-500/20"
-          >
-            <Truck className="h-4 w-4" />
-            Herramientas
-          </Link>
-
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="flex h-full items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-400 transition hover:bg-red-500/20"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
+        )}
       </div>
-    </div>
+    </article>
   );
 }

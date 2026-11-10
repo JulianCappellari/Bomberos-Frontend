@@ -16,10 +16,10 @@ export default function VehicleHistoryPage() {
     useVehicleInspectionHistory(vehicleId);
 
   return (
-    <main className="min-h-screen bg-[#0a0a0d] text-white">
+    <div className="space-y-4">
       <EquipmentPageHeader title="Historial" backHref={`/equipment/${assetId}`} />
 
-      <div className="mx-auto max-w-5xl px-4 py-6">
+      <div className="max-w-6xl">
         {assetLoading || isLoading ? (
           <div className="rounded-2xl border border-white/10 bg-[#16171b] p-6 text-slate-300">
             Cargando historial...
@@ -32,6 +32,6 @@ export default function VehicleHistoryPage() {
           <HistoryList history={history ?? []} />
         )}
       </div>
-    </main>
+    </div>
   );
 }

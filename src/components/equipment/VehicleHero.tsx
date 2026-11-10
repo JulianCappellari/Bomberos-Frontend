@@ -17,24 +17,21 @@ export default function VehicleHero({ asset, inventory }: Props) {
   const counter = inventory
     ? countInventoryOkFromCompartments(inventory.compartments)
     : { ok: 0, total: 0 };
+  const materials = inventory?.compartments.flatMap((c) => c.items) || [];
+  const unresolved = materials.reduce((sum, item) => { const last = item.inspectionItems?.[0]; return sum + (last ? Math.max(0, last.expectedQuantity - last.observedQuantity) : 0); }, 0);
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const expired = materials.filter((item) => item.expiresOn && item.expiresOn.slice(0, 10) < today).length;
 
   return (
-    <div className="rounded-3xl border border-sky-500/20 bg-[radial-gradient(circle_at_top,_rgba(20,60,120,0.25),_rgba(16,17,24,1)_70%)] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
+    <section aria-label="Resumen del móvil" className="rounded-2xl border border-white/[0.08] bg-[var(--card)] p-4">
       <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
         <div className="flex items-start gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/10 text-4xl">
-            🚒
-          </div>
-
           <div>
-            <h2 className="text-3xl font-black text-white">{asset.name}</h2>
+            <p className="text-sm text-white/65">Patente {asset.vehicle?.plate ?? "sin cargar"} · {asset.vehicle?.year ? `Año ${asset.vehicle.year}` : "Año sin dato"}</p>
 
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-400">
-              <span>📌 {asset.vehicle?.plate ?? "Sin patente"}</span>
-              <span>{asset.vehicle?.year ?? "S/Año"}</span>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
+              {unresolved > 0 && <span className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">Último control: faltan {unresolved} {unresolved === 1 ? "unidad" : "unidades"}. Confirmar reposición.</span>}
+              {expired > 0 && <span className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">{expired} {expired === 1 ? "material vencido" : "materiales vencidos"}</span>}
               <span
                 className={cn(
                   "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide",
@@ -47,7 +44,7 @@ export default function VehicleHero({ asset, inventory }: Props) {
 
               {inventory && (
                 <span className="inline-flex items-center gap-2 rounded-full border border-slate-500/30 bg-slate-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-300">
-                  📋 {counter.ok}/{counter.total} OK
+                  {counter.ok} de {counter.total} materiales en condiciones
                 </span>
               )}
             </div>
@@ -56,12 +53,12 @@ export default function VehicleHero({ asset, inventory }: Props) {
 
         <Link
           href={`/equipment/${asset.id}/history`}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-black uppercase tracking-wide text-white transition hover:bg-white/10"
+          className="app-button w-auto"
         >
-          <ClipboardList className="h-4 w-4" />
-          Historial
+          <ClipboardList className="h-4 w-4" aria-hidden />
+          Historial de controles
         </Link>
       </div>
-    </div>
+    </section>
   );
 }

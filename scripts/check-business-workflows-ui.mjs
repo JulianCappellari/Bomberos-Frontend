@@ -1,0 +1,56 @@
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import { mkdir } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+const require = createRequire(import.meta.url), { chromium } = require(process.env.BOMBEROS_PLAYWRIGHT_PATH || "playwright");
+if (!process.env.BOMBEROS_TEST_PASSWORD) throw Error("Use solo test:members --preview con cuentas temporales");
+const output = fileURLToPath(new URL("../../tmp/ui/", import.meta.url)); await mkdir(output, { recursive: true });
+const browser = await chromium.launch({ channel: "chrome", headless: true }), errors = [];
+async function login(index) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } }), page = await context.newPage();
+  await context.route("**/api/**", route => { const url = new URL(route.request().url()); return route.continue({ url: "http://127.0.0.1:4000" + url.pathname + url.search }); });
+  page.on("pageerror", e => errors.push(e.message)); page.on("dialog", d => d.accept());
+  await page.goto("http://localhost:3217/login"); await page.getByPlaceholder("Tu nombre de usuario").fill(`member_test_${index}`); await page.locator('input[type="password"]').fill(process.env.BOMBEROS_TEST_PASSWORD); await page.getByRole("button", { name: "Ingresar al Cuartel" }).click(); await page.waitForURL(/\/(dashboard|admin)$/);
+  return { context, page };
+}
+async function api(page, path, method = "GET", body) {
+  const token = await page.evaluate(() => localStorage.getItem("bomberos_access_token"));
+  const response = await fetch("http://127.0.0.1:4000/api" + path, { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const data = await response.json(); assert(response.ok, `${path}: ${response.status} ${JSON.stringify(data)}`); return data;
+}
+async function capture(page, name) { for (const width of [1440, 360, 320]) { await page.setViewportSize({ width, height: 900 }); assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)); await page.screenshot({ path: output + `${name}-${width}.png`, fullPage: true }); } }
+function day(date) { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(date); }
+try {
+  const admin = await login(0), staff = await login(2), guard = await login(4), sub = await login(1);
+  const roster = await api(admin.page, "/users/roster"), member = roster.find(p => p.username === "member_test_2"), helper = roster.find(p => p.username === "member_test_4"), lieutenant = roster.find(p => p.username === "member_test_1");
+  const task = await api(admin.page, "/work/tasks", "POST", { title: "Transferencia UI remota", description: "Actualizar listado documental sin presencia fisica", requiresPresence: false, userIds: [member.id] });
+  await staff.page.goto("http://localhost:3217/tasks"); await staff.page.getByRole("searchbox", { name: "Buscar tareas" }).fill(task.title);
+  const card = staff.page.locator("article").filter({ hasText: task.title }); await card.getByRole("button", { name: "Proponer transferencia" }).click();
+  const dialog = staff.page.getByRole("dialog"); await dialog.getByRole("combobox", { name: /Proponer integrante/ }).selectOption(helper.id); await dialog.getByRole("textbox", { name: /Motivo/ }).fill("Propuesta de transferencia documental de prueba"); await dialog.getByRole("button", { name: "Confirmar", exact: true }).click(); await dialog.waitFor({ state: "hidden" });
+  await guard.page.goto("http://localhost:3217/tasks"); const proposal = guard.page.locator("article").filter({ hasText: task.title }).filter({ has: guard.page.getByRole("button", { name: "Aceptar tarea" }) }); await proposal.getByRole("button", { name: "Aceptar tarea" }).click(); await guard.page.getByRole("status").filter({ hasText: /Tarea transferida/ }).waitFor(); await capture(guard.page, "reglas-transferencia-aceptada");
+  await api(staff.page, "/members/availability/available-now", "POST", {});
+  const future = day(new Date(Date.now() + 4 * 86400000));
+  const shift = await api(admin.page, "/shifts", "POST", { date: future, period: "NIGHT", assignedUserIds: [member.id], notes: "Turno UI para intercambio" });
+  await api(staff.page, `/shifts/${shift.id}/swap`, "POST", { toUserId: helper.id, reason: "Intercambio voluntario para verificar pantalla" });
+  await guard.page.goto("http://localhost:3217/calendar"); const swap = guard.page.locator("article").filter({ hasText: "Intercambio voluntario para verificar pantalla" }); await swap.getByRole("button", { name: "Aceptar cobertura" }).click(); await swap.getByText(/Aceptado; falta aprobacion/).waitFor();
+  await admin.page.goto("http://localhost:3217/calendar"); const decision = admin.page.locator("article").filter({ hasText: "Intercambio voluntario para verificar pantalla" }); await decision.getByRole("textbox", { name: "Motivo de la decision" }).fill("Cambio aprobado por responsable independiente"); const approved = admin.page.waitForResponse(r => r.url().includes("/swaps/") && r.url().endsWith("/decide") && r.request().method() === "POST"); await decision.getByRole("button", { name: "Guardar decision" }).click(); assert.equal((await approved).status(), 200); await decision.waitFor({ state: "hidden" }); const changedShift = (await api(admin.page, "/shifts")).find(s => s.id === shift.id); assert(changedShift.assignments.some(a => a.userId === helper.id)); assert(!changedShift.assignments.some(a => a.userId === member.id)); await capture(admin.page, "reglas-intercambio-aprobado");
+  await admin.page.goto(`http://localhost:3217/admin?area=staff&person=${member.id}&view=permissions`);
+  await admin.page.getByRole("combobox", { name: /Permiso especial/ }).selectOption("PPE"); await admin.page.getByLabel("Motivo del permiso").fill("Responsable de EPP designado para prueba temporal"); await admin.page.getByRole("button", { name: "Guardar permiso" }).click(); await admin.page.getByRole("status").filter({ hasText: "Permiso actualizado y auditado" }).waitFor(); await capture(admin.page, "reglas-permiso-especial");
+  await staff.page.goto("http://localhost:3217/personal-equipment"); await staff.page.reload(); await staff.page.getByRole("button", { name: "Nuevo elemento" }).waitFor();
+  await admin.page.getByRole("combobox", { name: /Accion sobre el permiso/ }).selectOption("no"); await admin.page.getByLabel("Motivo del permiso").fill("Revocacion de permiso al terminar la prueba temporal"); await admin.page.getByRole("button", { name: "Guardar permiso" }).click(); await admin.page.getByRole("status").filter({ hasText: "Permiso actualizado y auditado" }).waitFor();
+  await staff.page.reload(); await staff.page.getByRole("heading", { name: "Acceso restringido" }).waitFor();
+  await admin.page.goto("http://localhost:3217/ranking"); await admin.page.getByRole("combobox", { name: /Alcance del sorteo/ }).selectOption("ALL");
+  const draw = admin.page.waitForResponse(r => r.url().endsWith("/ranking/recovery") && r.request().method() === "POST"); await admin.page.getByRole("button", { name: "Sortear y asignar tareas" }).click(); const response = await draw; assert.equal(response.status(), 201); assert.equal(response.request().postDataJSON().scope, "ALL"); await capture(admin.page, "reglas-sorteo-general");
+  await staff.page.goto("http://localhost:3217/expenses"); await staff.page.getByLabel("Concepto", { exact: true }).fill("Comprobante UI privado"); await staff.page.getByLabel("Fecha del gasto").fill(day(new Date())); await staff.page.getByLabel("Importe en pesos").fill("123.45"); await staff.page.getByLabel("Detalle y motivo").fill("Gasto sintetico con foto subida para verificacion");
+  const png = await staff.page.evaluate(() => { const canvas = document.createElement("canvas"); canvas.width = 200; canvas.height = 120; const ctx = canvas.getContext("2d"); ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 200, 120); ctx.fillStyle = "#111111"; ctx.fillText("COMPROBANTE SINTETICO UI", 10, 50); return canvas.toDataURL("image/png").split(",")[1]; });
+  await staff.page.getByLabel("Adjuntar foto del comprobante obligatorio").setInputFiles({ name: "prueba.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") }); const posted = staff.page.waitForResponse(r => r.url().endsWith("/finance/expenses") && r.request().method() === "POST"); await staff.page.getByRole("button", { name: "Presentar a jefatura" }).click(); assert.equal((await posted).status(), 201); await staff.page.getByRole("status").filter({ hasText: /Gasto presentado/ }).waitFor(); await capture(staff.page, "reglas-comprobante-subido");
+  const stations = await api(admin.page, "/attendance/stations"), station = stations.find(s => s.name === "Base ficticia") || stations[0];
+  const qr = await api(admin.page, "/attendance/qr-challenges", "POST", { stationId: station.id });
+  for (const actor of [staff.page, sub.page]) await api(actor, "/attendance/scan", "POST", { qrToken: qr.qrToken, latitude: -33, longitude: -64, accuracy: 10, deviceFingerprint: actor === staff.page ? "member-test-device" : "ui-sub-device" });
+  const assets = await api(admin.page, "/assets"), asset = assets.find(a => a.name === "Movil ficticio");
+  const draft = await api(staff.page, "/inspections/drafts", "POST", { vehicleId: asset.vehicle.id }); await api(staff.page, `/inspections/drafts/${draft.id}/participants`, "PUT", { revision: draft.revision, userIds: [member.id, lieutenant.id] });
+  const inventory = await api(staff.page, `/equipment/vehicles/${asset.vehicle.id}/inventory`);
+  await api(staff.page, "/inspections", "POST", { draftId: draft.id, vehicleId: asset.vehicle.id, inspectionDate: day(new Date(draft.startedAt)), inspectionTime: new Intl.DateTimeFormat("en-GB", { timeZone: "America/Argentina/Buenos_Aires", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(draft.startedAt)), leaderUserId: member.id, responsibleUserIds: [member.id, lieutenant.id], observations: "Control UI retiro colaborador", items: inventory.compartments.flatMap(c => c.items.map(i => ({ inventoryItemId: i.id, observedQuantity: i.expectedQuantity, result: "OK" }))) });
+  await admin.page.goto(`http://localhost:3217/equipment/${asset.id}/history`); const history = admin.page.locator("div.rounded-3xl").filter({ has: admin.page.getByText("Control UI retiro colaborador", { exact: true }) }).first(); await history.getByRole("button", { name: "Retirar participante" }).click(); await history.getByLabel("Motivo del retiro").fill("Persona incluida por error no participo en este control"); await history.getByRole("button", { name: "Confirmar retiro" }).click(); await history.getByText("Pendiente de confirmación del equipo", { exact: true }).waitFor({ state: "hidden" }); await capture(admin.page, "reglas-retiro-participante");
+  assert.deepEqual(errors, []); console.log("UI reglas: transferencia, intercambio con aprobacion, permiso concedido/revocado, sorteo ALL, foto de gasto y retiro de participante. PC/360/320 sin desbordes ni errores JS.");
+} catch (e) { for (const [index, context] of browser.contexts().entries()) await context.pages()[0]?.screenshot({ path: output + `reglas-fallo-${index}.png`, fullPage: true }); throw e; } finally { await browser.close(); }

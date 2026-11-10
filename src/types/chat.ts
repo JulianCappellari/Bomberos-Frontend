@@ -1,7 +1,7 @@
 export type ChatAuthor = {
   id: string;
   username: string;
-  role: "ADMIN" | "FIREFIGHTER" | "OPERATOR";
+  role: "ADMIN" | "FIREFIGHTER" | "OPERATOR" | "GUARD";
   profile: {
     fullName: string;
     rank: string;

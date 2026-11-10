@@ -30,7 +30,7 @@ export type PresentPersonnelItem = {
   user: {
     id: string;
     username: string;
-    role: "ADMIN" | "FIREFIGHTER" | "OPERATOR";
+    role: "ADMIN" | "FIREFIGHTER" | "OPERATOR" | "GUARD";
     profile: {
       fullName: string;
       rank: string;
@@ -55,6 +55,7 @@ export async function scanAttendanceQr(payload: ScanAttendanceQrPayload) {
   try {
     const response = await api.post<{
       action: "CHECK_IN" | "CHECK_OUT";
+      shouldPromptAvailability: boolean;
       station: {
         id: string;
         name: string;

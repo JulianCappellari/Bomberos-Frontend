@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import EquipmentPageHeader from "@/components/equipment/EquipmentPageHeader";
 import VehicleForm from "@/components/equipment/VehicleForm";
+import { DeleteVehicle } from "@/components/equipment/DeleteVehicle";
 import { useAsset } from "@/hooks/use-assets";
 
 export default function EditVehiclePage() {
@@ -12,10 +13,10 @@ export default function EditVehiclePage() {
   const { data: asset, isLoading, error } = useAsset(vehicleId);
 
   return (
-    <main className="min-h-screen bg-[#0a0a0d] text-white">
-      <EquipmentPageHeader title="Editar equipo" backHref="/equipment" />
+    <div className="space-y-4">
+      <EquipmentPageHeader title={asset ? `Editar ${asset.name}` : "Editar móvil"} backHref="/equipment" />
 
-      <div className="mx-auto max-w-4xl px-4 py-6">
+      <div className="max-w-5xl">
         {isLoading ? (
           <div className="rounded-2xl border border-white/10 bg-[#16171b] p-6 text-slate-300">
             Cargando equipo...
@@ -25,9 +26,12 @@ export default function EditVehiclePage() {
             No se pudo cargar el equipo.
           </div>
         ) : (
-          <VehicleForm asset={asset} />
+          <>
+            <VehicleForm asset={asset} />
+            <DeleteVehicle asset={asset} />
+          </>
         )}
       </div>
-    </main>
+    </div>
   );
 }

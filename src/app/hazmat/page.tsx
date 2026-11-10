@@ -1,0 +1,15 @@
+"use client";
+import { useMemo, useState } from "react";
+import { ExternalLink, Search, ShieldAlert } from "lucide-react";
+import { ProtectedLayout } from "@/components/layout/protected-layout";
+import index from "@/data/gre2024-index.json";
+const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+export default function HazmatPage() {
+  const [query, setQuery] = useState(""), [limit, setLimit] = useState(30);
+  const results = useMemo(() => {
+    const q = normalize(query.trim()); if (q.length < 2) return [];
+    const panel = /^(?:UN\s*|ONU\s*|NA\s*|X?\d{2,3}\s*[/-]\s*)?(\d{4})$/i.exec(query.trim());
+    return index.entries.filter((entry) => panel ? entry.id === panel[1] : entry.id.includes(q) || normalize(entry.name).includes(q));
+  }, [query]);
+  return <ProtectedLayout><section className="screen-body"><h1 className="flex items-center gap-2 text-2xl font-bold"><ShieldAlert /> Materiales peligrosos</h1><p className="my-3 text-sm text-[var(--mut)]">Indice auxiliar GRE 2024 · {index.entries.length} denominaciones · numeros ONU/NA</p><aside className="mb-5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-100">{index.notice} No determina distancias, proteccion personal ni acciones de respuesta.</aside><label className="mb-4 flex items-center gap-2"><Search className="shrink-0" size={18} /><input className="app-input" type="search" aria-label="Buscar numero ONU o material" placeholder="ONU, nombre o placa (33/1203)" value={query} onChange={(e) => { setQuery(e.target.value); setLimit(30); }} /></label><p className="mb-3 text-xs text-[var(--mut)]">{query.trim().length < 2 ? "Ingrese al menos dos caracteres." : `${results.length} coincidencias. Un numero puede tener mas de una denominacion o guia.`}</p><div className="grid gap-3 sm:grid-cols-2">{results.slice(0, limit).map((entry, i) => <article key={`${entry.id}-${i}`} className="min-w-0 rounded-lg border border-[var(--bord)] p-4"><div className="flex flex-wrap justify-between gap-2"><span className="font-mono text-lg font-bold">ID {entry.id}</span><span className="text-sm">Guia {entry.guide}</span></div><h2 className="my-3 break-words font-bold">{entry.name}</h2><a className="inline-flex items-center gap-1 text-sm text-sky-200 underline" href={`${index.source}#page=${entry.pdfPage}`} target="_blank" rel="noopener noreferrer">Ver pagina original <ExternalLink size={14} /></a></article>)}</div>{results.length > limit && <button className="app-button my-4 w-auto" onClick={() => setLimit((v) => v + 30)}>Mostrar mas</button>}<footer className="mt-6 border-t border-[var(--bord)] pt-4 text-xs text-[var(--mut)]"><a href={index.source} target="_blank" rel="noopener noreferrer" className="text-sky-200 underline">GRE 2024 completa, fuente oficial Transport Canada</a><p className="mt-2">Indice de la seccion amarilla, paginas PDF 33 a 93. Extraccion reproducible; conserva variantes de nombre y sufijo P. No reemplaza la guia completa ni su seccion verde.</p></footer></section></ProtectedLayout>;
+}

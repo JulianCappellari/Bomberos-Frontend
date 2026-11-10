@@ -1,6 +1,10 @@
 export type InventoryItemState = "OK" | "REVIEW" | "OUT";
 
 export interface VehicleInventoryItem {
+  revision: number;
+  labelCode?: string | null;
+  expiresOn?: string | null;
+  inspectionItems?: Array<{ expectedQuantity: number; observedQuantity: number; result: string; observations: string | null }>;
   id: string;
   name: string;
   expectedQuantity: number;
@@ -10,6 +14,7 @@ export interface VehicleInventoryItem {
 }
 
 export interface VehicleCompartment {
+  revision: number;
   id: string;
   name: string;
   description: string | null;
@@ -37,6 +42,8 @@ export interface CreateVehicleCompartmentPayload {
 }
 
 export interface CreateInventoryItemPayload {
+  labelCode?: string | null;
+  expiresOn?: string | null;
   name: string;
   expectedQuantity: number;
   state?: InventoryItemState;
@@ -44,6 +51,9 @@ export interface CreateInventoryItemPayload {
 }
 
 export interface UpdateInventoryItemPayload {
+  revision: number;
+  labelCode?: string | null;
+  expiresOn?: string | null;
   compartmentId?: string;
   name?: string;
   expectedQuantity?: number;

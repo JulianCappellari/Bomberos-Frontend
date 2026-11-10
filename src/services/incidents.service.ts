@@ -18,14 +18,35 @@ export async function createIncidentRequest(payload: CreateIncidentPayload) {
   return response.data;
 }
 
+export async function dispatchIncidentFromAlertRequest(payload: {
+  alertId: string;
+  autoAssignResponders?: boolean;
+}) {
+  const response = await api.post<Incident>(
+    `/incidents/from-alert/${payload.alertId}`,
+    { autoAssignResponders: payload.autoAssignResponders ?? true },
+  );
+  return response.data;
+}
+
 export async function updateIncidentRequest(payload: UpdateIncidentPayload) {
   const { id, ...data } = payload;
   const response = await api.patch<Incident>(`/incidents/${id}`, data);
   return response.data;
 }
 
-export async function closeIncidentRequest(id: string) {
-  const response = await api.patch<Incident>(`/incidents/${id}/close`);
+export async function closeIncidentRequest(payload: {
+  id: string;
+  closingReport: string;
+  responseTimeMinutes?: number;
+}) {
+  const { id, ...data } = payload;
+  const response = await api.patch<Incident>(`/incidents/${id}/close`, data);
+  return response.data;
+}
+
+export async function createIncidentUpdateRequest(payload: { id: string; body: string }) {
+  const response = await api.post(`/incidents/${payload.id}/updates`, { body: payload.body });
   return response.data;
 }
 

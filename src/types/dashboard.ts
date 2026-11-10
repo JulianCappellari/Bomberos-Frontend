@@ -25,6 +25,39 @@ export type DashboardAlert = {
   responsesCount: number;
 };
 
+export type DashboardShiftSummary = {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  shiftType: string;
+  notes: string | null;
+  assignedCount: number;
+  assignments: Array<{
+    id: string;
+    user: {
+      id: string;
+      username: string;
+      role: "ADMIN" | "FIREFIGHTER" | "OPERATOR" | "GUARD";
+      fullName: string | null;
+      rank: string | null;
+      badge: string | null;
+    };
+  }>;
+};
+
+export type OperationalWarning = {
+  code:
+    | "NO_SHIFT_TODAY"
+    | "SHIFT_WITHOUT_STAFF"
+    | "ACTIVE_ALERT_WITHOUT_RESPONSES"
+    | "VEHICLE_CONTROLS_ATTENTION"
+    | "COMPLIANCE_ATTENTION";
+  severity: "HIGH" | "MEDIUM";
+  message: string;
+  href: string;
+};
+
 export type DashboardSummary = {
   attendance: {
     totalMinutes: number;
@@ -33,6 +66,8 @@ export type DashboardSummary = {
     totalAttendances: number;
     currentMonthMinutes: number;
     currentMonthFormatted: string;
+    creditedMonthFormatted?: string;
+    creditedMonthMinutes?: number;
     isCurrentlyInside: boolean;
   };
   myOpenAttendance: {
@@ -44,12 +79,15 @@ export type DashboardSummary = {
     };
   } | null;
   activeAlerts: number;
+  myUpcomingShifts: DashboardShiftSummary[];
   recentAlerts: DashboardAlert[];
   ops: {
     openIncidents: number;
     inStation: number;
     activeUsers: number;
     pendingApplications: number;
+    todayShifts: DashboardShiftSummary[];
+    operationalWarnings: OperationalWarning[];
     vehicles: {
       total: number;
       operational: number;

@@ -1,7 +1,10 @@
 export type AssetStatus = "OPERATIONAL" | "MAINTENANCE" | "OUT_OF_SERVICE";
+export const vehicleKinds = { UNCLASSIFIED: "Sin clasificar", ENGINE: "Autobomba", TANKER: "Cisterna", RESCUE: "Rescate", AMBULANCE: "Ambulancia", SUPPORT: "Apoyo", OTHER: "Otro" } as const;
+export type VehicleKind = keyof typeof vehicleKinds;
 export type AssetType = "VEHICLE" | "PPE" | "OTHER";
 
 export interface Vehicle {
+  kind?: VehicleKind;
   id: string;
   assetId: string;
   unitNumber: string;
@@ -35,6 +38,7 @@ export interface UpdateAssetPayload {
 }
 
 export interface UpsertVehiclePayload {
+  kind?: VehicleKind;
   unitNumber?: string;
   plate?: string | null;
   year?: number;
@@ -49,6 +53,7 @@ export interface CreateAssetPayload {
   notes?: string | null;
   lastCheckDate?: string | null;
   vehicle?: {
+    kind?: VehicleKind;
     unitNumber: string;
     plate?: string | null;
     year?: number;

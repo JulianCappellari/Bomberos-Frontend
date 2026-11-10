@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, Truck } from "lucide-react";
-import { BackButton, HomeButton } from "@/components/layout/navigation-buttons";
+import { ClipboardCheck } from "lucide-react";
 
 type Props = {
   title: string;
@@ -11,45 +10,20 @@ type Props = {
   actionLabel?: string;
 };
 
-export default function EquipmentPageHeader({
-  title,
-  backHref,
-  actionHref,
-  actionLabel,
-}: Props) {
+// Encabezado de las pantallas de un movil. Volver e Inicio los provee la barra superior comun.
+export default function EquipmentPageHeader({ title, backHref, actionHref, actionLabel }: Props) {
   return (
-    <div className="sticky top-0 z-20 border-b border-white/10 bg-[#0a0a0d]/95 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-        <div className="flex items-center gap-3">
-          {backHref ? (
-            <BackButton
-              fallbackHref={backHref}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10"
-            />
-          ) : (
-            <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white">
-              <Truck className="h-5 w-5" />
-            </div>
-          )}
-
-          <h1 className="text-xl font-black uppercase tracking-wide text-red-500 md:text-3xl">
-            {title}
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <HomeButton className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10" />
-          {actionHref && actionLabel && (
-            <Link
-              href={actionHref}
-              className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-extrabold uppercase tracking-wide text-white transition hover:bg-red-400"
-            >
-              <Plus className="h-4 w-4" />
-              {actionLabel}
-            </Link>
-          )}
-        </div>
+    <header className="flex flex-wrap items-center justify-between gap-3">
+      <div className="min-w-0">
+        {backHref && <Link href={backHref} className="text-sm text-red-300 underline-offset-4 hover:underline">{backHref === "/equipment" ? "← Móviles" : "← Volver al móvil"}</Link>}
+        <h1 className="mt-1 break-words text-2xl font-bold text-white">{title}</h1>
       </div>
-    </div>
+      {actionHref && actionLabel && (
+        <Link href={actionHref} className="app-button app-button-red w-auto">
+          <ClipboardCheck className="h-4 w-4" aria-hidden />
+          {actionLabel}
+        </Link>
+      )}
+    </header>
   );
 }

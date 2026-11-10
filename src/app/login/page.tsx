@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { motion, AnimatePresence } from "framer-motion";
+import { Flame, Lock, User, Eye, EyeOff, ShieldCheck, AlertCircle } from "lucide-react";
 import { useAuth } from "@/features/auth/auth-context";
 import { getErrorMessage } from "@/lib/get-error-message";
+import { Button } from "@/components/ui/button";
 
 const schema = z.object({
-  username: z.string().min(1, "Ingresá tu usuario"),
-  password: z.string().min(1, "Ingresá tu contraseña"),
+  username: z.string().min(1, "Ingresá tu nombre de usuario"),
+  password: z.string().min(1, "Ingresá tu contraseña de acceso"),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -19,6 +22,7 @@ export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
   const [serverError, setServerError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -31,109 +35,220 @@ export default function LoginPage() {
   async function onSubmit(values: FormData) {
     try {
       setServerError("");
-      await login(values.username, values.password);
-      router.push("/dashboard");
+      const user = await login(values.username, values.password);
+      router.replace(user.mustChangePassword ? "/security" : "/dashboard");
     } catch (error: unknown) {
-      setServerError(getErrorMessage(error, "No se pudo iniciar sesión"));
+      setServerError(getErrorMessage(error, "Credenciales incorrectas o servidor no disponible"));
     }
   }
 
   return (
-    <div className="login-root">
-      <div className="bg-grid" />
+    <div className="relative min-h-screen overflow-hidden bg-[#08090b] text-white lg:grid lg:grid-cols-2">
+      <div className="pointer-events-none absolute -top-40 -left-32 h-96 w-96 rounded-full bg-red-600/15 blur-[120px]" />
+      <div className="pointer-events-none absolute right-0 -bottom-40 h-96 w-96 rounded-full bg-red-900/20 blur-[140px]" />
+      <div className="bg-grid pointer-events-none absolute inset-0 opacity-40" />
 
-      <div className="login-wrapper">
-        <div className="login-badge">
-          <div className="badge-line" />
-          <span className="badge-text">Sistema Operativo · Acceso Seguro</span>
-          <div className="badge-line right" />
-        </div>
-
-        <div className="login-logo">
-          <div className="logo-icon-wrap">
-            <div className="logo-emblem">BV</div>
-
-            <div>
-              <div className="logo-title">
-                BOMBEROS<span>APP</span>
-              </div>
-              <div className="logo-subtitle">
-                Cuartel Sampacho · Voluntarios
-              </div>
-            </div>
+      <section className="relative z-10 hidden flex-col justify-between px-10 py-12 lg:flex xl:px-16">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-red-800 shadow-lg shadow-red-900/40">
+            <Flame className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="font-[family-name:var(--font-bebas)] text-3xl tracking-wider">
+              BOMBEROS <span className="text-red-500">SAMPACHO</span>
+            </p>
+            <p className="font-[family-name:var(--font-barlow-condensed)] text-xs font-bold tracking-[0.18em] text-white/40 uppercase">
+              Córdoba, Argentina
+            </p>
           </div>
         </div>
 
-        <div className="login-card-modern">
-          <div className="mb-7">
-            <div className="card-title-modern">Iniciar sesión</div>
-            <div className="card-desc-modern">
-              Ingresá tus credenciales para continuar
-            </div>
+        <div className="max-w-xl space-y-6">
+          <h2 className="font-[family-name:var(--font-bebas)] text-6xl leading-[0.9] tracking-wide text-white uppercase">
+            El cuartel, en una sola guardia.
+          </h2>
+          <p className="max-w-md text-base text-white/55">
+            Alertas, flota, turnos y personal del cuartel Sampacho, listos para consultarse desde el teléfono o la guardia.
+          </p>
+          <ul className="grid max-w-lg gap-3 text-sm text-white/70">
+            {[
+              "Despacho y seguimiento de alertas",
+              "Estado de la flota y los controles",
+              "Guardias, asistencia y comunicaciones",
+            ].map((item) => (
+              <li key={item} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-red-400" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="font-[family-name:var(--font-barlow-condensed)] text-xs font-bold tracking-[0.18em] text-white/30 uppercase">
+          Asociación Bomberos Voluntarios Sampacho
+        </p>
+      </section>
+
+      <div className="relative z-10 flex min-h-screen items-center justify-center border-white/10 bg-[#0c0e13]/80 px-4 py-10 backdrop-blur-sm sm:px-8 lg:border-l">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-md space-y-6"
+      >
+        {/* Top security tag */}
+        <div className="flex items-center justify-center gap-3">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
+          <div className="flex items-center gap-1.5 font-[family-name:var(--font-barlow-condensed)] text-[11px] font-bold uppercase tracking-widest text-red-400">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Acceso Operativo Seguro
+          </div>
+          <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
+        </div>
+
+        {/* Brand header */}
+        <div className="space-y-2 text-center lg:hidden">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 via-red-600 to-red-800 text-white shadow-xl shadow-red-700/40 ring-1 ring-red-400/30"
+          >
+            <Flame className="h-8 w-8 animate-pulse" />
+          </motion.div>
+
+          <h1 className="font-[family-name:var(--font-bebas)] text-4xl uppercase tracking-wider text-white">
+            BOMBEROS <span className="text-red-500">SAMPACHO</span>
+          </h1>
+          <p className="font-[family-name:var(--font-barlow-condensed)] text-xs font-semibold uppercase tracking-widest text-white/50">
+            Sistema Operativo de Cuartel · Córdoba
+          </p>
+        </div>
+
+        {/* Login form card */}
+        <div className="rounded-3xl border border-white/10 bg-[#121316]/90 p-7 shadow-2xl backdrop-blur-xl sm:p-8">
+          <div className="mb-6 space-y-1">
+            <h2 className="font-[family-name:var(--font-bebas)] text-2xl uppercase tracking-wider text-white">
+              Ingreso de Dotación
+            </h2>
+            <p className="text-xs text-white/50">
+              Ingresá tu usuario y contraseña asignada por jefatura.
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} noValidate>
-            <div className="mb-5">
-              <label htmlFor="username" className="field-label-modern">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+            {/* Username field */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="username"
+                className="font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-wider text-white/60"
+              >
                 Usuario
               </label>
-              <input
-                id="username"
-                {...register("username")}
-                className={`field-input-modern ${
-                  errors.username ? "field-input-modern-error" : ""
-                }`}
-                placeholder="Tu nombre de usuario"
-                autoComplete="username"
-                autoCapitalize="none"
-              />
-              {errors.username && (
-                <div className="mt-1.5 text-xs text-red-400">
-                  {errors.username.message}
+              <div className="relative">
+                <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30">
+                  <User className="h-4 w-4" />
                 </div>
+                <input
+                  id="username"
+                  {...register("username")}
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  placeholder="Tu nombre de usuario"
+                  className={`w-full rounded-xl border bg-white/[0.04] pl-10 pr-4 py-3 text-sm text-white placeholder:text-white/20 outline-none transition-all focus:border-red-500/50 focus:bg-white/[0.06] focus:ring-2 focus:ring-red-500/15 ${
+                    errors.username
+                      ? "border-red-500/50 bg-red-500/[0.04]"
+                      : "border-white/[0.08]"
+                  }`}
+                />
+              </div>
+              {errors.username && (
+                <p className="text-xs text-red-400 font-medium">
+                  {errors.username.message}
+                </p>
               )}
             </div>
 
-            <div className="mb-5">
-              <label htmlFor="password" className="field-label-modern">
+            {/* Password field */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="password"
+                className="font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-wider text-white/60"
+              >
                 Contraseña
               </label>
-              <input
-                id="password"
-                {...register("password")}
-                type="password"
-                className={`field-input-modern ${
-                  errors.password ? "field-input-modern-error" : ""
-                }`}
-                placeholder="********"
-                autoComplete="current-password"
-              />
-              {errors.password && (
-                <div className="mt-1.5 text-xs text-red-400">
-                  {errors.password.message}
+              <div className="relative">
+                <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30">
+                  <Lock className="h-4 w-4" />
                 </div>
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  {...register("password")}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  className={`w-full rounded-xl border bg-white/[0.04] pl-10 pr-11 py-3 text-sm text-white placeholder:text-white/20 outline-none transition-all focus:border-red-500/50 focus:bg-white/[0.06] focus:ring-2 focus:ring-red-500/15 ${
+                    errors.password
+                      ? "border-red-500/50 bg-red-500/[0.04]"
+                      : "border-white/[0.08]"
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  aria-pressed={showPassword}
+                  className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-white/50 hover:text-white/80 transition-colors"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-xs text-red-400 font-medium">
+                  {errors.password.message}
+                </p>
               )}
             </div>
 
-            {serverError && (
-              <div className="mb-5 rounded-[10px] border border-red-500/25 bg-red-500/10 px-4 py-3 text-[13px] text-red-300">
-                {serverError}
-              </div>
-            )}
+            {/* Server error alert */}
+            <AnimatePresence>
+              {serverError && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200"
+                >
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+                  <span>{serverError}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            <button
-              type="submit"
-              className="btn-submit-modern"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Verificando..." : "Ingresar al sistema"}
-            </button>
+            {/* Submit button */}
+            <div className="pt-2">
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                loading={isSubmitting}
+                className="w-full"
+              >
+                {isSubmitting ? "Verificando dotación..." : "Ingresar al Cuartel"}
+              </Button>
+            </div>
           </form>
         </div>
 
-        <div className="mt-6 text-center text-[11px] text-white/20">
-          Cuartel de Bomberos Voluntarios · Sampacho, Córdoba
+        {/* Footer info */}
+        <div className="text-center font-[family-name:var(--font-barlow-condensed)] text-xs font-semibold tracking-widest text-white/30 uppercase lg:hidden">
+          Asociación Bomberos Voluntarios Sampacho · Córdoba, Argentina
         </div>
+      </motion.div>
       </div>
     </div>
   );

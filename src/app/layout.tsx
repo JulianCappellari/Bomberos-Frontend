@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ReactQueryProvider } from "@/lib/react-query";
 import { AuthProvider } from "@/features/auth/auth-context";
+import { AppLifecycle } from "@/components/operations/app-lifecycle";
+import { AppearanceProvider } from "@/components/operations/appearance-settings";
 
 export const metadata: Metadata = {
   title: "Bomberos Voluntarios Sampacho",
@@ -13,8 +15,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  userScalable: true,
   themeColor: "#e63c3c",
 };
 
@@ -27,7 +28,7 @@ export default function RootLayout({
     <html lang="es">
       <body>
         <ReactQueryProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider><AppearanceProvider><AppLifecycle>{children}</AppLifecycle></AppearanceProvider></AuthProvider>
         </ReactQueryProvider>
       </body>
     </html>

@@ -1,5 +1,7 @@
 import { InspectionHistoryEntry } from "@/types/inspection";
 import { formatDate } from "./equipment.utils";
+import { InspectionAmendment } from "@/components/operations/inspection-amendment";
+import { InspectionConfirmation } from "@/components/operations/inspection-confirmation";
 
 type Props = {
   history: InspectionHistoryEntry[];
@@ -37,6 +39,9 @@ export default function HistoryList({ history }: Props) {
                 {entry.incidentType}
               </span>
             )}
+            <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${!entry.voidedAt && entry.resultingAssetStatus === "OPERATIONAL" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-amber-500/30 bg-amber-500/10 text-amber-200"}`}>
+              {entry.voidedAt ? "Control anulado" : entry.confirmationsComplete === false ? "Pendiente de firmas" : entry.resultingAssetStatus === "OPERATIONAL" ? "Sin fallas al controlar" : "Requiere correccion"}
+            </span>
           </div>
 
           <div className="mt-4 grid gap-2 text-xs font-bold uppercase tracking-wide text-slate-300 md:grid-cols-4">
@@ -47,8 +52,19 @@ export default function HistoryList({ history }: Props) {
           </div>
 
           {entry.observations && (
-            <p className="mt-4 text-sm text-slate-300">{entry.observations}</p>
+            <p className="mt-4 whitespace-pre-wrap break-words text-sm text-slate-300">{entry.observations}</p>
           )}
+          <InspectionConfirmation entry={entry} />
+          <InspectionAmendment entry={entry} />
+
+          <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm">
+            <div className="font-bold text-white">
+              Encargado: {entry.leader?.profile?.fullName || entry.leader?.username || "No informado (control historico)"}
+            </div>
+            <div className="mt-1 text-slate-400">
+              Equipo: {entry.responsibles?.map((responsible) => responsible.user.profile?.fullName || responsible.user.username).join(", ") || "No informado"}
+            </div>
+          </div>
 
           {entry.items.length ? (
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -66,13 +82,14 @@ export default function HistoryList({ history }: Props) {
                     </div>
                   )}
                   <div className="mt-1 text-xs uppercase tracking-wide text-slate-400">
-                    Resultado: {item.result}
+                    Resultado: {item.result} · Encontrados: {item.observedQuantity} / {item.expectedQuantity}
                   </div>
                   {item.observations && (
                     <div className="mt-2 text-sm text-slate-300">
                       {item.observations}
                     </div>
                   )}
+                  {item.foundElsewhere && <p className="mt-2 text-sm text-amber-200">Encontrado en otro lugar: {item.foundLocation}. Requiere revisar y reponer.</p>}
                 </div>
               ))}
             </div>

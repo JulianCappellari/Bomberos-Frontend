@@ -76,7 +76,7 @@ export function useDeleteInventoryItem(vehicleId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (itemId: string) => deleteInventoryItemRequest(itemId),
+    mutationFn: ({ itemId, revision }: { itemId: string; revision: number }) => deleteInventoryItemRequest(itemId, revision),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicle-inventory", vehicleId] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });

@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { createAssetRequest } from "@/services/assets.service";
-import { AssetStatus } from "@/types/asset";
+import { AssetStatus, vehicleKinds, VehicleKind } from "@/types/asset";
 
 type FormState = {
+  kind: VehicleKind;
   name: string;
   status: AssetStatus;
   lastCheckDate: string;
@@ -30,6 +31,7 @@ export default function CreateVehicleForm() {
   const [error, setError] = useState("");
 
   const [form, setForm] = useState<FormState>({
+    kind: "UNCLASSIFIED",
     name: "",
     status: "OPERATIONAL",
     lastCheckDate: "",
@@ -56,8 +58,9 @@ export default function CreateVehicleForm() {
         assetType: "VEHICLE",
         status: form.status,
         notes: form.notes.trim() ? form.notes.trim() : null,
-        lastCheckDate: form.lastCheckDate || null,
+        lastCheckDate: form.lastCheckDate ? `${form.lastCheckDate}T00:00:00.000Z` : null,
         vehicle: {
+          kind: form.kind,
           unitNumber: form.unitNumber.trim(),
           plate: form.plate.trim() ? form.plate.trim() : null,
           year: parseOptionalNumber(form.year),
@@ -140,6 +143,7 @@ export default function CreateVehicleForm() {
             />
           </Field>
 
+          <Field label="Tipo de movil"><select className="input-dark" value={form.kind} onChange={(e) => setField("kind", e.target.value as VehicleKind)}>{Object.entries(vehicleKinds).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></Field>
           <Field label="Patente">
             <input
               className="input-dark"

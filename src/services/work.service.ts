@@ -1,0 +1,14 @@
+import { api } from "@/lib/api-client";
+import { FuelRecord, NotebookEntry, Page, WaterTrip, WorkTask } from "@/types/work";
+import { UserRosterItem } from "@/types/user";
+export const listTasks = async (params: { page: number; q: string; status: string; mine: string; pending?: string }) => (await api.get<Page<WorkTask>>("/work/tasks", { params: { ...params, status: params.status || undefined } })).data;
+export const createTask = async (body: unknown, report: boolean) => (await api.post<WorkTask>(`/work/tasks${report ? "/report" : ""}`, body)).data;
+export const taskAction = async (id: string, action: "submit" | "review" | "member" | "assign" | "claim" | "plan", body: unknown) => (await api.post(`/work/tasks/${id}/${action}`, body)).data;
+export const taskHistory = async (id: string) => (await api.get<Array<{ id: string; action: string; notes: string; createdAt: string; actor: UserRosterItem }>>(`/work/tasks/${id}/history`)).data;
+export const listNotebook = async (id: string, params: { page: number; category: string }) => (await api.get<Page<NotebookEntry>>(`/work/incidents/${id}/notebook`, { params: { ...params, category: params.category || undefined } })).data;
+export const saveNotebook = async (incidentId: string, id: string | null, body: unknown) => id ? (await api.put(`/work/incidents/${incidentId}/notebook/${id}`, body)).data : (await api.post(`/work/incidents/${incidentId}/notebook`, body)).data;
+export const removeNotebook = async (incidentId: string, id: string, body: unknown) => (await api.delete(`/work/incidents/${incidentId}/notebook/${id}`, { data: body })).data;
+export const listFuel = async (params: { page: number; month: string; assetId: string }) => (await api.get<Page<FuelRecord> & { totals: { _sum: { volumeMilliliters: number | null; costCents: number | null }; _count: number }; byVehicle: Array<{ assetId: string; _sum: { volumeMilliliters: number | null; costCents: number | null }; _count: number }> }>("/fleet/fuel", { params: { ...params, month: params.month || undefined, assetId: params.assetId || undefined } })).data;
+export const listWater = async (params: { page: number; month: string; assetId: string }) => (await api.get<Page<WaterTrip>>("/fleet/water", { params: { ...params, month: params.month || undefined, assetId: params.assetId || undefined } })).data;
+export const fleetCreate = async (kind: "fuel" | "water", body: unknown) => (await api.post(`/fleet/${kind}`, body)).data;
+export const fleetAction = async (kind: "fuel" | "water", id: string, action: "void" | "payment", body: unknown) => (await api.post(`/fleet/${kind}/${id}/${action}`, body)).data;

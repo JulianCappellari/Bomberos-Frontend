@@ -6,6 +6,7 @@ import {
   createShiftRequest,
   deleteShiftRequest,
   getShiftsRequest,
+  updateShiftRequest,
 } from "@/services/shifts.service";
 
 export function useShifts(params?: {
@@ -27,6 +28,7 @@ export function useCreateShift() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shifts"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["operational-readiness"] });
     },
   });
 }
@@ -39,6 +41,19 @@ export function useDeleteShift() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shifts"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["operational-readiness"] });
+    },
+  });
+}
+
+export function useUpdateShift() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateShiftRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["operational-readiness"] });
     },
   });
 }
