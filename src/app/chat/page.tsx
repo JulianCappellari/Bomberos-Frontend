@@ -2,14 +2,22 @@
 import { toast } from "@/lib/toast";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import {
+  BarChart3,
   Check,
+  CheckSquare,
+  Circle,
+  CircleCheck,
+  Lock,
   MessageCircle,
+  Plus,
   Pencil,
   Pin,
   PinOff,
   Search,
   Send,
+  Square,
   Trash2,
   X,
 } from "lucide-react";
@@ -23,7 +31,8 @@ import {
   useUpdateChatMessage,
 } from "@/hooks/use-chat";
 import { getErrorMessage } from "@/lib/get-error-message";
-import { ChatAudience, chatAudienceLabels, ChatMessage } from "@/types/chat";
+import { ChatAudience, chatAudienceLabels, ChatMessage, ChatPoll } from "@/types/chat";
+import { closePollRequest, votePollRequest } from "@/services/chat.service";
 import { MessageAcknowledgement } from "@/components/operations/message-acknowledgement";
 import { chatOutboxEvent, discardChatMessage, flushChatOutbox, isNetworkError, queueChatMessage, QueuedMessage, readChatOutbox } from "@/lib/chat-outbox";
 import { useQueryClient } from "@tanstack/react-query";
@@ -54,6 +63,10 @@ export default function ChatPage() {
   const [sendError, setSendError] = useState("");
   const [audience, setAudience] = useState<ChatAudience>("ALL");
   const [queued, setQueued] = useState<QueuedMessage[]>([]);
+  // Encuesta: el texto del mensaje es la pregunta.
+  const [pollMode, setPollMode] = useState(false);
+  const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
+  const [allowMultiple, setAllowMultiple] = useState(false);
   const client = useQueryClient();
   useEffect(() => {
     if (!user) return;
@@ -78,6 +91,19 @@ export default function ChatPage() {
     const trimmed = body.trim();
     if (!trimmed || createMutation.isPending) return;
     setSendError("");
+    if (pollMode) {
+      const options = pollOptions.map((o) => o.trim()).filter(Boolean);
+      if (options.length < 2) { setSendError("La encuesta necesita al menos 2 opciones."); return; }
+      if (new Set(options.map((o) => o.toLocaleLowerCase())).size !== options.length) { setSendError("Hay opciones repetidas."); return; }
+      try {
+        await createMutation.mutateAsync({ body: trimmed, audience, poll: { options, allowMultiple } });
+        setBody(""); setPollMode(false); setPollOptions(["", ""]); setAllowMultiple(false);
+        toast.success("Encuesta publicada");
+      } catch (error: unknown) {
+        setSendError(isNetworkError(error) ? "Sin señal: las encuestas necesitan conexión para publicarse." : getErrorMessage(error, "No se pudo publicar la encuesta."));
+      }
+      return;
+    }
     const queue = () => { try { queueChatMessage(user!.id, trimmed, audience); setBody(""); setSendError("Sin señal: el mensaje se guardó y se envía solo cuando vuelva la conexión."); } catch (err) { setSendError(getErrorMessage(err, "No se pudo guardar el mensaje")); } };
     if (user && !navigator.onLine) { queue(); return; }
     try {
@@ -99,9 +125,12 @@ export default function ChatPage() {
     <div key={message.id}>
       <ChatMessageCard
         message={message}
-        canEdit={message.author.id === user?.id}
+        canEdit={message.author.id === user?.id && !message.poll}
         canDelete={userHasCommandRank || message.author.id === user?.id}
         canPin={userHasCommandRank}
+        userId={user?.id}
+        canVote={showAcknowledgement}
+        canClosePoll={userHasCommandRank || message.author.id === user?.id}
       />
       {showAcknowledgement && <MessageAcknowledgement message={message} />}
     </div>
@@ -117,7 +146,12 @@ export default function ChatPage() {
 
         <form onSubmit={submitMessage} className="card">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <label htmlFor="chat-message" className="app-label mb-0">Nuevo mensaje</label>
+            <div className="flex items-center gap-2">
+              <label htmlFor="chat-message" className="app-label mb-0">{pollMode ? "Pregunta de la encuesta" : "Nuevo mensaje"}</label>
+              <button type="button" aria-pressed={pollMode} onClick={() => { setPollMode((v) => !v); setSendError(""); }} className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold transition-colors ${pollMode ? "border-red-500/60 bg-red-500/15 text-[var(--txt)]" : "border-[var(--bord)] text-[var(--mut)] hover:text-[var(--txt)]"}`}>
+                <BarChart3 className="h-3.5 w-3.5" aria-hidden /> Encuesta
+              </button>
+            </div>
             {/* 25: mensajes a un grupo; solo lo ven y confirman sus integrantes (y jefatura). */}
             <label className="flex items-center gap-2 text-xs text-[var(--mut)]">Para
               <select value={audience} onChange={(e) => setAudience(e.target.value as ChatAudience)} className="app-input w-auto py-1.5 text-sm">
@@ -131,14 +165,36 @@ export default function ChatPage() {
             onChange={(event) => setBody(event.target.value)}
             onKeyDown={(event) => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void send(); } }}
             maxLength={1000}
-            className="app-input min-h-[88px] resize-y"
-            placeholder="Escribí una novedad, pedido o aviso…"
+            className={`app-input resize-y ${pollMode ? "min-h-[56px]" : "min-h-[88px]"}`}
+            placeholder={pollMode ? "Ej. ¿Qué día les queda mejor la capacitación?" : "Escribí una novedad, pedido o aviso…"}
           />
+          {pollMode && <fieldset className="mt-3 space-y-2">
+            <legend className="app-label">Opciones</legend>
+            {pollOptions.map((option, index) => <div key={index} className="flex items-center gap-2">
+              <input className="app-input" value={option} maxLength={120} aria-label={`Opción ${index + 1}`} placeholder={`Opción ${index + 1}`}
+                onChange={(e) => setPollOptions((rows) => rows.map((row, i) => i === index ? e.target.value : row))}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" || e.ctrlKey || e.metaKey) return;
+                  // Enter pasa a la opcion siguiente (y la crea si es la ultima), como en WhatsApp.
+                  e.preventDefault();
+                  if (index === pollOptions.length - 1) {
+                    if (pollOptions.length >= 12 || !option.trim()) return;
+                    flushSync(() => setPollOptions((rows) => [...rows, ""]));
+                  }
+                  document.querySelector<HTMLInputElement>(`[data-poll-option="${index + 1}"]`)?.focus();
+                }} data-poll-option={index} />
+              {pollOptions.length > 2 && <button type="button" className="btn-icon h-9 w-9 shrink-0" aria-label={`Quitar opción ${index + 1}`} title="Quitar opción" onClick={() => setPollOptions((rows) => rows.filter((_, i) => i !== index))}><X className="h-4 w-4" /></button>}
+            </div>)}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              {pollOptions.length < 12 ? <button type="button" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--accent)] hover:underline" onClick={() => setPollOptions((rows) => [...rows, ""])}><Plus className="h-4 w-4" aria-hidden /> Agregar opción</button> : <span className="text-xs text-[var(--mut)]">Máximo 12 opciones</span>}
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={allowMultiple} onChange={(e) => setAllowMultiple(e.target.checked)} className="h-4 w-4 accent-red-600" /> Permitir varias respuestas</label>
+            </div>
+          </fieldset>}
           {sendError && <p role="alert" className="mt-2 text-sm text-red-300">{sendError}</p>}
           <div className="mt-2 flex items-center justify-between gap-3">
             <span className="text-xs text-[var(--mut)]">{body.length > 800 ? `${body.length}/1000 caracteres` : <span className="hidden sm:inline">Ctrl + Enter para enviar</span>}</span>
             <button type="submit" disabled={createMutation.isPending || !body.trim()} className="app-button app-button-red w-auto px-5 disabled:cursor-not-allowed disabled:opacity-60">
-              <Send className="h-4 w-4" /> {createMutation.isPending ? "Enviando…" : "Enviar"}
+              <Send className="h-4 w-4" /> {createMutation.isPending ? "Enviando…" : pollMode ? "Publicar encuesta" : "Enviar"}
             </button>
           </div>
         </form>
@@ -183,11 +239,17 @@ function ChatMessageCard({
   canEdit,
   canDelete,
   canPin,
+  userId,
+  canVote,
+  canClosePoll,
 }: {
   message: ChatMessage;
   canEdit: boolean;
   canDelete: boolean;
   canPin: boolean;
+  userId?: string;
+  canVote: boolean;
+  canClosePoll: boolean;
 }) {
   const updateMutation = useUpdateChatMessage();
   const deleteMutation = useDeleteChatMessage();
@@ -249,6 +311,7 @@ function ChatMessageCard({
               {displayName(message)}
             </h2>
             {message.audience && message.audience !== "ALL" && <span className="badge badge-blue">Para: {chatAudienceLabels[message.audience]}</span>}
+            {message.poll && <span className="badge badge-blue inline-flex items-center gap-1"><BarChart3 className="h-3 w-3" aria-hidden />Encuesta</span>}
             {message.isPinned && (
               <span className="badge badge-red inline-flex items-center gap-1">
                 <Pin className="h-3 w-3" />
@@ -345,6 +408,71 @@ function ChatMessageCard({
           {message.body}
         </p>
       )}
+      {message.poll && <PollView poll={message.poll} userId={userId} canVote={canVote} canClose={canClosePoll} />}
     </article>
   );
+}
+
+// Encuesta estilo WhatsApp: tocar una opcion vota; en eleccion unica, tocar la propia la retira.
+function PollView({ poll, userId, canVote, canClose }: { poll: ChatPoll; userId?: string; canVote: boolean; canClose: boolean }) {
+  const client = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [showVoters, setShowVoters] = useState(false);
+  const mine = poll.options.filter((o) => o.votes.some((v) => v.userId === userId)).map((o) => o.id);
+  const voters = new Set(poll.options.flatMap((o) => o.votes.map((v) => v.userId)));
+  const maxVotes = Math.max(0, ...poll.options.map((o) => o.votes.length));
+  const closed = Boolean(poll.closedAt);
+  const interactive = canVote && !closed && !busy;
+
+  async function run(fn: () => Promise<unknown>, ok?: string) {
+    setBusy(true); setError("");
+    try { await fn(); await client.invalidateQueries({ queryKey: ["chat", "messages"] }); if (ok) toast.success(ok); }
+    catch (err) { setError(getErrorMessage(err, "No se pudo registrar el voto.")); }
+    finally { setBusy(false); }
+  }
+  function choose(optionId: string) {
+    if (!interactive) return;
+    const selected = mine.includes(optionId);
+    const next = poll.allowMultiple ? (selected ? mine.filter((id) => id !== optionId) : [...mine, optionId]) : (selected ? [] : [optionId]);
+    void run(() => votePollRequest(poll.id, next), next.length ? undefined : "Retiraste tu voto");
+  }
+  async function close() {
+    if (!window.confirm("¿Cerrar la encuesta? Nadie más va a poder votar ni cambiar su voto.")) return;
+    await run(() => closePollRequest(poll.id), "Encuesta cerrada");
+  }
+  const name = (v: ChatPoll["options"][number]["votes"][number]) => v.user.profile?.fullName || v.user.username;
+
+  return <div className="mt-3 rounded-xl border border-[var(--bord)] bg-[var(--card2)] p-3">
+    <p className="mb-2 text-xs text-[var(--mut)]">{closed ? "Encuesta cerrada" : poll.allowMultiple ? "Elegí una o varias opciones" : "Elegí una opción"}</p>
+    <ul className="space-y-2" role={poll.allowMultiple ? "group" : "radiogroup"} aria-label="Opciones de la encuesta">
+      {poll.options.map((option) => {
+        const selected = mine.includes(option.id);
+        const count = option.votes.length;
+        const pct = voters.size ? Math.round((count / voters.size) * 100) : 0;
+        const leader = closed && count > 0 && count === maxVotes;
+        const Icon = poll.allowMultiple ? (selected ? CheckSquare : Square) : (selected ? CircleCheck : Circle);
+        return <li key={option.id}>
+          <button type="button" role={poll.allowMultiple ? "checkbox" : "radio"} aria-checked={selected} disabled={!interactive} onClick={() => choose(option.id)}
+            className={`relative w-full overflow-hidden rounded-lg border px-3 py-2 text-left transition-colors ${selected ? "border-red-500/60" : "border-[var(--bord)]"} ${interactive ? "hover:border-red-400/60" : "cursor-default"}`}>
+            <span aria-hidden className={`absolute inset-y-0 left-0 transition-[width] duration-500 ease-out ${leader || selected ? "bg-red-500/20" : "bg-[var(--bord)]/40"}`} style={{ width: `${pct}%` }} />
+            <span className="relative flex items-center gap-2">
+              {canVote && <Icon className={`h-4 w-4 shrink-0 ${selected ? "text-red-400" : "text-[var(--mut)]"}`} aria-hidden />}
+              <span className={`min-w-0 flex-1 break-words text-sm ${leader ? "font-bold" : ""}`}>{option.text}</span>
+              <span className="shrink-0 text-xs tabular-nums text-[var(--mut)]">{count} · {pct}%</span>
+            </span>
+          </button>
+          {showVoters && count > 0 && <p className="mt-1 px-1 text-xs text-[var(--mut)]">{option.votes.map(name).join(", ")}</p>}
+        </li>;
+      })}
+    </ul>
+    {error && <p role="alert" className="mt-2 text-sm text-red-300">{error}</p>}
+    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--mut)]">
+      <span>{voters.size === 1 ? "1 persona votó" : `${voters.size} personas votaron`}{!canVote ? " · El administrador del sistema no vota" : ""}</span>
+      <span className="flex items-center gap-3">
+        {voters.size > 0 && <button type="button" className="underline" onClick={() => setShowVoters((v) => !v)}>{showVoters ? "Ocultar votos" : "Ver votos"}</button>}
+        {canClose && !closed && <button type="button" disabled={busy} className="inline-flex items-center gap-1 underline" onClick={() => void close()}><Lock className="h-3 w-3" aria-hidden />Cerrar encuesta</button>}
+      </span>
+    </div>
+  </div>;
 }

@@ -9,10 +9,18 @@ export async function getChatMessagesRequest(params?: {
   return response.data;
 }
 
-export async function createChatMessageRequest(input: string | { body: string; audience?: string }) {
+export async function createChatMessageRequest(input: string | { body: string; audience?: string; poll?: { options: string[]; allowMultiple: boolean } }) {
   const payload = typeof input === "string" ? { body: input } : input;
   const response = await api.post<ChatMessage>("/chat/messages", payload);
   return response.data;
+}
+
+export async function votePollRequest(pollId: string, optionIds: string[]) {
+  return (await api.post<ChatMessage>(`/chat/polls/${pollId}/vote`, { optionIds })).data;
+}
+
+export async function closePollRequest(pollId: string) {
+  return (await api.post<ChatMessage>(`/chat/polls/${pollId}/close`)).data;
 }
 
 export async function updateChatMessageRequest(payload: {

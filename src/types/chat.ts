@@ -24,4 +24,9 @@ export type ChatMessage = {
   createdAt: string;
   updatedAt: string;
   author: ChatAuthor;
+  poll?: ChatPoll | null;
 };
+
+export type ChatPollVoter = { userId: string; votedAt: string; user: { id: string; username: string; profile: { fullName: string } | null } };
+export type ChatPollOption = { id: string; text: string; position: number; votes: ChatPollVoter[] };
+export type ChatPoll = { id: string; allowMultiple: boolean; closedAt: string | null; options: ChatPollOption[] };
