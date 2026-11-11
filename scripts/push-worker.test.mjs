@@ -16,9 +16,11 @@ test("push worker shows generic content only and uses a stable deduplication tag
   assert.equal(w.shown[0].options.data.href, "/alerts"); assert(!JSON.stringify(w.shown).includes("PRIVATE"));
   assert.equal(w.shown[0].options.requireInteraction, true);
 });
-test("push worker discards malformed and unknown-version messages", async () => {
+// iPhone da de baja la suscripcion si un push no muestra aviso: los mensajes raros muestran uno generico, nunca una emergencia.
+test("push worker shows only a neutral notice for malformed and unknown-version messages", async () => {
   const w = worker(); for (const data of [null, { version: 2 }]) await w.push(data);
-  assert.equal(w.shown.length, 0);
+  assert.equal(w.shown.length, 2);
+  for (const shown of w.shown) { assert.equal(shown.title, "Bomberos: tiene un aviso"); assert.equal(shown.options.data.href, "/notifications"); assert.notEqual(shown.options.requireInteraction, true); }
 });
 test("expired messages still display a neutral notice, never a current emergency", async () => {
   const w = worker(); await w.push({ version: 1, id: "x", expiresAt: 1, alert: true, priority: "HIGH" });

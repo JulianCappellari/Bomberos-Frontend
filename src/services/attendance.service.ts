@@ -3,11 +3,14 @@ import { getErrorMessage } from "@/lib/get-error-message";
 
 export type ScanAttendanceQrPayload = {
   qrToken: string;
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
   accuracy?: number;
   deviceFingerprint: string;
 };
+
+/** El cuartel del QR pide ubicacion: la app la obtiene y reintenta. La base sin ubicacion no la pide. */
+export class LocationRequiredError extends Error {}
 
 export type AttendanceSummary = {
   totalMinutes: number;
@@ -66,6 +69,8 @@ export async function scanAttendanceQr(payload: ScanAttendanceQrPayload) {
 
     return response.data;
   } catch (error: unknown) {
+    const status = (error as { response?: { status?: number } })?.response?.status;
+    if (status === 428) throw new LocationRequiredError(getErrorMessage(error, "Este cuartel pide tu ubicación"));
     throw new Error(
       getErrorMessage(error, "No se pudo registrar la asistencia."),
     );

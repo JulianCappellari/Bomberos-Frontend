@@ -9,7 +9,7 @@ export async function getChatMessagesRequest(params?: {
   return response.data;
 }
 
-export async function createChatMessageRequest(input: string | { body: string; audience?: string; poll?: { options: string[]; allowMultiple: boolean } }) {
+export async function createChatMessageRequest(input: string | { body: string; audience?: string; poll?: { options: string[]; allowMultiple: boolean }; photos?: string[]; links?: string[] }) {
   const payload = typeof input === "string" ? { body: input } : input;
   const response = await api.post<ChatMessage>("/chat/messages", payload);
   return response.data;

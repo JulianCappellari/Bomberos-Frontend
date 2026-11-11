@@ -5,11 +5,15 @@ self.addEventListener("activate", (event) => { event.waitUntil(caches.keys().the
 self.addEventListener("message", (event) => { if (event.data === "ACTIVATE_UPDATE") self.skipWaiting(); });
 self.addEventListener("push", (event) => {
   let data;
-  try { data = event.data?.json(); } catch { return; }
-  if (!data || data.version !== 1 || typeof data.id !== "string" || typeof data.expiresAt !== "number") return;
+  try { data = event.data?.json(); } catch { data = null; }
+  // iPhone da de baja la suscripcion si un push no muestra aviso: ante datos raros se muestra uno generico.
+  if (!data || data.version !== 1 || typeof data.id !== "string" || typeof data.expiresAt !== "number") {
+    event.waitUntil(self.registration.showNotification("Bomberos: tiene un aviso", { body: "Abra la aplicacion para consultarlo.", icon: "/app-icon-192.png", badge: "/notification-badge.png", data: { href: "/notifications" } }));
+    return;
+  }
   const expired = data.expiresAt <= Date.now(), alert = data.alert === true, urgent = !expired && alert && data.priority === "HIGH";
   event.waitUntil(self.registration.showNotification(expired ? "Bomberos: aviso anterior" : urgent ? "Alerta operativa prioritaria" : alert ? "Nueva alerta operativa" : "Bomberos: tiene un aviso", {
-    body: expired ? "Consulte el historial actualizado en la aplicacion." : "Abra la aplicacion para consultar los detalles.", icon: "/app-icon-192.png", badge: "/app-icon-192.png",
+    body: expired ? "Consulte el historial actualizado en la aplicacion." : "Abra la aplicacion para consultar los detalles.", icon: "/app-icon-192.png", badge: "/notification-badge.png", vibrate: urgent ? [300, 120, 300, 120, 600] : [200],
     tag: `bomberos-${data.id}`, renotify: false, requireInteraction: urgent,
     data: { href: !expired && alert ? "/alerts" : "/notifications" },
   }));

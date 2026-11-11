@@ -677,3 +677,9 @@ body { transition: background-color 200ms ease, color 200ms ease; }
     scroll-behavior: auto !important;
   }
 }
+
+/* iPhone hace zoom al tocar un campo con letra menor a 16 px. Fuera de las capas para ganarle a las
+   clases de tamano (text-sm, etc.); solo en pantallas tactiles, en computadora se mantiene el diseno. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea { font-size: 16px; }
+}

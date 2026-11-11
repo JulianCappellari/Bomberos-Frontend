@@ -1,4 +1,9 @@
 const commonActions: Record<string, string> = {
+ CHAT_POLL_VOTED: "Voto registrado en una encuesta", CHAT_POLL_VOTE_REMOVED: "Voto retirado de una encuesta", CHAT_POLL_CLOSED: "Encuesta cerrada con sus resultados",
+ GUARD_ACCOUNT_CREATED: "Cuenta de guardia creada para una persona", ATTENDANCE_CLOSED_FOR_GUARD: "Permanencia personal cerrada al tomar la guardia",
+ SUPPLY_ITEM_CREATED: "Artículo dado de alta en el depósito", SUPPLY_ITEM_UPDATED: "Datos de artículo del depósito modificados", SUPPLY_ITEM_ARCHIVED: "Artículo dado de baja del catálogo",
+ SUPPLY_IN: "Ingreso de stock", SUPPLY_OUT: "Baja de stock", SUPPLY_ASSIGN: "Entrega de stock a una persona o móvil", SUPPLY_LOSS: "Faltante o pérdida de stock", SUPPLY_ADJUST: "Recuento de stock",
+ MATERIAL_REQUEST_CREATED: "Pedido de material", MATERIAL_REQUEST_APPROVED: "Pedido de material aprobado", MATERIAL_REQUEST_ORDERED: "Pedido de material encargado", MATERIAL_REQUEST_DELIVERED: "Pedido de material entregado", MATERIAL_REQUEST_REJECTED: "Pedido de material rechazado", MATERIAL_REQUEST_CANCELLED: "Pedido de material cancelado",
  ALERT_GOING_REMOVED_NO_SHOW: "Respuesta Voy eliminada: no figuró en la planilla de la intervención", ATTENDANCE_CLOSED_BY_ADMIN: "Permanencia cerrada por el administrador tecnico", MISSION_DRIVER_NOT_AUTHORIZED: "Salida rechazada: conductor no habilitado", DOCUMENT_PUBLISHED_EDITED: "Acta publicada editada dentro de las 24 horas",
  SPECIAL_PERMISSION_GRANTED: "Permiso especial concedido", SPECIAL_PERMISSION_REVOKED: "Permiso especial revocado",
  SHIFT_SWAP_REQUESTED: "Intercambio de guardia propuesto", SHIFT_SWAP_ACCEPTED: "Cobertura de guardia aceptada; pendiente de jefatura", SHIFT_SWAP_APPROVED: "Intercambio de guardia aprobado", SHIFT_SWAP_REJECTED: "Intercambio de guardia rechazado", SHIFT_SWAP_CANCELLED: "Propuesta de intercambio cancelada",
@@ -179,7 +184,7 @@ export function auditMetadata(metadata: unknown): Array<{ label: string; value: 
    return value.toLocaleString("es-AR");
   }
   const text = String(value);
-  if (["permission", "specialPermissions"].includes(key)) return ({FLEET:"Responsable de flota",PPE:"Responsable de EPP",TECHNICAL:"Responsable tecnico",FINANCE:"Acceso financiero"} as Record<string,string>)[text] || text;
+  if (["permission", "specialPermissions"].includes(key)) return ({FLEET:"Responsable de flota",PPE:"Encargado de vestimenta y materiales",TECHNICAL:"Responsable tecnico",FINANCE:"Acceso financiero"} as Record<string,string>)[text] || text;
   if (key === "scope") return text === "LOW" ? "Personal con puntaje bajo" : text === "ALL" ? "Todo el personal elegible" : text;
   if (/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(text)) return auditDate(text);
   if (key === "entityType") return auditEntity(text);

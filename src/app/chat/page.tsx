@@ -5,6 +5,9 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import {
   BarChart3,
+  ExternalLink,
+  ImagePlus,
+  Link2,
   Check,
   CheckSquare,
   Circle,
@@ -33,6 +36,8 @@ import {
 import { getErrorMessage } from "@/lib/get-error-message";
 import { ChatAudience, chatAudienceLabels, ChatMessage, ChatPoll } from "@/types/chat";
 import { closePollRequest, votePollRequest } from "@/services/chat.service";
+import { preparePhoto } from "@/components/operations/task-photos";
+import { api } from "@/lib/api-client";
 import { MessageAcknowledgement } from "@/components/operations/message-acknowledgement";
 import { chatOutboxEvent, discardChatMessage, flushChatOutbox, isNetworkError, queueChatMessage, QueuedMessage, readChatOutbox } from "@/lib/chat-outbox";
 import { useQueryClient } from "@tanstack/react-query";
@@ -67,6 +72,28 @@ export default function ChatPage() {
   const [pollMode, setPollMode] = useState(false);
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
   const [allowMultiple, setAllowMultiple] = useState(false);
+  // Adjuntos: hasta 3 fotos (se comprimen en el celular antes de subir) y hasta 3 links.
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [links, setLinks] = useState<string[]>([]);
+  const [linkDraft, setLinkDraft] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  async function addPhotos(files: FileList | null) {
+    const list = [...(files ?? [])];
+    if (!list.length) return;
+    if (list.length + photos.length > 3) { setSendError("Podés adjuntar hasta 3 fotos por mensaje."); return; }
+    setPreparing(true); setSendError("");
+    try { const encoded: string[] = []; for (const file of list) encoded.push(await preparePhoto(file)); setPhotos((rows) => [...rows, ...encoded]); }
+    catch (err) { setSendError(err instanceof Error ? err.message : "No se pudo preparar la foto."); }
+    finally { setPreparing(false); }
+  }
+  function addLink() {
+    const raw = (linkDraft ?? "").trim();
+    if (!raw) { setLinkDraft(null); return; }
+    const value = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    try { const url = new URL(value); if (!["http:", "https:"].includes(url.protocol)) throw new Error(); } catch { setSendError("Ese link no es válido."); return; }
+    if (links.length >= 3) { setSendError("Podés adjuntar hasta 3 links."); return; }
+    setLinks((rows) => rows.includes(value) ? rows : [...rows, value]); setLinkDraft(null); setSendError("");
+  }
   const client = useQueryClient();
   useEffect(() => {
     if (!user) return;
@@ -89,8 +116,19 @@ export default function ChatPage() {
 
   async function send() {
     const trimmed = body.trim();
-    if (!trimmed || createMutation.isPending) return;
+    const hasAttachments = photos.length > 0 || links.length > 0;
+    if ((!trimmed && !hasAttachments) || createMutation.isPending || preparing) return;
     setSendError("");
+    if (!pollMode && hasAttachments) {
+      try {
+        await createMutation.mutateAsync({ body: trimmed, audience, photos, links });
+        setBody(""); setPhotos([]); setLinks([]); setLinkDraft(null);
+        toast.success(photos.length ? "Mensaje con fotos enviado" : "Mensaje enviado");
+      } catch (error: unknown) {
+        setSendError(isNetworkError(error) ? "Sin señal: los mensajes con fotos o links necesitan conexión." : getErrorMessage(error, "No se pudo enviar el mensaje."));
+      }
+      return;
+    }
     if (pollMode) {
       const options = pollOptions.map((o) => o.trim()).filter(Boolean);
       if (options.length < 2) { setSendError("La encuesta necesita al menos 2 opciones."); return; }
@@ -190,10 +228,28 @@ export default function ChatPage() {
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={allowMultiple} onChange={(e) => setAllowMultiple(e.target.checked)} className="h-4 w-4 accent-red-600" /> Permitir varias respuestas</label>
             </div>
           </fieldset>}
+          {!pollMode && (photos.length > 0 || links.length > 0 || linkDraft !== null) && <div className="mt-3 space-y-2">
+            {photos.length > 0 && <ul className="flex flex-wrap gap-2" aria-label="Fotos adjuntas">{photos.map((p, i) => <li key={i} className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`data:image/jpeg;base64,${p}`} alt={`Foto adjunta ${i + 1}`} className="h-20 w-20 rounded-lg object-cover" />
+              <button type="button" className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--bord)] bg-[var(--card)]" aria-label={`Quitar foto ${i + 1}`} onClick={() => setPhotos((rows) => rows.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></button>
+            </li>)}</ul>}
+            {links.map((link) => <div key={link} className="flex items-center gap-2 rounded-lg border border-[var(--bord)] px-3 py-2 text-sm"><Link2 className="h-4 w-4 shrink-0 text-[var(--mut)]" aria-hidden /><span className="min-w-0 flex-1 truncate">{link}</span><button type="button" className="btn-icon h-8 w-8" aria-label="Quitar link" onClick={() => setLinks((rows) => rows.filter((l) => l !== link))}><X className="h-4 w-4" /></button></div>)}
+            {linkDraft !== null && <div className="flex gap-2"><input autoFocus type="url" inputMode="url" autoCapitalize="none" autoCorrect="off" className="app-input" placeholder="https://…" value={linkDraft} onChange={(e) => setLinkDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLink(); } }} aria-label="Link" /><button type="button" className="app-button w-auto" onClick={addLink}>Agregar</button></div>}
+          </div>}
           {sendError && <p role="alert" className="mt-2 text-sm text-red-300">{sendError}</p>}
           <div className="mt-2 flex items-center justify-between gap-3">
-            <span className="text-xs text-[var(--mut)]">{body.length > 800 ? `${body.length}/1000 caracteres` : <span className="hidden sm:inline">Ctrl + Enter para enviar</span>}</span>
-            <button type="submit" disabled={createMutation.isPending || !body.trim()} className="app-button app-button-red w-auto px-5 disabled:cursor-not-allowed disabled:opacity-60">
+            <div className="flex items-center gap-1">
+              {!pollMode && <>
+                <label className={`btn-icon h-10 w-10 cursor-pointer ${photos.length >= 3 || preparing ? "pointer-events-none opacity-50" : ""}`} title="Adjuntar fotos" aria-label="Adjuntar fotos">
+                  <ImagePlus className="h-5 w-5" aria-hidden />
+                  <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" onChange={(e) => { void addPhotos(e.target.files); e.target.value = ""; }} />
+                </label>
+                <button type="button" className="btn-icon h-10 w-10" title="Adjuntar link" aria-label="Adjuntar link" disabled={links.length >= 3} onClick={() => setLinkDraft((v) => v ?? "")}><Link2 className="h-5 w-5" aria-hidden /></button>
+              </>}
+              <span className="ml-1 text-xs text-[var(--mut)]">{preparing ? "Preparando foto…" : body.length > 800 ? `${body.length}/1000 caracteres` : <span className="hidden sm:inline">Ctrl + Enter para enviar</span>}</span>
+            </div>
+            <button type="submit" disabled={createMutation.isPending || preparing || (!body.trim() && !photos.length && !links.length)} className="app-button app-button-red w-auto px-5 disabled:cursor-not-allowed disabled:opacity-60">
               <Send className="h-4 w-4" /> {createMutation.isPending ? "Enviando…" : pollMode ? "Publicar encuesta" : "Enviar"}
             </button>
           </div>
@@ -404,10 +460,12 @@ function ChatMessageCard({
           </div>
         </div>
       ) : (
-        <p className="mt-3 whitespace-pre-wrap break-words text-[15px] leading-6 text-[var(--txt)]">
-          {message.body}
-        </p>
+        message.body ? <p className="mt-3 whitespace-pre-wrap break-words text-[15px] leading-6 text-[var(--txt)]">
+          <Linkified text={message.body} />
+        </p> : null
       )}
+      {!!message.attachments?.length && <div className={`mt-3 grid gap-2 ${message.attachments.length === 1 ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3"}`}>{message.attachments.map((a, i) => <ChatPhoto key={a.id} messageId={message.id} photoId={a.id} index={i + 1} />)}</div>}
+      {!!message.links?.length && <ul className="mt-3 space-y-1.5">{message.links.map((link) => <li key={link}><a href={link} target="_blank" rel="noopener noreferrer nofollow" className="flex items-center gap-2 rounded-lg border border-[var(--bord)] px-3 py-2 text-sm hover:border-red-400/60"><ExternalLink className="h-4 w-4 shrink-0 text-[var(--mut)]" aria-hidden /><span className="min-w-0 flex-1 truncate">{prettyLink(link)}</span></a></li>)}</ul>}
       {message.poll && <PollView poll={message.poll} userId={userId} canVote={canVote} canClose={canClosePoll} />}
     </article>
   );
@@ -475,4 +533,26 @@ function PollView({ poll, userId, canVote, canClose }: { poll: ChatPoll; userId?
       </span>
     </div>
   </div>;
+}
+
+const prettyLink = (link: string) => { try { const u = new URL(link); return `${u.hostname.replace(/^www\./, "")}${u.pathname === "/" ? "" : u.pathname}`; } catch { return link; } };
+
+// Los links escritos dentro del texto tambien se pueden tocar (solo http/https).
+function Linkified({ text }: { text: string }) {
+  const parts = text.split(/(https?:\/\/[^\s<>"]+)/g);
+  return <>{parts.map((part, i) => /^https?:\/\//.test(part) ? <a key={i} href={part} target="_blank" rel="noopener noreferrer nofollow" className="break-all text-sky-300 underline">{part}</a> : part)}</>;
+}
+
+// Foto privada: se pide con la sesion y se muestra como imagen local; tocarla la abre en grande.
+function ChatPhoto({ messageId, photoId, index }: { messageId: string; photoId: string; index: number }) {
+  const [url, setUrl] = useState(""), [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let active = true, objectUrl = "";
+    void api.get<Blob>(`/chat/messages/${messageId}/photos/${photoId}`, { responseType: "blob" }).then((r) => { if (!active) return; objectUrl = URL.createObjectURL(r.data); setUrl(objectUrl); }).catch(() => { if (active) setFailed(true); });
+    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [messageId, photoId]);
+  if (failed) return <p className="rounded-lg border border-[var(--bord)] p-3 text-xs text-[var(--mut)]">No se pudo cargar la foto {index}.</p>;
+  if (!url) return <div className="aspect-[4/3] animate-pulse rounded-lg bg-[var(--card2)]" aria-label={`Cargando foto ${index}`} />;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <a href={url} target="_blank" rel="noopener noreferrer"><img src={url} alt={`Foto ${index} del mensaje`} className="max-h-80 w-full rounded-lg object-cover" loading="lazy" /></a>;
 }

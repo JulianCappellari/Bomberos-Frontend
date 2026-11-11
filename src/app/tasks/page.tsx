@@ -87,7 +87,8 @@ export default function TasksPage() {
       const member = row.members.find((m) => m.userId === user?.id), active = ["ASSIGNED", "RETURNED"].includes(row.status);
       const canReview = manager && row.status === "SUBMITTED" && !member && !(row.isSelfReported && row.createdByUserId === user?.id);
       const overdue = active && row.dueOn && row.dueOn.slice(0, 10) < stationDate();
-      return <article key={row.id} className="min-w-0 rounded-lg border border-[var(--bord)] bg-[var(--card)] p-4">
+      // Con "Más acciones" abierto la tarjeta pasa al frente para que la siguiente no tape el menú.
+      return <article key={row.id} className="relative min-w-0 has-[details[open]]:z-30 rounded-lg border border-[var(--bord)] bg-[var(--card)] p-4">
         <div className="flex flex-wrap items-start justify-between gap-2"><h2 className="break-words font-bold">{row.title}{row.priority && row.priority !== "NORMAL" && <span className="ml-2 text-xs text-red-300">Prioridad {priorities[row.priority]||row.priority}</span>}</h2><StateBadge tone={row.status === "VERIFIED" ? "good" : row.status === "SUBMITTED" ? "warning" : "neutral"}>{row.status==="VERIFIED"&&!row.officerApproved?"Pendiente de aval":({OPEN:"Abierta",ASSIGNED:"Asignada",TAKEN:"Tomada",IN_REVIEW:"Enviada a revision",VERIFIED:"Verificada",EXPIRED:"Vencida",CANCELLED:"Cancelada",RETURNED:"Devuelta"}[row.state] || labels[row.status])}</StateBadge></div>
         <p className="mt-3 whitespace-pre-wrap break-words text-sm text-[var(--mut)]">{row.description}</p><p className="mt-2 text-xs text-[var(--mut)]">{row.requiresPresence ? "Requiere ingreso QR y presencia en cuartel" : "No requiere presencia en cuartel"}</p>
         <div className="mt-3 text-xs text-[var(--mut)]">{row.isSelfReported ? "Informado por" : "Asignado por"} {personName(row.createdBy)}{row.dueOn && <span className={overdue ? "font-semibold text-red-300" : ""}> · {dueLabel(row.dueOn, Boolean(overdue))}</span>}</div>
@@ -109,11 +110,12 @@ export default function TasksPage() {
             ...(manager && active ? [["Reasignar", () => open("assign", row)], ["Planificar", () => open("plan", row)]] as Array<[string, () => void]> : []),
             ...(reviewable && row.status !== "SUBMITTED" ? [["Revisar", startReview]] as Array<[string, () => void]> : []),
           ];
-          return <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--bord)] pt-3">
+          // El menu se ancla al borde de la tarjeta (no al boton) para que nunca se salga de la pantalla.
+          return <div className="relative mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--bord)] pt-3">
             {primary}
-            {more.length > 0 && <details className="relative">
+            {more.length > 0 && <details>
               <summary className="app-button app-button-outline w-auto cursor-pointer list-none">Más acciones ▾</summary>
-              <div className="absolute right-0 z-20 mt-1 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-[var(--bord)] bg-[var(--card)] shadow-xl">{more.map(([label, run]) => <button key={label} type="button" className="block w-full px-4 py-2.5 text-left text-sm hover:bg-[var(--card2)]" onClick={(e) => { (e.currentTarget.closest("details") as HTMLDetailsElement).open = false; run(); }}>{label}</button>)}</div>
+              <div className="absolute left-0 z-20 mt-1 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-[var(--bord)] bg-[var(--card)] shadow-xl">{more.map(([label, run]) => <button key={label} type="button" className="block w-full px-4 py-2.5 text-left text-sm hover:bg-[var(--card2)]" onClick={(e) => { (e.currentTarget.closest("details") as HTMLDetailsElement).open = false; run(); }}>{label}</button>)}</div>
             </details>}
           <button className="btn-icon ml-auto" title="Historial" aria-label={`Historial de ${row.title}`} onClick={() => open("history", row)}><History className="h-4 w-4" /></button>
           </div>;

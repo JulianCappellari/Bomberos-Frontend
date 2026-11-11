@@ -19,6 +19,6 @@ test("El intercambio usa hora argentina y bloquea menos de 24 horas", () => {
 });
 test("Las nuevas decisiones se explican en español sin codigos crudos", () => {
   for (const key of ["SHIFT_SWAP_APPROVED", "SPECIAL_PERMISSION_GRANTED", "INSPECTION_PARTICIPANT_REMOVED", "WORK_TRANSFER_REJECTED"]) assert.notEqual(auditAction(key), "Accion del sistema");
-  assert(auditMetadata({ permission: "PPE", scope: "LOW" }).some(row => row.value === "Responsable de EPP"));
+  assert(auditMetadata({ permission: "PPE", scope: "LOW" }).some(row => row.value === "Encargado de vestimenta y materiales"));
   assert(auditMetadata({ permission: "PPE", scope: "LOW" }).some(row => row.value === "Personal con puntaje bajo"));
 });

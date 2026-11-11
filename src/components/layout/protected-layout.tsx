@@ -21,6 +21,7 @@ import { isNavigationActive } from "@/lib/navigation-match";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { canOpenPage } from "@/lib/permissions";
+import { isCivilRank } from "@/lib/permissions";
 import { bottomNavHrefs, homeHref, isTechnicalAdmin, navGroups, navItems, visibleNavItems, type NavItem } from "@/lib/navigation";
 
 function matchesQuery(item: NavItem, query: string) {
@@ -91,6 +92,9 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
     } else if (isTechnicalAdmin(user) && !user?.mustChangePassword && pathname === "/dashboard") {
       // B01/B02: solo el administrador tecnico entra al panel de gestion; oficiales ven su inicio personal.
       router.replace("/admin");
+    } else if (isCivilRank(user?.profile?.rank) && !user?.mustChangePassword && pathname === "/dashboard") {
+      // La Comision Directiva (civil) entra directo a su apartado: no tiene inicio de bombero.
+      router.replace("/commission");
     }
   }, [isLoading, isAuthenticated, user, pathname, router]);
 
@@ -337,7 +341,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
               <PresencePrompt />
               <TaskSyncPanel />
               <AppUpdateBanner />
-              {canOpenPage(pathname, user?.role, user?.specialPermissions) ? children : <section className="p-5"><h1 className="text-xl font-bold">Acceso restringido</h1><p className="mt-2 text-sm">Su perfil no tiene permiso para consultar este apartado.</p><Link href={home} className="mt-3 inline-block underline">Volver al inicio</Link></section>}
+              {canOpenPage(pathname, user?.role, user?.specialPermissions, user?.profile?.rank) ? children : <section className="p-5"><h1 className="text-xl font-bold">Acceso restringido</h1><p className="mt-2 text-sm">Su perfil no tiene permiso para consultar este apartado.</p><Link href={home} className="mt-3 inline-block underline">Volver al inicio</Link></section>}
             </motion.div>
           </AnimatePresence>
         </main>

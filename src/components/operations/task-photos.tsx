@@ -3,7 +3,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
 
-async function preparePhoto(file: File) {
+export async function preparePhoto(file: File) {
   if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 15000000) throw new Error("Use fotos JPEG, PNG o WebP de hasta 15 MB");
   const bitmap = await createImageBitmap(file);
   try {

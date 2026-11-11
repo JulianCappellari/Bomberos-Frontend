@@ -36,6 +36,8 @@ export type IncidentUpdate = {
 
 export type Incident = {
   id: string;
+  requestNumber?: number | null;
+  requestYear?: number | null;
   alertId: string | null;
   title: string;
   type: IncidentType;

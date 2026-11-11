@@ -375,7 +375,7 @@ function IncidentCard({
         {incident.alertId && <span className="badge badge-blue">Desde una alerta</span>}
       </div>
       <h2 className="mt-2 text-lg font-bold leading-tight text-white">
-        <Link href={`/incidents/${incident.id}/sheet`} className="hover:underline underline-offset-4">{incident.title}</Link>
+        <Link href={`/incidents/${incident.id}/sheet`} className="hover:underline underline-offset-4">{incident.requestNumber ? <span className="mr-2 font-mono text-sm text-[var(--mut)]">N° {incident.requestNumber}/{incident.requestYear}</span> : null}{incident.title}</Link>
       </h2>
       <p className="mt-1 flex items-center gap-1.5 text-sm text-[var(--mut)]"><MapPin className="h-4 w-4 shrink-0 text-red-400" aria-hidden /><span className="truncate">{incident.location}</span></p>
       <p className="mt-1 text-xs text-[var(--mut)]">

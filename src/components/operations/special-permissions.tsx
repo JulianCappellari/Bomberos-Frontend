@@ -6,7 +6,7 @@ import { getMeRequest } from "@/services/auth.service";
 import { api } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { ErrorNotice, Field } from "./operations-ui";
-const permissions = { FLEET: "Responsable de flota", PPE: "Responsable de EPP", TECHNICAL: "Responsable tecnico de ERA y certificaciones", FINANCE: "Acceso financiero" };
+const permissions = { FLEET: "Responsable de flota", PPE: "Encargado de vestimenta y materiales", TECHNICAL: "Responsable tecnico de ERA y certificaciones", FINANCE: "Acceso financiero" };
 type Permission = keyof typeof permissions;
 export function SpecialPermissions({ id }: { id: string }) {
   const { user, setUser } = useAuth(), client = useQueryClient();

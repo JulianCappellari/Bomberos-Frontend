@@ -16,12 +16,19 @@ import {IncidentNotebook} from "@/components/operations/incident-notebook";
 import {IncidentRedo} from "@/components/operations/incident-redo";
 import {NotebookEntry} from "@/types/work";
 import {UserRosterItem} from "@/types/user";
+import {toast} from "@/lib/toast";
 
 type Material={name:string;quantity:number;notes:string};
 type Person={userId:string;user:UserRosterItem};
-type Movement={id:string;returnWithoutArrivalReason:string|null;dispatchExceptionReason:string|null;asset:{name:string;status:string};driverUserId:string;leaderUserId:string;departedAt:string;arrivedAt:string|null;returnedAt:string|null;crew:Person[]};
-type Response={amendments?:SheetAmendment[];notebookEntries:NotebookEntry[];canAddAnnex:boolean;canWrite:boolean;sheet:null|{revision:number;author:{username:string};callerName:string;callerPhone:string;notes:string;materials:Material[];baseUserIds:string[];evidenceUrls:string[];finalizedAt:string|null};context:{incident:{id:string;title:string;voidedAt?:string|null;replacesIncidentId?:string|null;description:string;type:string;location:string;occurredAt:string;status:string;alert:null|{createdBy:{username:string;profile:{fullName:string|null}|null};contactPhone:string|null;originNotice:null|{source:string;phone:string|null}};movements:Movement[]};baseCandidates:Array<{id:string;name:string}>;notCredited?:string[]}};
+type Named={username:string;profile:{fullName:string|null}|null}|null|undefined;
+type Movement={id:string;returnWithoutArrivalReason:string|null;dispatchExceptionReason:string|null;asset:{name:string;status:string;vehicle?:{unitNumber:string}|null};driverUserId:string;leaderUserId:string;driver?:Named;leader?:Named;departedAt:string;arrivedAt:string|null;returnedAt:string|null;crew:Person[]};
+type Response={amendments?:SheetAmendment[];notebookEntries:NotebookEntry[];canAddAnnex:boolean;canWrite:boolean;sheet:null|{revision:number;author:{username:string;profile?:{fullName:string|null}|null};callerName:string;callerPhone:string;addressNumber?:string;receivedBy?:string;firefightersOnScene?:string;classifications?:string[];classificationDetail?:string;notes:string;materials:Material[];baseUserIds:string[];evidenceUrls:string[];finalizedAt:string|null};context:{incident:{id:string;requestNumber?:number|null;requestYear?:number|null;title:string;voidedAt?:string|null;replacesIncidentId?:string|null;description:string;type:string;location:string;occurredAt:string;status:string;alert:null|{createdBy:{username:string;profile:{fullName:string|null}|null};contactPhone:string|null;originNotice:null|{source:string;phone:string|null}};movements:Movement[]};baseCandidates:Array<{id:string;name:string}>;notCredited?:string[]}};
 const types:Record<string,string>={FIRE:"Incendio",RESCUE:"Rescate",ACCIDENT:"Accidente",CHEMICAL:"Riesgo químico",MEDICAL:"Emergencia médica",FLOOD:"Inundación",OTHER:"Otro"};
+// Clasificacion igual a la constancia en papel.
+const classifications:Array<[string,string]>=[["INCENDIO_VEHICULAR","Incendio vehicular"],["INCENDIO_ESTRUCTURAL","Incendio estructural"],["INCENDIO_FORESTAL","Incendio forestal"],["INCENDIO_INDUSTRIAL","Incendio industrial"],["INUNDACION","Inundación"],["RESCATE_PERSONA","Rescate de persona"],["PREVENCION","Prevención"],["COOPERACIONES_VARIAS","Cooperaciones varias"],["ACCIDENTE_VEHICULAR","Accidente vehicular"],["PERDIDA_GAS","Pérdida de gas"],["RESCATE_ANIMAL","Rescate de animal"],["FALSA_ALARMA","Falsa alarma"],["OTROS","Otros"]];
+const nameOf=(u:Named)=>u?u.profile?.fullName||u.username:"—";
+const hour=(date:string|null)=>date?new Date(date).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit",timeZone:"America/Argentina/Buenos_Aires"}):"—";
+const requestLabel=(i:{requestNumber?:number|null;requestYear?:number|null})=>i.requestNumber?`${i.requestNumber}/${i.requestYear}`:"Sin número";
 const time=(date:string|null)=>date?new Date(date).toLocaleString("es-AR",{timeZone:"America/Argentina/Buenos_Aires"}):"Pendiente";
 // Paso numerado de la planilla: ordena el flujo de carga de arriba hacia abajo.
 function Step({n,title,children,hint}:{n:number;title:string;hint?:string;children:React.ReactNode}){return <section className="mt-6 rounded-2xl border border-[var(--bord)] bg-[var(--card)] p-4"><h3 className="flex items-center gap-2 text-base font-bold text-white"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-600 text-xs">{n}</span>{title}</h3>{hint&&<p className="mt-1 text-sm text-[var(--mut)]">{hint}</p>}<div className="mt-3">{children}</div></section>;}
@@ -31,18 +38,30 @@ function Sheet({id,data,saved}:{id:string;data:Response;saved:()=>Promise<unknow
  const [materials,setMaterials]=useState<Material[]>(sheet?.materials||[]),[busy,setBusy]=useState(false),[error,setError]=useState("");
  const [closing,setClosing]=useState(false),[closeError,setCloseError]=useState(""),[closingReport,setClosingReport]=useState("");
  const command=["ADMIN","OPERATOR","GUARD"].includes(user?.role||"");
+ // Personal actuante: toda la dotacion de las salidas (sin repetir).
+ const actingCrew=[...new Map(incident.movements.flatMap(m=>m.crew.map(c=>[c.userId,c.user.profile?.fullName||c.user.username] as const))).values()];
  const away=incident.movements.filter(m=>!m.returnedAt).length,returned=incident.movements.length-away;
  const callerName=sheet?(sheet.callerName||"Sin registrar"):(incident.alert?.originNotice?.source||"Sin registrar");
  const callerPhone=sheet?(sheet.callerPhone||"Sin registrar"):(incident.alert?.originNotice?.phone||incident.alert?.contactPhone||"Sin registrar");
  const incidentOpen=incident.status==="OPEN"&&!sheet?.finalizedAt;
  const locked=!data.canWrite||!incidentOpen;
  async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const form=new FormData(e.currentTarget);setBusy(true);setError("");
- try{await api.put(`/incidents/${id}/sheet`,{revision:sheet?.revision||0,callerName:form.get("callerName"),callerPhone:form.get("callerPhone"),notes:form.get("notes"),materials,baseUserIds:form.getAll("base"),evidenceUrls:String(form.get("urls")||"").split("\n").map(s=>s.trim()).filter(Boolean)});await saved();}catch(err){setError(getErrorMessage(err,"No se pudo guardar la planilla"));}finally{setBusy(false);}}
+ try{await api.put(`/incidents/${id}/sheet`,{revision:sheet?.revision||0,callerName:form.get("callerName"),callerPhone:form.get("callerPhone"),addressNumber:form.get("addressNumber"),receivedBy:form.get("receivedBy"),firefightersOnScene:form.get("firefightersOnScene"),classifications:form.getAll("classification"),classificationDetail:form.get("classificationDetail"),notes:form.get("notes"),materials,baseUserIds:form.getAll("base"),evidenceUrls:String(form.get("urls")||"").split("\n").map(s=>s.trim()).filter(Boolean)});await saved();}catch(err){setError(getErrorMessage(err,"No se pudo guardar la planilla"));}finally{setBusy(false);}}
  async function close(e:FormEvent<HTMLFormElement>){e.preventDefault();if(closingReport.trim().length<10)return;setClosing(true);setCloseError("");try{await api.patch(`/incidents/${id}/close`,{closingReport:closingReport.trim()});await saved();}catch(err){setCloseError(getErrorMessage(err,"No se pudo cerrar la intervención. Verifique que todos los móviles hayan regresado."));}finally{setClosing(false);}}
  const finalized=Boolean(sheet?.finalizedAt)||incident.status==="CLOSED";
+ const commandRole=user?.role==="ADMIN"||user?.role==="OPERATOR";
+ const receivedDefault=sheet?(sheet.receivedBy||""):(incident.alert?.createdBy.profile?.fullName||incident.alert?.createdBy.username||"");
+ async function changeNumber(){
+  const current=incident.requestNumber?String(incident.requestNumber):"";
+  const value=window.prompt("Número de pedido de auxilio (para que coincida con el libro):",current);if(!value)return;
+  const n=Number(value);if(!Number.isInteger(n)||n<1){toast.error("Ingresá un número válido");return;}
+  const reason=window.prompt("Motivo de la corrección:","Empalmar con la numeración del libro");if(!reason||reason.trim().length<5)return;
+  try{await api.patch(`/incidents/${id}/sheet/request-number`,{requestNumber:n,requestYear:incident.requestYear||new Date().getFullYear(),reason:reason.trim()});toast.success(`Pedido de auxilio N° ${n}/${incident.requestYear}`);await saved();}catch(err){toast.error(getErrorMessage(err,"No se pudo cambiar el número"));}
+ }
  return <>
  <header className="mt-4"><div className="flex flex-wrap items-center gap-2"><span className={`badge ${finalized?"badge-green":"badge-red"}`}>{finalized?"Cerrada":"En curso"}</span><span className="badge badge-gray">{types[incident.type]||incident.type}</span></div>
- <h1 className="mt-2 text-2xl font-bold text-white">{incident.title}</h1>
+ <p className="mt-2 text-sm font-semibold text-[var(--mut)]">Pedido de auxilio N° <span className="font-mono text-white">{requestLabel(incident)}</span>{commandRole&&!incident.voidedAt&&<button type="button" className="ml-2 text-xs underline" onClick={()=>void changeNumber()}>Corregir</button>}</p>
+ <h1 className="mt-1 text-2xl font-bold text-white">{incident.title}</h1>
  <p className="mt-1 text-sm text-[var(--mut)]">{incident.location} · Inicio {time(incident.occurredAt)}</p><div className="mt-3 flex flex-wrap gap-2"><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(incident.location)}`} target="_blank" rel="noopener noreferrer" className="app-button app-button-outline w-auto">Ver en mapa</a><Link href={`/notebook?incident=${id}`} className="app-button app-button-outline w-auto">Libreta del siniestro</Link>{callerPhone!=="Sin registrar"&&<a href={`tel:${callerPhone.replace(/[^\d+]/g,"")}`} className="app-button app-button-outline w-auto">Llamar a quien avisó</a>}{incidentOpen&&<ReinforcementRequest incidentId={id}/>}</div></header>
  <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
   {[["Móviles fuera",away,away>0],["Móviles retornados",returned,false],["Personal en base",sheet?.baseUserIds.length??0,false],["Planilla",sheet?`Guardada (rev. ${sheet.revision})`:"Sin guardar",!sheet&&!finalized]].map(([label,value,warn])=><div key={String(label)} className={`rounded-xl border p-3 ${warn?"border-amber-500/40 bg-amber-500/10":"border-[var(--bord)] bg-[var(--card)]"}`}><dt className="text-xs text-[var(--mut)]">{label}</dt><dd className="mt-1 font-bold text-white">{value}</dd></div>)}
@@ -57,13 +76,24 @@ function Sheet({id,data,saved}:{id:string;data:Response;saved:()=>Promise<unknow
  </Step>
 
  <form onSubmit={submit}><fieldset disabled={locked||busy}>
- <Step n={2} title="Llamada y personal en el cuartel">
-  <div className="grid gap-3 sm:grid-cols-2"><Field label="Quién llamó al cuartel"><input className="app-input" name="callerName" maxLength={120} defaultValue={sheet?sheet.callerName:incident.alert?.originNotice?.source||""}/></Field><Field label="Teléfono de quien llamó"><input className="app-input" type="tel" name="callerPhone" maxLength={40} defaultValue={sheet?sheet.callerPhone:incident.alert?.originNotice?.phone||incident.alert?.contactPhone||""}/></Field></div>
-  <fieldset className="mt-3"><legend className="text-sm font-semibold text-white">Personal que colaboró desde el cuartel</legend><p className="mb-2 text-xs text-[var(--mut)]">Aparecen quienes tuvieron presencia QR durante la emergencia o respondieron “Voy”.</p>{baseCandidates.length===0&&<p className="text-sm text-[var(--mut)]">Nadie cumple esas condiciones todavía.</p>}<div className="grid gap-1 sm:grid-cols-2">{baseCandidates.map(p=><label className="flex min-h-11 items-center gap-3 rounded-lg border border-[var(--bord)] px-3 text-sm" key={p.id}><input name="base" value={p.id} type="checkbox" className="h-4 w-4" defaultChecked={sheet?.baseUserIds.includes(p.id)}/> {p.name}</label>)}</div></fieldset>
+ <Step n={2} title="Pedido de auxilio y personal" hint="Los mismos datos de la constancia en papel.">
+  <div className="grid gap-3 sm:grid-cols-2"><Field label="Solicitado por (quién llamó)"><input className="app-input" name="callerName" maxLength={120} defaultValue={sheet?sheet.callerName:incident.alert?.originNotice?.source||""}/></Field><Field label="Teléfono de quien llamó"><input className="app-input" type="tel" name="callerPhone" maxLength={40} defaultValue={sheet?sheet.callerPhone:incident.alert?.originNotice?.phone||incident.alert?.contactPhone||""}/></Field>
+   <Field label="Domicilio del siniestro"><input className="app-input" value={incident.location} readOnly aria-readonly title="Se toma de la alerta"/></Field>
+   <Field label="N° / KM"><input className="app-input" name="addressNumber" maxLength={40} defaultValue={sheet?.addressNumber||""} placeholder="Ej. 1062 o km 600"/></Field>
+   <Field label="Pedido de emergencia recibido por"><input className="app-input" name="receivedBy" maxLength={120} defaultValue={receivedDefault}/></Field>
+   <Field label="Confección de planilla"><input className="app-input" readOnly aria-readonly value={sheet?(sheet.author.profile?.fullName||sheet.author.username):(user?.profile?.fullName||user?.username||"")}/></Field></div>
+  <div className="mt-3 rounded-lg border border-[var(--bord)] p-3 text-sm"><p className="font-semibold text-white">Personal actuante</p><p className="mt-1 text-[var(--mut)]">{actingCrew.length?actingCrew.join(" · "):"Se completa solo con la dotación de cada salida (paso 1)."}</p></div>
+  <fieldset className="mt-3"><legend className="text-sm font-semibold text-white">Personal en la base</legend><p className="mb-2 text-xs text-[var(--mut)]">Aparecen quienes tuvieron presencia QR durante la emergencia o respondieron “Voy”.</p>{baseCandidates.length===0&&<p className="text-sm text-[var(--mut)]">Nadie cumple esas condiciones todavía.</p>}<div className="grid gap-1 sm:grid-cols-2">{baseCandidates.map(p=><label className="flex min-h-11 items-center gap-3 rounded-lg border border-[var(--bord)] px-3 text-sm" key={p.id}><input name="base" value={p.id} type="checkbox" className="h-4 w-4" defaultChecked={sheet?.baseUserIds.includes(p.id)}/> {p.name}</label>)}</div></fieldset>
+  <div className="mt-3"><Field label="Bomberos presentes en el lugar (otros cuarteles o dotaciones)"><textarea className="app-input min-h-16" name="firefightersOnScene" maxLength={1000} defaultValue={sheet?.firefightersOnScene||""} placeholder="Ej. Bomberos de Río Cuarto, móvil 12, a cargo de …"/></Field></div>
  </Step>
- <Step n={3} title="Actuación, materiales y evidencia">
+ <Step n={3} title="Clasificación, actuación y material empleado">
+  <fieldset><legend className="text-sm font-semibold text-white">Clasificación (marcá lo que corresponda)</legend>
+   <div className="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">{classifications.map(([value,label])=><label key={value} className="flex min-h-11 items-center gap-3 rounded-lg border border-[var(--bord)] px-3 text-sm"><input type="checkbox" name="classification" value={value} className="h-4 w-4" defaultChecked={sheet?.classifications?.includes(value)}/>{label}</label>)}</div>
+   <div className="mt-2"><Field label="Detalle (si es necesario)"><input className="app-input" name="classificationDetail" maxLength={300} defaultValue={sheet?.classificationDetail||""} placeholder="Ej. Garrafa"/></Field></div>
+  </fieldset>
+  <div className="mt-4"/>
   <Field label="Actuación y novedades"><textarea required name="notes" minLength={10} maxLength={4000} className="app-input min-h-28" defaultValue={sheet?.notes||""} placeholder="Qué se encontró, qué se hizo y cómo quedó el lugar"/></Field>
-  <h4 className="mt-4 text-sm font-semibold text-white">Materiales utilizados</h4>
+  <h4 className="mt-4 text-sm font-semibold text-white">Material empleado en la intervención</h4>
   {materials.length===0&&<p className="mt-1 text-sm text-[var(--mut)]">Sin materiales cargados.</p>}
   {materials.map((m,i)=><div key={i} className="mt-2 grid gap-2 rounded-lg border border-[var(--bord)] p-3 sm:grid-cols-[1fr_120px_1fr_auto]"><Field label="Material"><input className="app-input" required minLength={2} maxLength={140} value={m.name} onChange={e=>setMaterials(materials.map((v,j)=>i===j?{...v,name:e.target.value}:v))}/></Field><Field label="Cantidad"><input className="app-input" type="number" required min={1} max={100000} value={m.quantity} onChange={e=>setMaterials(materials.map((v,j)=>i===j?{...v,quantity:Number(e.target.value)}:v))}/></Field><Field label="Estado o novedad"><input className="app-input" maxLength={500} value={m.notes} onChange={e=>setMaterials(materials.map((v,j)=>i===j?{...v,notes:e.target.value}:v))}/></Field>{!locked&&<button type="button" className="app-button app-button-outline w-auto self-end" onClick={()=>setMaterials(materials.filter((_,j)=>j!==i))}>Quitar</button>}</div>)}
   {!locked&&<button type="button" className="app-button mt-2 w-auto" disabled={materials.length>=100} onClick={()=>setMaterials([...materials,{name:"",quantity:1,notes:""}])}>Agregar material</button>}
@@ -83,10 +113,39 @@ function Sheet({id,data,saved}:{id:string;data:Response;saved:()=>Promise<unknow
   <button className="app-button app-button-red w-auto" disabled={closing||busy||away>0||closingReport.trim().length<10}>{closing?"Cerrando…":"Cerrar intervención"}</button>{closeError&&<p role="alert" className="text-sm text-red-300">{closeError}</p>}</form>
  </Step>}
  <IncidentAgencies incidentId={id}/>
+ <Constancia incident={incident} sheet={sheet} actingCrew={actingCrew} base={baseCandidates.filter(p=>sheet?.baseUserIds.includes(p.id)).map(p=>p.name)}/>
  {sheet?.finalizedAt&&<SheetAmendments id={id} revision={sheet.revision} allowed={user?.role==="ADMIN"||user?.role==="OPERATOR"} items={data.amendments||[]} saved={saved}/>}</>;
 }
 export default function IncidentSheetPage(){
  const {id}=useParams<{id:string}>(),{user}=useAuth();
  const query=useQuery({queryKey:["incident-sheet",id,user?.id],enabled:Boolean(user),queryFn:async()=>(await api.get<Response>(`/incidents/${id}/sheet`)).data});
  return <ProtectedLayout><main className="screen-body"><Link href="/incidents" className="text-sm text-red-300 underline-offset-4 hover:underline">← Intervenciones</Link>{query.isLoading&&<p role="status" className="mt-4">Cargando planilla…</p>}{query.isError&&<ErrorNotice>{getErrorMessage(query.error,"No se pudo consultar la planilla")}</ErrorNotice>}{query.data&&<Sheet key={query.data.sheet?.revision||0} id={id} data={query.data} saved={query.refetch}/>}</main></ProtectedLayout>;
+}
+
+// Vista con el mismo orden que la constancia en papel, lista para imprimir y archivar en el libro.
+function Constancia({incident,sheet,actingCrew,base}:{incident:Response["context"]["incident"];sheet:Response["sheet"];actingCrew:string[];base:string[]}){
+ const marked=new Set(sheet?.classifications||[]);
+ const row=(label:string,value:React.ReactNode)=><div className="grid grid-cols-[minmax(0,190px)_1fr] gap-2 border-b border-[var(--bord)] py-1.5"><dt className="text-[var(--mut)]">{label}</dt><dd className="break-words">{value||"—"}</dd></div>;
+ const materials=(sheet?.materials||[]).map(m=>`${m.name}${m.quantity>1?` ×${m.quantity}`:""}${m.notes?` (${m.notes})`:""}`).join(" · ");
+ return <section id="constancia" className="mt-6 rounded-2xl border border-[var(--bord)] bg-[var(--card)] p-4 text-sm">
+  <style>{`@media print{body *{visibility:hidden!important}#constancia,#constancia *{visibility:visible!important;color:#000!important;background:#fff!important;border-color:#999!important}#constancia{position:absolute;inset:0 auto auto 0;width:100%}#constancia .no-print{display:none}}`}</style>
+  <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-xs uppercase tracking-wide text-[var(--mut)]">Sociedad de Bomberos Voluntarios de Sampacho</p><h2 className="text-lg font-bold">Constancia de intervención</h2></div><div className="text-right"><p className="text-xs text-[var(--mut)]">Pedido de auxilio N°</p><p className="font-mono text-lg font-bold">{requestLabel(incident)}</p></div></div>
+  <dl className="mt-3">
+   {row("Solicitado por",`${sheet?.callerName||"—"}${sheet?.callerPhone?` · Tel. ${sheet.callerPhone}`:""}`)}
+   {row("Domicilio del siniestro",`${incident.location}${sheet?.addressNumber?` · N°/KM ${sheet.addressNumber}`:""}`)}
+   {row("Pedido recibido por",sheet?.receivedBy)}
+   {row("Confección de planilla",sheet?(sheet.author.profile?.fullName||sheet.author.username):"")}
+   {row("Personal actuante",actingCrew.join(" · "))}
+   {row("Personal en la base",base.join(" · "))}
+   {row("Bomberos presentes en el lugar",sheet?.firefightersOnScene)}
+   {row("Material empleado",materials)}
+   {row("Clasificación",classifications.filter(([v])=>marked.has(v)).map(([,l])=>l).join(" · ")+(sheet?.classificationDetail?` — ${sheet.classificationDetail}`:""))}
+  </dl>
+  <h3 className="mt-4 font-semibold">Unidad asignada y horarios</h3>
+  <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[520px] border-collapse text-left">
+   <thead><tr className="border-b border-[var(--bord)] text-xs text-[var(--mut)]">{["Unidad N°","Salida","Llegada al lugar","Entrada","Chofer","Encargado"].map(h=><th key={h} className="py-1.5 pr-2 font-semibold">{h}</th>)}</tr></thead>
+   <tbody>{incident.movements.length?incident.movements.map(m=><tr key={m.id} className="border-b border-[var(--bord)]"><td className="py-1.5 pr-2 font-semibold">{m.asset.vehicle?.unitNumber||m.asset.name}</td><td className="pr-2 font-mono">{hour(m.departedAt)}</td><td className="pr-2 font-mono">{hour(m.arrivedAt)}</td><td className="pr-2 font-mono">{hour(m.returnedAt)}</td><td className="pr-2">{nameOf(m.driver)}</td><td>{nameOf(m.leader)}</td></tr>):<tr><td colSpan={6} className="py-2 text-[var(--mut)]">Sin salidas registradas.</td></tr>}</tbody>
+  </table></div>
+  <button type="button" className="no-print app-button app-button-outline mt-4 w-auto" onClick={()=>window.print()}>Imprimir constancia</button>
+ </section>;
 }

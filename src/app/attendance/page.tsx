@@ -1,7 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
-import jsQR from "jsqr";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   CheckCircle2,
@@ -11,6 +10,7 @@ import {
   UserX,
   Camera,
   CameraOff,
+  ImageUp,
   QrCode,
   Scan,
 } from "lucide-react";
@@ -19,6 +19,8 @@ import { formatWorkedTimeHM } from "@/helper/formatWorkedTime";
 import { useMyAttendanceSummary } from "@/hooks/use-attendence";
 import { useScanAttendanceQr } from "@/hooks/use-scan-attendance-qr";
 import { getCurrentPositionAsync } from "@/lib/geolocation";
+import { cameraErrorMessage, cameraSupportProblem, decodeImageFile, decodeVideoFrame, geolocationErrorMessage, openRearCamera } from "@/lib/qr-camera";
+import { LocationRequiredError } from "@/services/attendance.service";
 import { ProtectedLayout } from "@/components/layout/protected-layout";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -52,6 +54,7 @@ export default function AttendancePage() {
   const streamingRef = useRef(false);
   const animationRef = useRef<number | null>(null);
   const processingRef = useRef(false);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   const [streaming, setStreaming] = useState(false);
   const [message, setMessage] = useState("");
@@ -126,7 +129,7 @@ export default function AttendancePage() {
     setLoadingMessage("");
 
     if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
+      window.clearTimeout(animationRef.current);
       animationRef.current = null;
     }
 
@@ -144,24 +147,25 @@ export default function AttendancePage() {
     processingRef.current = true;
 
     try {
-      setLoadingMessage("Obteniendo coordenadas GPS...");
-      const position = await getCurrentPositionAsync();
       const deviceFingerprint = getDeviceFingerprint();
-
       setLoadingMessage("Validando asistencia con el servidor...");
-
-      const result = await scanMutation.mutateAsync({
-        qrToken,
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy: position.coords.accuracy,
-        deviceFingerprint,
-      });
+      let result;
+      try {
+        result = await scanMutation.mutateAsync({ qrToken, deviceFingerprint });
+      } catch (error) {
+        if (!(error instanceof LocationRequiredError)) throw error;
+        // El cuartel pide ubicacion: recien ahora se pide permiso de GPS (la base sin ubicacion nunca lo pide).
+        setLoadingMessage("Obteniendo tu ubicación...");
+        let position: GeolocationPosition;
+        try { position = await getCurrentPositionAsync(); } catch (geoError) { throw new Error(geolocationErrorMessage(geoError)); }
+        setLoadingMessage("Validando asistencia con el servidor...");
+        result = await scanMutation.mutateAsync({ qrToken, deviceFingerprint, latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy });
+      }
 
       await attendanceSummary.refetch();
 
       if (result.action === "CHECK_IN") {
-        setMessage(`Entrada registrada en ${result.station.name}. Distancia: ${result.distanceMeters} m.`);
+        setMessage(`Entrada registrada en ${result.station.name}.`);
         openSuccessModal({
           action: "CHECK_IN",
           stationName: result.station.name,
@@ -192,79 +196,73 @@ export default function AttendancePage() {
     }
   }
 
+  // Lectura a ~8 cuadros por segundo: suficiente para el QR y liviano para celulares modestos.
   function scanFrame() {
     if (!streamingRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-
-    if (!video || !canvas || processingRef.current || scanMutation.isPending) {
-      animationRef.current = requestAnimationFrame(scanFrame);
-      return;
-    }
-
-    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
-      animationRef.current = requestAnimationFrame(scanFrame);
-      return;
-    }
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) {
-      animationRef.current = requestAnimationFrame(scanFrame);
-      return;
-    }
-
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: "attemptBoth",
-    });
-
-    if (code?.data) {
-      void processQrToken(code.data);
-      return;
-    }
-
-    animationRef.current = requestAnimationFrame(scanFrame);
+    const video = videoRef.current, canvas = canvasRef.current;
+    const next = () => { if (streamingRef.current) animationRef.current = window.setTimeout(scanFrame, 120); };
+    if (!video || !canvas || processingRef.current || scanMutation.isPending) { next(); return; }
+    void decodeVideoFrame(video, canvas).then((token) => {
+      if (!streamingRef.current) return;
+      if (token && !processingRef.current) { void processQrToken(token); return; }
+      next();
+    }).catch(next);
   }
 
   async function startCamera() {
+    setMessage("");
+    setLoadingMessage("");
+    processingRef.current = false;
+    const problem = cameraSupportProblem();
+    if (problem) { setMessage(problem); openErrorModal(problem); return; }
     try {
-      setMessage("");
-      setLoadingMessage("");
-      processingRef.current = false;
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      });
-
+      const stream = await openRearCamera();
       streamRef.current = stream;
-
-      if (!videoRef.current) {
-        stopCamera();
-        return;
-      }
-
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-
+      const video = videoRef.current;
+      if (!video) { stopCamera(); return; }
+      // iPhone: el video tiene que ser inline y silencioso para poder reproducirse dentro de la pagina.
+      video.setAttribute("playsinline", "true");
+      video.muted = true;
+      video.srcObject = stream;
+      await video.play();
       streamingRef.current = true;
       setStreaming(true);
-      animationRef.current = requestAnimationFrame(scanFrame);
-    } catch {
-      setMessage("No se pudo acceder a la cámara. Verificá los permisos del navegador.");
-      openErrorModal("No se pudo acceder a la cámara. Asegurate de habilitar los permisos.");
+      scanFrame();
+    } catch (error) {
+      stopCamera();
+      const text = cameraErrorMessage(error);
+      setMessage(text);
+      openErrorModal(text);
     }
   }
+
+  async function readPhoto(file: File | undefined) {
+    if (!file) return;
+    stopCamera();
+    setMessage("");
+    setLoadingMessage("Leyendo la foto...");
+    try {
+      const token = await decodeImageFile(file);
+      if (!token) { setLoadingMessage(""); openErrorModal("No se encontró un QR en la foto. Sacala de frente, cerca y sin reflejos. Recordá que el QR cambia cada 30 segundos."); return; }
+      await processQrToken(token);
+    } catch {
+      setLoadingMessage("");
+      openErrorModal("No se pudo leer la foto. Probá de nuevo.");
+    } finally {
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  }
+
+  // Si la app pasa a segundo plano (otra app, bloqueo de pantalla) se apaga la camara: iPhone la corta igual
+  // y al volver quedaria la imagen en negro. Tambien se libera al salir de la pantalla.
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === "hidden") stopCamera(); };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", stopCamera);
+    return () => { document.removeEventListener("visibilitychange", onHide); window.removeEventListener("pagehide", stopCamera); stopCamera(); };
+    // stopCamera solo usa refs y setters estables.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isInside = attendanceSummary.data?.isCurrentlyInside ?? false;
 
@@ -339,7 +337,12 @@ export default function AttendancePage() {
             {streaming ? (
               <Button variant="secondary" size="lg" onClick={stopCamera} icon={<CameraOff className="h-5 w-5" />} className="w-full">Cancelar escaneo</Button>
             ) : (
-              <Button variant="primary" size="lg" onClick={startCamera} disabled={scanMutation.isPending} icon={<Camera className="h-5 w-5" />} className="w-full">{isInside ? "Escanear QR de salida" : "Escanear QR de ingreso"}</Button>
+              <>
+                <Button variant="primary" size="lg" onClick={startCamera} disabled={scanMutation.isPending} icon={<Camera className="h-5 w-5" />} className="w-full">{isInside ? "Escanear QR de salida" : "Escanear QR de ingreso"}</Button>
+                {/* Plan B si la camara en vivo no funciona (permisos, navegador interno, celular viejo). */}
+                <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-hidden onChange={(e) => void readPhoto(e.target.files?.[0])} />
+                <button type="button" disabled={scanMutation.isPending} onClick={() => photoInputRef.current?.click()} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-white/70 underline-offset-4 hover:text-white hover:underline disabled:opacity-50"><ImageUp className="h-4 w-4" aria-hidden /> Sacar foto del QR</button>
+              </>
             )}
           </div>
 
@@ -398,7 +401,7 @@ export default function AttendancePage() {
                   <span className="font-semibold text-white">{modal.stationName}</span>
                 </div>
 
-                {typeof modal.distanceMeters === "number" && (
+                {typeof modal.distanceMeters === "number" && modal.distanceMeters > 0 && (
                   <div className="flex items-center justify-between py-1 border-b border-white/[0.04]">
                     <span className="text-white/50">Distancia registrada</span>
                     <span className="font-semibold text-white">{modal.distanceMeters} metros</span>

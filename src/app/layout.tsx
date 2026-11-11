@@ -20,6 +20,10 @@ export const metadata: Metadata = {
     icon: { url: "/app-icon-192.png", type: "image/png", sizes: "192x192" },
     apple: { url: "/app-icon-192.png", sizes: "192x192" },
   },
+  // iPhone: al agregarla a la pantalla de inicio abre como app (sin barras de Safari) y con nombre corto.
+  appleWebApp: { capable: true, title: "Bomberos", statusBarStyle: "black" },
+  // Que iOS no convierta numeros de legajo, DNI o patentes en enlaces de llamada.
+  formatDetection: { telephone: false, email: false, address: false },
 };
 
 export const viewport: Viewport = {

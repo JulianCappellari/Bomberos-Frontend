@@ -13,7 +13,9 @@ import {
   Gauge,
   Home,
   IdCard,
+  Landmark,
   MessageCircle,
+  Package,
   QrCode,
   Receipt,
   ScanLine,
@@ -30,7 +32,7 @@ import {
   type LucideIcon,
   MonitorPlay,
 } from "lucide-react";
-import { showNavigationItem } from "./permissions";
+import { isCivilRank, showNavigationItem } from "./permissions";
 
 // La navegacion se ordena por lo que la persona quiere hacer, no por areas internas del sistema.
 export type NavGroupId = "service" | "emergency" | "duty" | "fleet" | "station" | "command";
@@ -77,6 +79,7 @@ export const navItems: NavItem[] = [
   { href: "/water-trips", label: "Viajes de agua", shortLabel: "Agua", description: "Servicios de agua y compensaciones", Icon: Droplets, group: "fleet" },
   { href: "/air-equipment", label: "ERA y compresor", shortLabel: "ERA", description: "Cilindros, cargas y pruebas", Icon: Wind, group: "fleet" },
   { href: "/personal-equipment", label: "EPP institucional", shortLabel: "EPP", description: "Stock y entregas de prendas", Icon: Shirt, group: "fleet" },
+  { href: "/supplies", label: "Vestimenta y materiales", shortLabel: "Depósito", description: "Stock, altas, bajas, faltantes y pedidos", Icon: Package, group: "fleet" },
   { href: "/compliance", label: "Vencimientos", shortLabel: "Vencim.", description: "Seguros, VTV, certificaciones", Icon: BadgeCheck, group: "fleet" },
 
   { href: "/agenda", label: "Agenda del cuartel", shortLabel: "Agenda", description: "Capacitaciones, reuniones y eventos con confirmación", Icon: CalendarDays, group: "station" },
@@ -91,6 +94,7 @@ export const navItems: NavItem[] = [
   { href: "/command", label: "Consulta de personal", shortLabel: "Personal", description: "Ficha privada y estadísticas", Icon: Users, group: "command" },
   { href: "/driver-licenses", label: "Licencias de conducir", shortLabel: "Licencias", description: "Habilitaciones de conductores", Icon: BadgeCheck, group: "command" },
   { href: "/participations", label: "Asistencia a servicios", shortLabel: "Servicios", description: "Verificar participaciones", Icon: ShieldCheck, group: "command" },
+  { href: "/commission", label: "Comisión directiva", shortLabel: "Comisión", description: "Finanzas y transparencia del cuartel", Icon: Landmark, group: "command" },
   { href: "/ranking", label: "Ranking", shortLabel: "Ranking", description: "Puntaje y tareas de recuperación", Icon: Trophy, group: "command" },
 ];
 
@@ -110,10 +114,11 @@ export function visibleNavItems(user: NavUser) {
 // Barra inferior del celular: las cuatro acciones mas frecuentes de cada rol; el resto en "Menu".
 export function bottomNavHrefs(user: NavUser) {
   if (isTechnicalAdmin(user)) return ["/admin", "/chat", "/reports"];
+  if (isCivilRank(user?.profile?.rank)) return ["/commission", "/chat", "/agenda", "/expenses"];
   if (user?.role === "GUARD") return ["/dashboard", "/alerts", "/guard-qr", "/guard-log"];
   return ["/dashboard", "/alerts", "/attendance", "/tasks"];
 }
 
 export function homeHref(user: NavUser) {
-  return isTechnicalAdmin(user) ? "/admin" : "/dashboard";
+  return isTechnicalAdmin(user) ? "/admin" : isCivilRank(user?.profile?.rank) ? "/commission" : "/dashboard";
 }
