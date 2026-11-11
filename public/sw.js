@@ -1,4 +1,4 @@
-const BUILD_VERSION = "36ec756ff1fe792a";
+const BUILD_VERSION = "d28eed59453a7429";
 /* Version is injected by prepare-release.mjs. Never cache API or private HTML. */
 const CACHE = `bomberos-public-${BUILD_VERSION}`;
 self.addEventListener("install", (event) => { event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(["/offline.html", "/app-icon-192.png", "/app-icon-512.png"]))); });

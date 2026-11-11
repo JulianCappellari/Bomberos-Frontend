@@ -33,9 +33,9 @@ function formatCheckIn(value: string) {
 }
 
 function trustLabel(value: PresentPersonnelItem["checkInTrust"]) {
-  if (value === "HIGH") return "Validacion alta";
-  if (value === "MEDIUM") return "Validacion media";
-  return "Validacion pendiente";
+  if (value === "HIGH") return "Validación alta";
+  if (value === "MEDIUM") return "Validación media";
+  return "Validación pendiente";
 }
 
 export default function StationPage() {
@@ -44,28 +44,21 @@ export default function StationPage() {
   return (
     <ProtectedLayout>
       <main className="screen-body">
+        <header className="mb-4">
+          <h1 className="text-2xl font-bold text-white">Cuartel ahora</h1>
+          <p className="mt-1 text-sm text-[var(--mut)]">Quién está en el cuartel, quién está disponible y las correcciones de fichaje pendientes.</p>
+        </header>
         <OperationalAvailability />
         <section className="card">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="section-title mb-1 mt-0">
-                Personal en cuartel
-              </div>
-              <p className="text-sm text-[var(--mut)]">
-                Listado en vivo basado en asistencias abiertas.
-              </p>
+              <h2 className="section-title mb-1 mt-0">Personal en el cuartel</h2>
+              <p className="text-sm text-[var(--mut)]">En vivo, según los ingresos con QR abiertos.</p>
             </div>
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] bg-red-500/10 text-red-400">
-              <UserCheck className="h-5 w-5" />
+            <div className="flex shrink-0 items-center gap-2 rounded-[10px] bg-red-500/10 px-3 py-2 text-red-300">
+              <UserCheck className="h-5 w-5" aria-hidden />
+              <span className="text-2xl font-bold">{present.length}</span>
             </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <MiniMetric label="Presentes" value={present.length} />
-            <MiniMetric
-              label="Estaciones"
-              value={new Set(present.map((item) => item.station.id)).size}
-            />
           </div>
         </section>
 
@@ -96,19 +89,6 @@ export default function StationPage() {
         </section>
       </main>
     </ProtectedLayout>
-  );
-}
-
-function MiniMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-[10px] border border-[var(--bord)] bg-[var(--card2)] p-3 text-center">
-      <div className="font-['Bebas_Neue'] text-3xl text-red-400">
-        {value}
-      </div>
-      <div className="text-xs uppercase tracking-[0.08em] text-[var(--mut)]">
-        {label}
-      </div>
-    </div>
   );
 }
 

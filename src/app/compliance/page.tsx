@@ -3,11 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertTriangle,
-  BadgeCheck,
-  CalendarClock,
   ExternalLink,
-  FileCheck2,
   Pencil,
   Plus,
   Search,
@@ -36,9 +32,9 @@ import {
 } from "@/types/compliance";
 
 const CATEGORY_LABELS: Record<ComplianceCategory, string> = {
-  TRAINING: "Capacitacion",
-  CERTIFICATION: "Certificacion",
-  MEDICAL_EXAM: "Apto medico",
+  TRAINING: "Capacitación",
+  CERTIFICATION: "Certificación",
+  MEDICAL_EXAM: "Apto médico",
   DRIVER_LICENSE: "Licencia de conducir",
   INSURANCE: "Seguro",
   VTV: "VTV",
@@ -156,7 +152,7 @@ export default function CompliancePage() {
           <div>
             <div className="section-title mb-1 mt-0">Cumplimiento y vencimientos</div>
             <p className="text-sm text-[var(--mut)]">
-              Capacitaciones, documentacion y mantenimiento preventivo.
+              Capacitaciones, documentación y mantenimiento preventivo. Lo vencido aparece primero.
             </p>
           </div>
           {canManage && (
@@ -170,12 +166,20 @@ export default function CompliancePage() {
           )}
         </section>
 
-        <section className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-5">
-          <Metric label="Total" value={summary?.total} icon={<FileCheck2 />} />
-          <Metric label="Vigentes" value={summary?.valid} tone="green" icon={<BadgeCheck />} />
-          <Metric label="Por vencer" value={summary?.dueSoon} tone="yellow" icon={<CalendarClock />} />
-          <Metric label="Vencidos" value={summary?.expired} tone="red" icon={<AlertTriangle />} />
-          <Metric label="Sin fecha" value={summary?.noExpiry} icon={<FileCheck2 />} />
+        {/* Los totales son a la vez filtros: tocar "Vencidos" muestra solo eso. */}
+        <section className="mt-4 grid grid-cols-4 gap-2" aria-label="Filtrar por estado">
+          {([
+            ["EXPIRED", "Vencidos", summary?.expired, "border-red-500/50 text-red-300"],
+            ["DUE_SOON", "Por vencer", summary?.dueSoon, "border-amber-500/50 text-amber-200"],
+            ["VALID", "Vigentes", summary?.valid, "border-emerald-500/50 text-emerald-300"],
+            ["ALL", "Todos", summary?.total, "border-white/30 text-white"],
+          ] as Array<[ComplianceStatus | "ALL", string, number | undefined, string]>).map(([value, label, count, tone]) => (
+            <button key={value} type="button" aria-pressed={status === value} onClick={() => setStatus(status === value && value !== "ALL" ? "ALL" : value)}
+              className={`rounded-xl border bg-[var(--card)] px-1 py-2.5 text-center transition-colors ${status === value ? tone + " bg-white/[0.06]" : "border-[var(--bord)] text-white/70 hover:border-white/20"}`}>
+              <span className="block text-xl font-bold">{count ?? "–"}</span>
+              <span className="block text-[11px] leading-tight sm:text-xs">{label}</span>
+            </button>
+          ))}
         </section>
 
         <section className="card mt-4">
@@ -198,7 +202,7 @@ export default function CompliancePage() {
             <FilterSelect value={subjectType} onChange={(value) => setSubjectType(value as ComplianceSubjectType | "ALL")}>
               <option value="ALL">Personas y equipos</option>
               <option value="USER">Bomberos</option>
-              <option value="ASSET">Vehiculos / equipos</option>
+              <option value="ASSET">Vehículos / equipos</option>
             </FilterSelect>
             <FilterSelect value={category} onChange={(value) => setCategory(value as ComplianceCategory | "ALL")}>
               <option value="ALL">Todas las categorias</option>
@@ -238,36 +242,6 @@ export default function CompliancePage() {
   );
 }
 
-function Metric({
-  label,
-  value,
-  icon,
-  tone = "default",
-}: {
-  label: string;
-  value?: number;
-  icon: React.ReactNode;
-  tone?: "default" | "green" | "yellow" | "red";
-}) {
-  const colors = {
-    default: "text-red-400 bg-red-500/10",
-    green: "text-emerald-300 bg-emerald-500/10",
-    yellow: "text-yellow-200 bg-yellow-500/10",
-    red: "text-red-300 bg-red-500/10",
-  }[tone];
-  return (
-    <div className="card mb-0 flex items-center gap-3">
-      <div className={`flex h-10 w-10 items-center justify-center rounded-[8px] ${colors}`}>
-        <span className="[&>svg]:h-5 [&>svg]:w-5">{icon}</span>
-      </div>
-      <div>
-        <div className="text-2xl font-bold text-white">{value ?? "..."}</div>
-        <div className="text-xs uppercase text-[var(--mut)]">{label}</div>
-      </div>
-    </div>
-  );
-}
-
 function FilterSelect({
   value,
   onChange,
@@ -297,12 +271,12 @@ function RecordCard({
 }) {
   const remaining =
     record.daysRemaining === null
-      ? "No requiere renovacion"
+      ? "No requiere renovación"
       : record.daysRemaining < 0
-        ? `Vencio hace ${Math.abs(record.daysRemaining)} dias`
+        ? `Venció hace ${Math.abs(record.daysRemaining)} ${Math.abs(record.daysRemaining) === 1 ? "día" : "días"}`
         : record.daysRemaining === 0
           ? "Vence hoy"
-          : `${record.daysRemaining} dias restantes`;
+          : `${record.daysRemaining === 1 ? "Falta 1 día" : `Faltan ${record.daysRemaining} días`}`;
 
   return (
     <article className="card mb-0">
@@ -480,11 +454,11 @@ function RecordFormModal({
           </Field>
           <Field label="Avisar con anticipacion">
             <select className="input-dark" value={form.warningDays} onChange={(event) => set("warningDays", Number(event.target.value))}>
-              <option value={7}>7 dias</option>
-              <option value={15}>15 dias</option>
-              <option value={30}>30 dias</option>
-              <option value={60}>60 dias</option>
-              <option value={90}>90 dias</option>
+              <option value={7}>7 días</option>
+              <option value={15}>15 días</option>
+              <option value={30}>30 días</option>
+              <option value={60}>60 días</option>
+              <option value={90}>90 días</option>
             </select>
           </Field>
           <Field label="Fecha de emision">

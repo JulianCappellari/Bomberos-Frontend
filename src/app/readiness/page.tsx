@@ -145,7 +145,7 @@ export default function ReadinessPage() {
             {(data.blockingReasons.length > 0 ||
               data.warnings.length > 0) && (
               <section className="card space-y-2">
-                <div className="section-title mb-2 mt-0">Diagnostico</div>
+                <div className="section-title mb-2 mt-0">Diagnóstico</div>
                 {data.blockingReasons.map((reason) => (
                   <Notice key={reason} critical text={reason} />
                 ))}
@@ -322,7 +322,7 @@ export default function ReadinessPage() {
                           {alert.location}
                         </div>
                         <div className="text-xs text-[var(--mut)]">
-                          {alert.type} · {formatTime(alert.createdAt)}
+                          {({ FIRE: "Incendio", RESCUE: "Rescate", ACCIDENT: "Accidente", CHEMICAL: "Químico", MEDICAL: "Médico", FLOOD: "Inundación", OTHER: "Otro" } as Record<string, string>)[alert.type] ?? alert.type} · {formatTime(alert.createdAt)}
                         </div>
                       </div>
                       <div className="flex gap-2 text-xs">

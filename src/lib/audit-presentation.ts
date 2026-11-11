@@ -1,5 +1,5 @@
 const commonActions: Record<string, string> = {
- ATTENDANCE_CLOSED_BY_ADMIN: "Permanencia cerrada por el administrador tecnico", MISSION_DRIVER_NOT_AUTHORIZED: "Salida rechazada: conductor no habilitado", DOCUMENT_PUBLISHED_EDITED: "Acta publicada editada dentro de las 24 horas",
+ ALERT_GOING_REMOVED_NO_SHOW: "Respuesta Voy eliminada: no figuró en la planilla de la intervención", ATTENDANCE_CLOSED_BY_ADMIN: "Permanencia cerrada por el administrador tecnico", MISSION_DRIVER_NOT_AUTHORIZED: "Salida rechazada: conductor no habilitado", DOCUMENT_PUBLISHED_EDITED: "Acta publicada editada dentro de las 24 horas",
  SPECIAL_PERMISSION_GRANTED: "Permiso especial concedido", SPECIAL_PERMISSION_REVOKED: "Permiso especial revocado",
  SHIFT_SWAP_REQUESTED: "Intercambio de guardia propuesto", SHIFT_SWAP_ACCEPTED: "Cobertura de guardia aceptada; pendiente de jefatura", SHIFT_SWAP_APPROVED: "Intercambio de guardia aprobado", SHIFT_SWAP_REJECTED: "Intercambio de guardia rechazado", SHIFT_SWAP_CANCELLED: "Propuesta de intercambio cancelada",
  INSPECTION_PARTICIPANT_REMOVED: "Participante no firmante retirado del control con recalculo",
@@ -40,7 +40,7 @@ const commonActions: Record<string, string> = {
  MAINTENANCE_CREATED: "Mantenimiento registrado", MAINTENANCE_STATUS_CHANGED: "Estado de mantenimiento modificado", MAINTENANCE_TASK_CREATED: "Tarea creada desde mantenimiento",
  SERVICE_ATTENDANCE_RECORDED: "Asistencia a servicio declarada", SERVICE_ATTENDANCE_VERIFIED: "Asistencia a servicio verificada", SERVICE_ATTENDANCE_CANCELLED: "Asistencia a servicio anulada", SERVICE_ATTENDANCE_VIEWED: "Asistencia a servicio consultada",
  CONTROL_GROUP_SAVED: "Grupo de control guardado", CONTROL_GROUP_MEMBER_ARCHIVED: "Integrante retirado del grupo de control",
- NOTIFICATION_READ: "Notificacion marcada como leida", NOTEBOOK_RETIRED: "Entrada de libreta retirada", WORK_TEAM_CHANGED: "Equipo de tarea modificado",
+ NOTIFICATION_READ: "Notificación marcada como leída", NOTIFICATION_READ_ALL: "Todas las notificaciones marcadas como leídas", NOTEBOOK_RETIRED: "Entrada de libreta retirada", WORK_TEAM_CHANGED: "Equipo de tarea modificado",
  EQUIPMENT_REQUEST_CREATED: "Prenda solicitada", EQUIPMENT_REQUEST_EDITED: "Solicitud de prenda modificada", EQUIPMENT_REQUEST_CANCELLED: "Solicitud de prenda cancelada", EQUIPMENT_REQUEST_FULFILLED: "Prenda solicitada entregada",
  WORK_CREATED: "Tarea creada", WORK_SUBMITTED: "Trabajo enviado para verificacion", WORK_VERIFIED: "Trabajo verificado", WORK_RETURNED: "Trabajo devuelto para completar", WORK_CANCELLED: "Tarea cancelada",
  SYSTEM_DEMO_CREDENTIALS_RESET: "Credenciales de demostracion restablecidas", DEMO_COMPREHENSIVE_SEEDED: "Datos de demostracion cargados", SYSTEM_DEMO_BUSINESS_REPAIRED: "Datos sinteticos corregidos",

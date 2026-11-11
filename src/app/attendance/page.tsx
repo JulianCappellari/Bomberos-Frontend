@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 import {
   CheckCircle2,
   CircleX,
-  Clock,
   ShieldCheck,
   UserCheck,
   UserX,
@@ -21,8 +20,6 @@ import { useMyAttendanceSummary } from "@/hooks/use-attendence";
 import { useScanAttendanceQr } from "@/hooks/use-scan-attendance-qr";
 import { getCurrentPositionAsync } from "@/lib/geolocation";
 import { ProtectedLayout } from "@/components/layout/protected-layout";
-import { PageHeader } from "@/components/ui/page-header";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { AnimatedPage } from "@/components/ui/animated-layout";
@@ -274,66 +271,18 @@ export default function AttendancePage() {
   return (
     <ProtectedLayout>
       <AnimatedPage className="space-y-6">
-        {/* Page Header */}
-        <PageHeader
-          title="Fichaje de Asistencia"
-          subtitle="Escaneo de código QR geolocalizado en el cuartel"
-          icon={<QrCode className="h-6 w-6" />}
-          badge={
-            <Badge variant={isInside ? "green" : "gray"} pulse={isInside}>
-              {isInside ? "En Cuartel" : "Sin Guardia Activa"}
-            </Badge>
-          }
-        />
-
-        {/* Current Attendance Status Card */}
-        <div className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-[#121316] p-6 shadow-xl backdrop-blur-md">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div
-                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border shadow-inner ${
-                  isInside
-                    ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                    : "bg-white/[0.04] border-white/[0.08] text-white/40"
-                }`}
-              >
-                {isInside ? (
-                  <UserCheck className="h-7 w-7" />
-                ) : (
-                  <UserX className="h-7 w-7" />
-                )}
-              </div>
-
-              <div>
-                <div className="font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-wider text-white/50">
-                  Estado de tu Registro
-                </div>
-                <h3 className="font-[family-name:var(--font-bebas)] text-2xl uppercase tracking-wider text-white">
-                  {isInside ? "Guardia Activa en Cuartel" : "Fuera del Cuartel"}
-                </h3>
-                <p className="text-xs text-white/50 mt-0.5 font-[family-name:var(--font-barlow)]">
-                  {isInside
-                    ? "Tenés un ingreso activo. Al escanear registrarás tu salida."
-                    : "No hay asistencia abierta. Escaneá para registrar ingreso."}
-                </p>
-              </div>
+        {/* Estado y accion principal arriba: es la pantalla mas usada del sistema. */}
+        <header>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-white"><QrCode className="h-6 w-6 text-red-400" aria-hidden /> Mi asistencia</h1>
+          <div className={`mt-3 flex items-center gap-3 rounded-2xl border p-4 ${isInside ? "border-emerald-500/40 bg-emerald-500/10" : "border-white/[0.08] bg-[var(--card)]"}`}>
+            {isInside ? <UserCheck className="h-7 w-7 shrink-0 text-emerald-400" aria-hidden /> : <UserX className="h-7 w-7 shrink-0 text-white/50" aria-hidden />}
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-white">{isInside ? "Estás en el cuartel" : "Estás fuera del cuartel"}</p>
+              <p className="text-sm text-white/65">{isInside ? "Escaneá el QR del cuartel al irte para registrar la salida." : "Escaneá el QR del cuartel para registrar tu ingreso."}</p>
             </div>
-
-            <div className="flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:self-auto">
-              <Clock className="h-5 w-5 text-red-400 shrink-0" />
-              <div>
-                <div className="font-[family-name:var(--font-barlow-condensed)] text-[11px] font-bold uppercase tracking-wider text-white/40">
-                  Horas este mes
-                </div>
-                <div className="font-[family-name:var(--font-bebas)] text-2xl text-white">
-                  {attendanceSummary.isLoading
-                    ? "..."
-                    : attendanceSummary.data?.currentMonthFormatted ?? "0h 0m"}
-                </div>
-              </div>
-            </div>
+            <div className="shrink-0 text-right"><p className="text-xs text-white/55">Este mes</p><p className="font-bold text-white">{attendanceSummary.isLoading ? "…" : attendanceSummary.data?.currentMonthFormatted ?? "0h 0m"}</p></div>
           </div>
-        </div>
+        </header>
 
         {/* QR Scanner Viewport */}
         <section className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-[#121316] p-5 sm:p-6 shadow-xl">
@@ -375,39 +324,23 @@ export default function AttendancePage() {
                 </div>
                 <div className="space-y-1">
                   <p className="font-[family-name:var(--font-barlow-condensed)] text-sm font-bold uppercase tracking-wider text-white">
-                    Cámara en espera
+                    Cámara apagada
                   </p>
                   <p className="text-xs text-white/40 max-w-xs">
-                    Presioná &ldquo;Abrir Cámara&rdquo; para escanear el QR físico ubicado en el cuartel.
+                    Tocá el botón de abajo y apuntá al QR que muestra la guardia en el cuartel.
                   </p>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Scanner Controls */}
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={startCamera}
-              disabled={streaming || scanMutation.isPending}
-              icon={<Camera className="h-5 w-5" />}
-              className="w-full"
-            >
-              Abrir Cámara
-            </Button>
-
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={stopCamera}
-              disabled={!streaming}
-              icon={<CameraOff className="h-5 w-5" />}
-              className="w-full"
-            >
-              Detener
-            </Button>
+          {/* Un solo boton que alterna: menos decisiones en el momento de fichar */}
+          <div className="mt-5">
+            {streaming ? (
+              <Button variant="secondary" size="lg" onClick={stopCamera} icon={<CameraOff className="h-5 w-5" />} className="w-full">Cancelar escaneo</Button>
+            ) : (
+              <Button variant="primary" size="lg" onClick={startCamera} disabled={scanMutation.isPending} icon={<Camera className="h-5 w-5" />} className="w-full">{isInside ? "Escanear QR de salida" : "Escanear QR de ingreso"}</Button>
+            )}
           </div>
 
           {/* Loading or status feedback */}
@@ -425,55 +358,15 @@ export default function AttendancePage() {
           )}
         </section>
 
-        {/* Instructions / Protocol */}
-        <section className="rounded-3xl border border-white/[0.08] bg-[#121316] p-5 sm:p-6 shadow-xl">
-          <h2 className="flex items-center gap-2 font-[family-name:var(--font-bebas)] text-xl uppercase tracking-wider text-white">
-            <ShieldCheck className="h-5 w-5 text-red-400" />
-            Protocolo de Fichaje y Geovalidación
-          </h2>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-4 font-[family-name:var(--font-barlow)]">
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-1">
-              <span className="font-[family-name:var(--font-bebas)] text-xl text-red-500">
-                01
-              </span>
-              <div className="text-xs font-bold text-white">Ubicación GPS</div>
-              <p className="text-[11px] text-white/50">
-                El navegador solicitará permisos de localización para certificar presencia física en el cuartel.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-1">
-              <span className="font-[family-name:var(--font-bebas)] text-xl text-red-500">
-                02
-              </span>
-              <div className="text-xs font-bold text-white">QR Dinámico</div>
-              <p className="text-[11px] text-white/50">
-                El código del cuartel rota periódicamente para evitar copias o fotografías remotas.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-1">
-              <span className="font-[family-name:var(--font-bebas)] text-xl text-red-500">
-                03
-              </span>
-              <div className="text-xs font-bold text-white">Cómputo Automático</div>
-              <p className="text-[11px] text-white/50">
-                Al escanear la salida, el sistema calcula de inmediato las horas trabajadas del turno.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-1">
-              <span className="font-[family-name:var(--font-bebas)] text-xl text-red-500">
-                04
-              </span>
-              <div className="text-xs font-bold text-white">Historial Central</div>
-              <p className="text-[11px] text-white/50">
-                Todas las asistencias alimentan la bitácora de guardia de jefatura automáticamente.
-              </p>
-            </div>
-          </div>
-        </section>
+        <details className="rounded-2xl border border-white/[0.08] bg-[var(--card)] p-4 text-sm text-white/75">
+          <summary className="flex cursor-pointer items-center gap-2 font-semibold text-white"><ShieldCheck className="h-4 w-4 text-red-400" aria-hidden /> ¿Cómo funciona?</summary>
+          <ol className="mt-3 list-decimal space-y-2 pl-5">
+            <li>El celular pide tu ubicación para confirmar que estás en el cuartel (dentro de los 100 metros).</li>
+            <li>El código QR cambia cada 30 segundos, así no sirve una foto vieja.</li>
+            <li>Mientras estés adentro, cada 30 minutos te va a pedir que confirmes que seguís en el cuartel. Si no respondés, la permanencia se cierra y no suma horas.</li>
+            <li>Si salís a una emergencia, la confirmación se pausa y el tiempo se acredita igual.</li>
+          </ol>
+        </details>
 
         {/* Modal feedback */}
         <Modal

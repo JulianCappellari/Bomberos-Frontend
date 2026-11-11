@@ -27,14 +27,14 @@ export function PushSettings() {
     try {
       // Permission is requested only by this explicit gesture, including on installed iPhone web apps.
       const granted = await Notification.requestPermission(); window.dispatchEvent(new Event(permissionEvent));
-      if (granted !== "granted") { setMessage("No se concedio permiso. Puede cambiarlo en la configuracion del navegador."); return; }
+      if (granted !== "granted") { setMessage("No se dio permiso. Podés cambiarlo en la configuración del navegador."); return; }
       await navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" });
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription() || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: applicationKey(query.data.publicKey) });
       await api.post("/push/subscriptions", subscription.toJSON());
-      setMessage("Dispositivo registrado. Envie una prueba para comprobar la recepcion.");
+      setMessage("Dispositivo registrado. Enviá una prueba para comprobar que llega.");
       await client.invalidateQueries({ queryKey: ["push-settings"] });
-    } catch { setMessage("No se pudo activar. Revise la conexion, el permiso y la instalacion de la app."); }
+    } catch { setMessage("No se pudo activar. Revisá la conexión, el permiso y la instalación de la app."); }
     finally { setBusy(false); }
   }
   async function deactivate() {
@@ -45,28 +45,26 @@ export function PushSettings() {
       await (await registration?.pushManager.getSubscription())?.unsubscribe();
       await client.invalidateQueries({ queryKey: ["push-settings"] });
       setMessage("Notificaciones desactivadas en este dispositivo.");
-    } catch { setMessage("No se pudo desactivar completamente. Reintente o cierre esta sesion."); }
+    } catch { setMessage("No se pudo desactivar del todo. Reintentá o cerrá la sesión."); }
     finally { setBusy(false); }
   }
   async function test() {
     setBusy(true); setMessage("");
-    try { await api.post("/push/test"); setMessage("Prueba en cola. Compruebe el aviso del dispositivo; esto no confirma su recepcion."); }
+    try { await api.post("/push/test"); setMessage("Prueba enviada. Fijate si te llegó el aviso."); }
     catch { setMessage("No se pudo poner la prueba en cola."); }
     finally { setBusy(false); }
   }
   const registered = Boolean(query.data?.subscriptions.length);
-  return <section className="my-5 border-y border-[var(--bord)] py-4" aria-labelledby="push-heading">
-    <h2 id="push-heading" className="flex items-center gap-2 font-bold"><Bell size={18} /> Avisos en este dispositivo</h2>
-    {query.isLoading ? <p className="mt-2 text-sm">Consultando configuracion...</p> : query.isError ? <p role="alert" className="mt-2 text-sm">No se pudo consultar. <button className="underline" onClick={() => query.refetch()}>Reintentar</button></p> : <>
-      <p className="mt-2 text-sm text-[var(--mut)]">{!query.data?.enabled ? "El servidor aun no tiene configuradas las claves de notificaciones externas." : !supported ? "Requiere HTTPS y un navegador compatible. En iPhone, instale la app en la pantalla de inicio y abrala desde alli." : registered ? "Este dispositivo esta registrado para recibir avisos mientras la sesion siga vigente." : "Los avisos externos estan desactivados en este dispositivo."}</p>
+  return <section className="pb-4" aria-label="Avisos en este dispositivo">
+    {query.isLoading ? <p className="mt-2 text-sm">Consultando configuración…</p> : query.isError ? <p role="alert" className="mt-2 text-sm">No se pudo consultar. <button className="underline" onClick={() => query.refetch()}>Reintentar</button></p> : <>
+      <p className="mt-2 text-sm text-[var(--mut)]">{!query.data?.enabled ? "Los avisos en el celular todavía no están habilitados en el sistema. Mientras tanto, vas a ver todo acá y en la campana." : !supported ? "Requiere HTTPS y un navegador compatible. En iPhone, instalá la app en la pantalla de inicio y abrila desde ahí." : registered ? "Este dispositivo recibe avisos mientras la sesión siga abierta." : "Los avisos están desactivados en este dispositivo."}</p>
       {supported && query.data?.enabled && process.env.NODE_ENV === "production" && <div className="mt-3 flex flex-wrap gap-2">
         {!registered && <button className="app-button w-auto" disabled={busy || permission === "denied"} onClick={activate}><Bell size={16} /> Activar avisos</button>}
         {registered && <><button className="app-button w-auto" disabled={busy} onClick={test}><Send size={16} /> Enviar prueba</button><button className="app-button w-auto" disabled={busy} onClick={deactivate}><BellOff size={16} /> Desactivar</button></>}
       </div>}
-      {process.env.NODE_ENV !== "production" && <p className="mt-2 text-xs text-[var(--mut)]">Las notificaciones externas se activan en una compilacion de produccion, no en npm run dev.</p>}
-      {permission === "denied" && <p className="mt-2 text-sm">Permiso bloqueado. Habilitelo en los ajustes del navegador.</p>}
+      {permission === "denied" && <p className="mt-2 text-sm">El navegador tiene bloqueados los avisos. Habilitalos en sus ajustes.</p>}
     </>}
     {message && <p role="status" className="mt-3 text-sm">{message}</p>}
-    <p className="mt-3 text-xs text-[var(--mut)]">La pantalla bloqueada solo muestra un aviso generico. La entrega depende de conexion, permisos, ahorro de energia y ajustes del sistema; no sustituye los canales de emergencia del cuartel ni garantiza sonido en silencio.</p>
+    <p className="mt-3 text-xs text-[var(--mut)]">Con la pantalla bloqueada se muestra un aviso genérico. La entrega depende de la conexión y del ahorro de energía del celular: no reemplaza la sirena ni la radio del cuartel.</p>
   </section>;
 }

@@ -6,7 +6,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Lock, User, Eye, EyeOff, ShieldCheck, AlertCircle } from "lucide-react";
+import { Lock, User, Eye, EyeOff, ShieldCheck, AlertCircle } from "lucide-react";
+import { StationCrest } from "@/components/layout/station-crest";
 import { useAuth } from "@/features/auth/auth-context";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { Button } from "@/components/ui/button";
@@ -50,9 +51,7 @@ export default function LoginPage() {
 
       <section className="relative z-10 hidden flex-col justify-between px-10 py-12 lg:flex xl:px-16">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-red-800 shadow-lg shadow-red-900/40">
-            <Flame className="h-6 w-6" />
-          </div>
+          <StationCrest height={88} label="Escudo de Bomberos Voluntarios de Sampacho" />
           <div>
             <p className="font-[family-name:var(--font-bebas)] text-3xl tracking-wider">
               BOMBEROS <span className="text-red-500">SAMPACHO</span>
@@ -112,9 +111,9 @@ export default function LoginPage() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.4 }}
-            className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 via-red-600 to-red-800 text-white shadow-xl shadow-red-700/40 ring-1 ring-red-400/30"
+            className="mx-auto flex justify-center"
           >
-            <Flame className="h-8 w-8 animate-pulse" />
+            <StationCrest height={96} label="Escudo de Bomberos Voluntarios de Sampacho" />
           </motion.div>
 
           <h1 className="font-[family-name:var(--font-bebas)] text-4xl uppercase tracking-wider text-white">

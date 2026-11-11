@@ -4,11 +4,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Flame, LogOut, Menu, Search, ChevronRight, Siren } from "lucide-react";
+import { LogOut, Menu, Search, ChevronRight, Siren } from "lucide-react";
+import { StationCrest } from "@/components/layout/station-crest";
 import { useAuth } from "@/features/auth/auth-context";
 import { PresencePrompt } from "@/components/operations/presence-prompt";
 import { TaskSyncPanel } from "@/components/operations/task-sync-panel";
 import { AppUpdateBanner } from "@/components/operations/app-lifecycle";
+import { OfflineBanner, PendingAlertBanner } from "@/components/operations/status-banners";
 import { NotificationBell } from "@/components/operations/notification-bell";
 import { GuardMode } from "@/components/operations/guard-mode";
 import { BackButton, HomeButton } from "@/components/layout/navigation-buttons";
@@ -133,9 +135,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg)] text-white">
         <div className="relative mb-4 flex h-16 w-16 items-center justify-center">
           <div className="absolute inset-0 animate-ping rounded-full bg-red-600/20" />
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-600 text-white shadow-xl shadow-red-600/40">
-            <Flame className="h-6 w-6 animate-pulse" />
-          </div>
+          <div className="relative"><StationCrest height={48} /></div>
         </div>
         <p className="font-[family-name:var(--font-barlow-condensed)] text-sm uppercase tracking-widest text-white/50">
           Cargando cuartel...
@@ -174,9 +174,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
       >
         <div className="flex h-16 items-center border-b border-white/[0.08] px-4">
           <Link href={home} className="group flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-800 text-white shadow-lg shadow-red-900/40 transition-transform duration-200 group-hover:scale-105">
-              <Flame className="h-5 w-5" />
-            </div>
+            <StationCrest height={40} />
             <div className="min-w-0">
               <div className="truncate font-[family-name:var(--font-bebas)] text-xl tracking-wider text-white">
                 BOMBEROS <span className="text-red-500">SAMPACHO</span>
@@ -256,9 +254,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
           <div className="flex min-w-0 items-center gap-2.5">
             {!isDashboard && <BackButton />}
             <div className="flex min-w-0 items-center gap-2.5 lg:hidden">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white shadow-md shadow-red-900/40">
-                <Flame className="h-4 w-4" />
-              </div>
+              <StationCrest height={32} />
               <div className="truncate font-[family-name:var(--font-bebas)] text-xl tracking-wider text-white">
                 <span className="sm:hidden">SAMPACHO</span>
                 <span className="hidden sm:inline">
@@ -329,6 +325,8 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             >
+              <OfflineBanner />
+              <PendingAlertBanner />
               <PresencePrompt />
               <TaskSyncPanel />
               <AppUpdateBanner />

@@ -223,7 +223,7 @@ export default function CalendarPage() {
                         className={[
                           "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
                           isToday
-                            ? "bg-red-500 text-white"
+                            ? "bg-red-600 text-white"
                             : isCurrentMonth
                               ? "text-white"
                               : "text-[var(--dim)]",

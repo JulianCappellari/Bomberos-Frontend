@@ -9,6 +9,7 @@ import {useAuth} from "@/features/auth/auth-context";
 import {api} from "@/lib/api-client";
 import {getErrorMessage} from "@/lib/get-error-message";
 import {SheetAmendments,SheetAmendment} from "@/components/operations/sheet-amendments";
+import {ReinforcementRequest} from "@/components/operations/reinforcement-request";
 import {IncidentMovements} from "@/components/operations/incident-movements";
 import {IncidentNotebook} from "@/components/operations/incident-notebook";
 import {IncidentRedo} from "@/components/operations/incident-redo";
@@ -41,12 +42,12 @@ function Sheet({id,data,saved}:{id:string;data:Response;saved:()=>Promise<unknow
  return <>
  <header className="mt-4"><div className="flex flex-wrap items-center gap-2"><span className={`badge ${finalized?"badge-green":"badge-red"}`}>{finalized?"Cerrada":"En curso"}</span><span className="badge badge-gray">{types[incident.type]||incident.type}</span></div>
  <h1 className="mt-2 text-2xl font-bold text-white">{incident.title}</h1>
- <p className="mt-1 text-sm text-[var(--mut)]">{incident.location} · Inicio {time(incident.occurredAt)}</p></header>
+ <p className="mt-1 text-sm text-[var(--mut)]">{incident.location} · Inicio {time(incident.occurredAt)}</p><div className="mt-3 flex flex-wrap gap-2"><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(incident.location)}`} target="_blank" rel="noopener noreferrer" className="app-button app-button-outline w-auto">Ver en mapa</a><Link href={`/notebook?incident=${id}`} className="app-button app-button-outline w-auto">Libreta del siniestro</Link>{callerPhone!=="Sin registrar"&&<a href={`tel:${callerPhone.replace(/[^\d+]/g,"")}`} className="app-button app-button-outline w-auto">Llamar a quien avisó</a>}{incidentOpen&&<ReinforcementRequest incidentId={id}/>}</div></header>
  <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
   {[["Móviles fuera",away,away>0],["Móviles retornados",returned,false],["Personal en base",sheet?.baseUserIds.length??0,false],["Planilla",sheet?`Guardada (rev. ${sheet.revision})`:"Sin guardar",!sheet&&!finalized]].map(([label,value,warn])=><div key={String(label)} className={`rounded-xl border p-3 ${warn?"border-amber-500/40 bg-amber-500/10":"border-[var(--bord)] bg-[var(--card)]"}`}><dt className="text-xs text-[var(--mut)]">{label}</dt><dd className="mt-1 font-bold text-white">{value}</dd></div>)}
  </dl>
  <p className="mt-3 text-sm text-[var(--mut)]">Despachó la alerta: <span className="text-white">{incident.alert?.createdBy.profile?.fullName||incident.alert?.createdBy.username||"Sin alerta"}</span> · Llamó: <span className="text-white">{callerName}</span> · Tel.: <span className="text-white">{callerPhone}</span>{sheet&&<> · Completó: <span className="text-white">{sheet.author.username}</span></>}</p>
- {incidentOpen&&!data.canWrite&&<div role="status" className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4"><p className="min-w-0 flex-1 text-sm text-amber-100">Para cargar salidas o completar la planilla tenés que registrar tu ingreso al cuartel con el QR.</p><Link href="/attendance" className="app-button w-auto">Registrar ingreso</Link></div>}
+ {incidentOpen&&!data.canWrite&&<div role="status" className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4"><p className="min-w-0 flex-1 text-sm text-amber-100">Podés consultar esta planilla. Para editarla necesitás presencia activa por QR en el cuartel. Administrador y oficial están exceptuados.</p><Link href="/attendance" className="app-button w-auto">Registrar ingreso</Link></div>}
  {incident.replacesIncidentId&&<p className="mt-4 rounded-lg border border-sky-500/40 bg-sky-500/10 p-3 text-sm">Esta intervención rehace una anulada. Cargá las salidas con sus horarios reales y completá la planilla.</p>}
  <IncidentRedo incidentId={id} closed={finalized} voided={Boolean(incident.voidedAt)}/>
 

@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { Archive, BookOpen, Copy, Download, ExternalLink, Pencil, Plus, RefreshCw, Search, Send, X } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/auth-context";
+import { DocumentReading, useMyDocumentReads } from "@/components/operations/document-reading";
 import { useDocuments, useSaveDocument, useTransitionDocument } from "@/hooks/use-operations";
 import { useShifts } from "@/hooks/use-shifts";
 import { useIncidents } from "@/hooks/use-incidents";
@@ -47,6 +48,7 @@ export function DocumentsScreen({ guardLog = false }: { guardLog?: boolean }) {
   const [editing, setEditing] = useState<OperationalDocument | null>(null);
   const [draft, setDraft] = useState<DocumentInput>(() => emptyDocument(guardLog ? "SHIFT_REPORT" : "PROTOCOL"));
   const [expanded, setExpanded] = useState("");
+  const myReads = useMyDocumentReads();
   const [error, setError] = useState("");
   const visible = (query.data || []).filter((document) => `${document.title} ${document.category} ${document.body}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
   function editDocument(document: OperationalDocument | null, clone = false) {
@@ -72,8 +74,8 @@ export function DocumentsScreen({ guardLog = false }: { guardLog?: boolean }) {
     catch (err) { setError(getErrorMessage(err, "No se pudo cambiar el estado.")); }
   }
   return <main className="screen-body">
-    <div className="mb-3 flex gap-3 text-xs"><Link href="/hazmat" className="text-sky-200 underline">Materiales peligrosos / GRE</Link></div><div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-      <div><h1 className="text-2xl font-bold text-white">{guardLog ? "Actas de guardia" : "Documentacion operativa"}</h1><p className="mt-1 text-sm text-[var(--mut)]">Protocolos y actas vinculadas a guardias e intervenciones</p></div>
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div><h1 className="text-2xl font-bold text-white">{guardLog ? "Actas de guardia" : "Protocolos y documentos"}</h1><p className="mt-1 text-sm text-[var(--mut)]">{guardLog ? "Novedades de cada turno de guardia." : "Biblioteca del cuartel: protocolos, manuales y actas. Marcá cada protocolo como leído; si se actualiza, te va a pedir leerlo de nuevo."}</p>{!guardLog && (() => { const pending = (query.data || []).filter((d) => d.status === "PUBLISHED" && d.kind === "PROTOCOL" && !myReads.data?.some((r) => r.documentId === d.id && r.revision === d.revision)).length; return myReads.data && pending > 0 ? <p className="mt-2 inline-block rounded-lg bg-amber-500/15 px-2.5 py-1 text-sm font-semibold text-amber-200">{pending} {pending === 1 ? "protocolo sin leer" : "protocolos sin leer"}</p> : null; })()}</div>
       <div className="flex gap-2"><button type="button" className="btn-icon" title="Actualizar documentos" aria-label="Actualizar documentos" onClick={() => query.refetch()}><RefreshCw className="h-4 w-4" /></button>
         {manager && <button type="button" className="app-button app-button-red w-auto" onClick={() => editDocument(null)}><Plus className="h-4 w-4" /> Nuevo documento</button>}</div>
     </div>
@@ -101,6 +103,7 @@ export function DocumentsScreen({ guardLog = false }: { guardLog?: boolean }) {
     </div>
     {query.isLoading && <p className="py-4 text-sm text-[var(--mut)]">Cargando documentos...</p>}
     {query.isError && <ErrorNotice>No se pudieron cargar los documentos. <button type="button" className="underline" onClick={() => query.refetch()}>Reintentar</button></ErrorNotice>}
+    {!guardLog && kind === "PROTOCOL" && <Link href="/hazmat" className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-[var(--bord)] bg-[var(--card)] p-4 hover:border-white/25"><span><span className="block text-xs text-[var(--mut)]">Protocolo de consulta · GRE 2024</span><span className="block font-bold">Materiales peligrosos: buscar por número ONU o nombre</span></span><span aria-hidden className="text-[var(--mut)]">›</span></Link>}
     <div className="space-y-3">{visible.map((document) => {
       const opened = expanded === document.id;
       const context = document.publicationContext;
@@ -119,6 +122,7 @@ export function DocumentsScreen({ guardLog = false }: { guardLog?: boolean }) {
             <button type="button" className="btn-icon" title="Editar borrador" aria-label="Editar borrador" onClick={() => editDocument(document)}><Pencil className="h-4 w-4" /></button>
             <button type="button" className="app-button app-button-outline w-auto" disabled={transition.isPending} onClick={() => changeStatus(document, "PUBLISHED")}><Send className="h-4 w-4" /> Publicar</button>
           </>}
+          {document.status === "PUBLISHED" && <DocumentReading documentId={document.id} revision={document.revision} manager={isManager(user?.role)} />}
           {manager && document.status === "PUBLISHED" && <DocumentRectification document={document} onCreated={draft => { setStatus(""); editDocument(draft); void query.refetch(); }} />}
           {manager && document.status !== "ARCHIVED" && <button type="button" className="btn-icon" title="Archivar documento" aria-label="Archivar documento" disabled={transition.isPending} onClick={() => changeStatus(document, "ARCHIVED")}><Archive className="h-4 w-4" /></button>}
         </div>

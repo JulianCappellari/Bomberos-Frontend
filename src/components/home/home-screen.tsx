@@ -8,6 +8,7 @@ import { NextControlBanner } from "@/components/operations/next-control-banner";
 import { QuickAvailability } from "@/components/operations/operational-availability";
 import { PresentPersonnelPanel } from "@/components/operations/present-personnel-panel";
 import { FireRiskPanel } from "@/components/operations/fire-risk-panel";
+import { ReviewQueue } from "./review-queue";
 import { useAuth } from "@/features/auth/auth-context";
 import { useDashboardSummary } from "@/hooks/use-dashboard";
 import { api } from "@/lib/api-client";
@@ -96,6 +97,8 @@ export function HomeScreen() {
           </section>
         )}
 
+        <FireRiskPanel />
+
         <section aria-label="Pendientes">
           <SectionTitle>Para hacer</SectionTitle>
           <div className="space-y-2">
@@ -113,6 +116,8 @@ export function HomeScreen() {
           </div>
           <MyTasksPanel />
         </section>
+
+        {profile === "COMMAND" && <ReviewQueue />}
 
         <section aria-label="Accesos rápidos">
           <SectionTitle>Accesos rápidos</SectionTitle>
@@ -154,8 +159,23 @@ export function HomeScreen() {
           </section>
         )}
 
-        {showStation && <PresentPersonnelPanel />}
-        {showStation && <FireRiskPanel />}
+        {/* Pedido del cuartel: ultimas alertas junto al personal presente en tiempo real, para todos. */}
+        <div className="grid items-start gap-6 lg:grid-cols-2">
+          <section aria-label="Últimas alertas">
+            <SectionTitle action={<Link href="/alerts" className="flex items-center gap-1 text-sm text-red-300 hover:text-red-200">Ver todas<ChevronRight className="h-4 w-4" aria-hidden /></Link>}>Últimas alertas</SectionTitle>
+            {alerts.isLoading ? <p role="status" className="text-sm text-white/60">Cargando…</p> : (alerts.data || []).length === 0 ? <p className="rounded-xl border border-white/[0.08] bg-[var(--card)] p-3 text-sm text-white/60">No hay alertas registradas.</p> : (
+              <ul className="space-y-2">
+                {(alerts.data || []).slice(0, 3).map((alert) => (
+                  <li key={alert.id}><Link href="/alerts" className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[var(--card)] p-3 hover:border-white/20">
+                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${alert.status === "ACTIVE" ? "bg-red-500" : "bg-white/25"}`} aria-hidden />
+                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{label(alertTypeLabels, alert.type)} · {alert.location}</span><span className="block text-xs text-white/55">{alert.status === "ACTIVE" ? "Activa" : alert.status === "CANCELLED" ? "Cancelada" : "Resuelta"} · {new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(alert.createdAt))}</span></span>
+                  </Link></li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <PresentPersonnelPanel />
+        </div>
         {summary.isError && <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">No se pudo actualizar el resumen. Revisá la conexión; los datos se reintentan solos.</p>}
       </div>
     </ProtectedLayout>

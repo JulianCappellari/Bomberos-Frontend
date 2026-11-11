@@ -2,21 +2,36 @@
 @import "tailwindcss";
 
 :root {
+  /* Superficies y texto: tema oscuro (por defecto). Todos los textos cumplen WCAG AA (4.5:1) sobre --card. */
   --bg: #07080c;
   --surf: #0d0f14;
   --card: #13161d;
   --card2: #1a1e27;
-  --bord: rgba(255, 255, 255, 0.08);
-  --red: #ef4444;
-  --redd: #b91c1c;
-  --redg: rgba(239, 68, 68, 0.22);
-  --ora: #ff7a2f;
-  --grn: #34d399;
-  --yel: #f5c542;
-  --blu: #60a5fa;
+  --bord: rgba(255, 255, 255, 0.1);
   --txt: #f4f6f8;
-  --mut: #9aa3b2;
-  --dim: #5c6573;
+  --mut: #a3acba;
+  --dim: #8a93a3;
+  /* Acento de marca (botones primarios). --red sigue existiendo como alias para el codigo actual. */
+  --accent: #dc2626;
+  --accent-strong: #b91c1c;
+  --accent-text: #f87171;
+  --red: var(--accent);
+  --redd: var(--accent-strong);
+  --redg: rgba(239, 68, 68, 0.22);
+  /* Estados: color solido (fondo con texto blanco) y color de texto legible sobre la superficie. */
+  --ok-solid: #047857;
+  --warn-solid: #b45309;
+  --info-solid: #1d4ed8;
+  --danger-solid: #b91c1c;
+  --ok-text: #34d399;
+  --warn-text: #fbbf24;
+  --info-text: #60a5fa;
+  --danger-text: #f87171;
+  --grn: var(--ok-text);
+  --yel: var(--warn-text);
+  --blu: var(--info-text);
+  --ora: #c2410c;
+  --scroll: rgba(255, 255, 255, 0.16);
   --nav: 104px;
   --hdr: 64px;
   --sidebar: 272px;
@@ -25,20 +40,63 @@
   --font-barlow: "Barlow", sans-serif;
   --font-barlow-condensed: "Barlow Condensed", sans-serif;
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 18px 40px rgba(0, 0, 0, 0.28);
+  color-scheme: dark;
 }
 
-:root[data-theme="light"] { color-scheme: light; --bg: #f5f7fa; --surf: #ffffff; --card: #ffffff; --card2: #e9edf2; --bord: #cbd2dc; --txt: #17202d; --mut: #475569; --dim: #64748b; }
-:root[data-theme="dark"] { color-scheme: dark; }
-html[data-theme="light"] [class*="bg-[#"], html[data-theme="light"] [class*="bg-black/"] { background-color: var(--card) !important; }
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f5f8;
+  --surf: #ffffff;
+  --card: #ffffff;
+  --card2: #eef1f5;
+  --bord: #d3d9e2;
+  --txt: #121a26;
+  --mut: #4a5567;
+  --dim: #5b6577;
+  --accent-text: #b91c1c;
+  --ok-text: #047857;
+  --warn-text: #92400e;
+  --info-text: #1d4ed8;
+  --danger-text: #b91c1c;
+  --scroll: rgba(15, 23, 42, 0.22);
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+/* Acentos: el solido lleva texto blanco (>= 4.5:1); el de texto es legible sobre la superficie de cada tema. */
+:root[data-accent="teal"] { --accent: #0f766e; --accent-strong: #115e59; --accent-text: #2dd4bf; }
+:root[data-accent="blue"] { --accent: #2563eb; --accent-strong: #1d4ed8; --accent-text: #60a5fa; }
+:root[data-theme="light"][data-accent="teal"] { --accent-text: #0f766e; }
+:root[data-theme="light"][data-accent="blue"] { --accent-text: #1d4ed8; }
+
+/* ---- Tema claro sobre clases de Tailwind pensadas para fondo oscuro ----
+   Se usan selectores de token exacto (~=) donde importa, para no confundir "bg-red-600" con "bg-red-600/20"
+   ni "text-white" con "placeholder:text-white/20". */
+html[data-theme="light"] [class*="bg-[#"], html[data-theme="light"] [class~="bg-black/20"], html[data-theme="light"] [class~="bg-black/30"], html[data-theme="light"] [class~="bg-black/40"] { background-color: var(--card) !important; }
+html[data-theme="light"] [class~="bg-black/25"] { background-color: var(--card2) !important; }
+html[data-theme="light"] :is([class~="bg-white/[0.01]"], [class~="bg-white/[0.02]"], [class~="bg-white/[0.03]"], [class~="bg-white/[0.04]"], [class~="bg-white/5"]) { background-color: rgba(15, 23, 42, 0.035) !important; }
+html[data-theme="light"] :is([class~="bg-white/[0.06]"], [class~="bg-white/10"], [class~="bg-white/15"], [class~="bg-white/20"], [class~="bg-white/25"]) { background-color: rgba(15, 23, 42, 0.08) !important; }
+html[data-theme="light"] :is([class*="hover:bg-white/"]):hover { background-color: rgba(15, 23, 42, 0.06) !important; }
 html[data-theme="light"] [class*="text-white"], html[data-theme="light"] [class*="text-slate-300"] { color: var(--txt) !important; }
+html[data-theme="light"] :is([class~="text-white/20"], [class~="text-white/30"], [class~="text-white/35"], [class~="text-white/40"], [class~="text-white/45"], [class~="text-white/50"], [class~="text-white/55"], [class~="text-white/60"], [class~="text-white/65"], [class~="text-white/70"]),
 html[data-theme="light"] [class*="text-slate-400"], html[data-theme="light"] [class*="text-slate-500"] { color: var(--mut) !important; }
 html[data-theme="light"] [class*="border-white/"] { border-color: var(--bord) !important; }
-html[data-theme="light"] [class*="text-sky-"], html[data-theme="light"] [class*="text-blue-"] { color: #075985 !important; }
-html[data-theme="light"] [class*="text-green-"], html[data-theme="light"] [class*="text-emerald-"] { color: #065f46 !important; }
-html[data-theme="light"] [class*="text-red-"] { color: #991b1b !important; }
-html[data-theme="light"] [class*="text-amber-"], html[data-theme="light"] [class*="text-yellow-"] { color: #854d0e !important; }
-html[data-theme="light"] .app-button-red, html[data-theme="light"] [class*="bg-red-700"], html[data-theme="light"] [class*="bg-red-600"] { color: #fff !important; }
-.app-button-red { background-color: var(--red) !important; }
+html[data-theme="light"] [class*="text-sky-"], html[data-theme="light"] [class*="text-blue-"] { color: var(--info-text) !important; }
+html[data-theme="light"] [class*="text-green-"], html[data-theme="light"] [class*="text-emerald-"] { color: var(--ok-text) !important; }
+html[data-theme="light"] [class*="text-red-"], html[data-theme="light"] [class*="text-orange-"] { color: var(--danger-text) !important; }
+html[data-theme="light"] [class*="text-amber-"], html[data-theme="light"] [class*="text-yellow-"] { color: var(--warn-text) !important; }
+/* Fondos solidos de color: el texto vuelve a ser blanco (incluidos sus hijos). Va al final para ganar. */
+html[data-theme="light"] :is(.app-button-red, .app-button-green, .app-button-orange, [class~="bg-red-500"], [class~="bg-red-600"], [class~="bg-red-700"], [class~="bg-emerald-600"], [class~="bg-emerald-700"], [class~="bg-sky-600"], [class~="bg-blue-600"], [class~="bg-amber-600"], [class~="bg-orange-600"]),
+html[data-theme="light"] :is(.app-button-red, .app-button-green, .app-button-orange, [class~="bg-red-500"], [class~="bg-red-600"], [class~="bg-red-700"], [class~="bg-emerald-600"], [class~="bg-emerald-700"], [class~="bg-sky-600"], [class~="bg-blue-600"], [class~="bg-amber-600"], [class~="bg-orange-600"]) :is([class*="text-"], svg) { color: #fff !important; }
+
+/* ---- Tema oscuro: textos tenues por debajo de 4.5:1 se suben a un gris legible ---- */
+html:not([data-theme="light"]) :is([class~="text-white/20"], [class~="text-white/25"], [class~="text-white/30"], [class~="text-white/35"], [class~="text-white/40"], [class~="text-white/45"]) { color: rgba(255, 255, 255, 0.62); }
+
+.app-button-red { background-color: var(--accent) !important; }
+
+/* Textos de ejemplo de los campos: legibles en ambos temas (antes eran blancos al 20%, invisibles en claro). */
+input::placeholder, textarea::placeholder { color: var(--dim) !important; opacity: 1; }
+/* Desplegables nativos: el menu toma los colores del tema. */
+select option { background-color: var(--card); color: var(--txt); }
 
 /* Custom scrollbars */
 ::-webkit-scrollbar {
@@ -51,12 +109,12 @@ html[data-theme="light"] .app-button-red, html[data-theme="light"] [class*="bg-r
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--scroll);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--mut);
 }
 
 * {
@@ -82,12 +140,12 @@ body {
 }
 
 ::selection {
-  background: rgba(239, 68, 68, 0.35);
-  color: white;
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--txt);
 }
 
 :focus-visible {
-  outline: 2px solid rgba(239, 68, 68, 0.75);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
@@ -143,7 +201,7 @@ button {
   }
 
   .input-dark {
-    @apply w-full rounded-xl border border-white/10 bg-[#111216] px-3.5 py-3 text-sm text-white outline-none transition placeholder:text-white/25 focus:border-red-500/60 focus:ring-2 focus:ring-red-500/15 sm:text-[15px];
+    @apply w-full rounded-xl border border-[var(--bord)] bg-[var(--card2)] px-3.5 py-3 text-sm text-[var(--txt)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 sm:text-[15px];
   }
 
   .app-input::placeholder {
@@ -199,7 +257,7 @@ button {
   }
 
   .app-button-green {
-    @apply border-transparent bg-[var(--grn)] text-white;
+    @apply border-transparent bg-[var(--ok-solid)] text-white;
   }
 
   .app-button-orange {
@@ -220,19 +278,19 @@ button {
   }
 
   .badge-red {
-    @apply bg-[rgba(230,60,60,.2)] text-[var(--red)] border border-[rgba(230,60,60,.3)];
+    @apply bg-[rgba(230,60,60,.16)] text-[var(--danger-text)] border border-[rgba(230,60,60,.32)];
   }
 
   .badge-green {
-    @apply bg-[rgba(46,204,113,.15)] text-[var(--grn)] border border-[rgba(46,204,113,.25)];
+    @apply bg-[rgba(46,204,113,.14)] text-[var(--ok-text)] border border-[rgba(46,204,113,.3)];
   }
 
   .badge-yellow {
-    @apply bg-[rgba(241,196,15,.15)] text-[var(--yel)] border border-[rgba(241,196,15,.25)];
+    @apply bg-[rgba(241,196,15,.16)] text-[var(--warn-text)] border border-[rgba(241,196,15,.35)];
   }
 
   .badge-blue {
-    @apply bg-[rgba(58,156,219,.15)] text-[var(--blu)] border border-[rgba(58,156,219,.25)];
+    @apply bg-[rgba(58,156,219,.14)] text-[var(--info-text)] border border-[rgba(58,156,219,.3)];
   }
 
   .badge-gray {
@@ -331,7 +389,7 @@ button {
 
   .desktop-brand {
     font-family: "Bebas Neue", sans-serif;
-    @apply mb-6 flex items-center gap-3 px-2 text-3xl tracking-[1px] text-white;
+    @apply mb-6 flex items-center gap-3 px-2 text-3xl tracking-[1px] text-[var(--txt)];
   }
 
   .desktop-brand span {
@@ -343,7 +401,7 @@ button {
   }
 
   .desktop-nav-link {
-    @apply flex items-center gap-3 rounded-xl border border-transparent px-3 py-3 text-sm font-bold uppercase tracking-[0.04em] text-[var(--mut)] transition hover:border-[var(--bord)] hover:bg-[var(--card)] hover:text-white;
+    @apply flex items-center gap-3 rounded-xl border border-transparent px-3 py-3 text-sm font-bold uppercase tracking-[0.04em] text-[var(--mut)] transition hover:border-[var(--bord)] hover:bg-[var(--card)] hover:text-[var(--txt)];
   }
 
   .desktop-nav-link-active {

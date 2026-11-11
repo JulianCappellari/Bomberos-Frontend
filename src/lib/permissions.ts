@@ -1,6 +1,6 @@
 export function isCommand(role?: string) { return role === "ADMIN" || role === "OPERATOR"; }
 export function isDutyManager(role?: string) { return isCommand(role) || role === "GUARD"; }
-const logistics = ["/air-equipment", "/fuel", "/water-trips", "/maintenance", "/compliance", "/guard-qr", "/dev/qr"];
+const logistics = ["/air-equipment", "/fuel", "/water-trips", "/maintenance", "/compliance", "/guard-qr", "/dev/qr", "/board"];
 export function canOpenPage(path: string, role?: string, permissions: string[] = []) {
   if ((path === "/air-equipment" || path.startsWith("/air-equipment/")) && permissions.includes("TECHNICAL")) return true;
   if ((path === "/personal-equipment" || path.startsWith("/personal-equipment/")) && permissions.includes("PPE")) return true;

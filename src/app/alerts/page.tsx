@@ -13,6 +13,7 @@ import {
   Droplets,
   Flame,
   MapPin,
+  Phone,
   Plus,
   ShieldPlus,
   Siren,
@@ -55,6 +56,7 @@ type AlertItem = {
   type: Exclude<EmergencyType, "todas">;
   title: string;
   address: string;
+  contactPhone: string | null;
   description: string;
   author: string;
   timeAgo: string;
@@ -154,6 +156,7 @@ function mapAlert(alert: BackendAlert, userId?: string): AlertItem {
         otro: "Alerta Operativa",
       }[mappedType] || "Alerta",
     address: alert.location,
+    contactPhone: alert.contactPhone ?? null,
     description: alert.description || "Sin descripción proporcionada",
     author: getAuthorName(alert),
     timeAgo: formatTimeAgo(alert.createdAt),
@@ -378,9 +381,12 @@ function AlertCard({
                 <h3 className="font-[family-name:var(--font-bebas)] text-2xl uppercase tracking-wider text-white">
                   {alert.title}
                 </h3>
-                <div className="flex items-center gap-1.5 text-xs text-white/50 mt-0.5">
-                  <MapPin className="h-3.5 w-3.5 shrink-0 text-red-400" />
-                  <span className="truncate">{alert.address}</span>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/60">
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(alert.address)}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-w-0 items-center gap-1.5 underline-offset-2 hover:text-white hover:underline" title="Abrir en el mapa">
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-red-400" aria-hidden />
+                    <span className="truncate">{alert.address}</span>
+                  </a>
+                  {alert.contactPhone && <a href={`tel:${alert.contactPhone.replace(/[^\d+]/g, "")}`} className="inline-flex items-center gap-1 font-semibold text-sky-300 hover:underline"><Phone className="h-3.5 w-3.5" aria-hidden />Llamar al denunciante</a>}
                 </div>
               </div>
 
@@ -432,38 +438,30 @@ function AlertCard({
             <button type="button" disabled={activating} onClick={() => void becomeAvailable()} className="app-button app-button-green w-auto">{activating ? "Activando…" : "Estoy disponible"}</button>
           </div>
         )}
-        {/* Respuesta personal */}
-        {isActive && alert.canRespond && (
-          <div className="grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-3 sm:flex sm:items-center sm:justify-end">
-            <button
-              type="button"
-              disabled={respondMutation.isPending || alert.myResponse === "GOING"}
-              onClick={() => setPendingResponse("GOING")}
-              className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider font-[family-name:var(--font-barlow-condensed)] transition-all ${
-                alert.myResponse === "GOING"
-                  ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/30 ring-1 ring-emerald-400"
-                  : "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
-              }`}
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              {alert.myResponse === "GOING" ? "Confirmado (Voy)" : "Voy"}
+        {/* Respuesta personal: queda fija una vez registrada */}
+        {isActive && alert.canRespond && alert.myResponse && (
+          <p className={`flex items-center gap-2 border-t border-white/[0.06] pt-3 text-sm font-semibold ${alert.myResponse === "GOING" ? "text-emerald-300" : "text-white/80"}`}>
+            {alert.myResponse === "GOING" ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : <XCircle className="h-4 w-4" aria-hidden />}
+            Tu respuesta: {alert.myResponse === "GOING" ? "Voy" : "No voy"} · registrada, no se puede cambiar
+          </p>
+        )}
+        {isActive && alert.canRespond && !alert.myResponse && (
+          <div className="grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-3">
+            <button type="button" disabled={respondMutation.isPending} onClick={() => setPendingResponse("GOING")}
+              className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${pendingResponse === "GOING" ? "bg-emerald-600 text-white ring-1 ring-emerald-400" : "border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20"}`}>
+              <CheckCircle2 className="h-4 w-4" aria-hidden /> Voy
             </button>
-
-            <button
-              type="button"
-              disabled={respondMutation.isPending || alert.myResponse === "NOT_GOING"}
-              onClick={() => setPendingResponse("NOT_GOING")}
-              className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider font-[family-name:var(--font-barlow-condensed)] transition-all ${
-                alert.myResponse === "NOT_GOING"
-                  ? "bg-white/20 text-white ring-1 ring-white/40"
-                  : "border border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white"
-              }`}
-            >
-              <XCircle className="h-4 w-4" />
-              {alert.myResponse === "NOT_GOING" ? "No voy (Registrado)" : "No voy"}
+            <button type="button" disabled={respondMutation.isPending} onClick={() => setPendingResponse("NOT_GOING")}
+              className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${pendingResponse === "NOT_GOING" ? "bg-white/20 text-white ring-1 ring-white/40" : "border border-white/15 bg-white/[0.04] text-white/80 hover:bg-white/[0.08]"}`}>
+              <XCircle className="h-4 w-4" aria-hidden /> No voy
             </button>
-            {pendingResponse && pendingResponse !== alert.myResponse && <div role="group" aria-label="Confirmar respuesta a la alerta" className="col-span-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm sm:order-last sm:w-full"><span className="flex-1">{alert.myResponse ? "Cambiarás tu respuesta anterior; el cambio quedará registrado en el historial." : `Confirmar “${pendingResponse === "GOING" ? "Voy" : "No voy"}”. Podrás corregirla mientras la alerta siga activa.`}</span><button type="button" disabled={respondMutation.isPending} className="app-button app-button-red w-auto" onClick={() => void respond(pendingResponse)}>{respondMutation.isPending ? "Registrando..." : alert.myResponse ? "Confirmar cambio" : "Confirmar"}</button><button type="button" disabled={respondMutation.isPending} className="app-button app-button-outline w-auto" onClick={() => setPendingResponse(null)}>Cancelar</button></div>}
-
+            {pendingResponse && (
+              <div role="group" aria-label="Confirmar respuesta a la alerta" className="col-span-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                <span className="flex-1">Confirmá “{pendingResponse === "GOING" ? "Voy" : "No voy"}”. Una vez registrada, la respuesta no se puede cambiar.</span>
+                <button type="button" disabled={respondMutation.isPending} className="app-button app-button-red w-auto" onClick={() => void respond(pendingResponse)}>{respondMutation.isPending ? "Registrando…" : "Confirmar"}</button>
+                <button type="button" disabled={respondMutation.isPending} className="app-button app-button-outline w-auto" onClick={() => setPendingResponse(null)}>Cancelar</button>
+              </div>
+            )}
           </div>
         )}
         {/* Gestion de la emergencia: no depende de haber sido convocado */}

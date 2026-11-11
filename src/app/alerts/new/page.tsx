@@ -11,8 +11,12 @@ import {
   TestTube2,
   Send,
   MapPin,
+  Phone,
+  CircleHelp,
 } from "lucide-react";
 import { useCreateAlert } from "@/hooks/use-alerts";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api-client";
 import AlertStatus from "@/components/ui/alert-status";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { ProtectedLayout } from "@/components/layout/protected-layout";
@@ -26,7 +30,8 @@ type EmergencyType =
   | "accidente"
   | "quimico"
   | "medico"
-  | "inundacion";
+  | "inundacion"
+  | "otro";
 
 type Priority = "alta" | "media" | "baja";
 
@@ -49,6 +54,7 @@ const emergencyTypes: EmergencyOption[] = [
   { id: "quimico", label: "Químico", icon: TestTube2 },
   { id: "medico", label: "Médico", icon: Stethoscope },
   { id: "inundacion", label: "Inundación", icon: Droplets },
+  { id: "otro", label: "Otro", icon: CircleHelp },
 ];
 
 const priorities: PriorityOption[] = [
@@ -59,7 +65,7 @@ const priorities: PriorityOption[] = [
 
 const emergencyTypeMap: Record<
   EmergencyType,
-  "FIRE" | "RESCUE" | "ACCIDENT" | "CHEMICAL" | "MEDICAL" | "FLOOD"
+  "FIRE" | "RESCUE" | "ACCIDENT" | "CHEMICAL" | "MEDICAL" | "FLOOD" | "OTHER"
 > = {
   incendio: "FIRE",
   rescate: "RESCUE",
@@ -67,6 +73,7 @@ const emergencyTypeMap: Record<
   quimico: "CHEMICAL",
   medico: "MEDICAL",
   inundacion: "FLOOD",
+  otro: "OTHER",
 };
 
 const priorityMap: Record<Priority, "HIGH" | "MEDIUM" | "LOW"> = {
@@ -84,6 +91,7 @@ export default function NewAlertPage() {
   const [title, setTitle] = useState("");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
+  const [phone, setPhone] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [statusType, setStatusType] = useState<"success" | "error" | "">("");
   const [holding, setHolding] = useState(false);
@@ -94,6 +102,8 @@ export default function NewAlertPage() {
   const submitArmed = useRef(false);
 
   const createAlertMutation = useCreateAlert();
+  // 5: direcciones usadas en alertas y avisos anteriores, ordenadas por frecuencia, para autocompletar.
+  const frequent = useQuery({ queryKey: ["station-locations"], queryFn: async () => (await api.get<Array<{ location: string; uses: number }>>("/station/locations")).data, staleTime: 300000 });
 
   const selectedEmergencyLabel = useMemo(
     () =>
@@ -102,7 +112,7 @@ export default function NewAlertPage() {
     [selectedEmergency]
   );
 
-  const isFormValid = address.trim().length > 0 && Boolean(title.trim() || notes.trim());
+  const isFormValid = address.trim().length >= 4 && Boolean(title.trim() || notes.trim());
 
   const cancelHold = useCallback(() => {
     if (holdTimer.current) {
@@ -162,7 +172,7 @@ export default function NewAlertPage() {
 
     if (!address.trim() || (!title.trim() && !notes.trim())) {
       setStatusType("error");
-      setStatusMessage("Completá la ubicación y una descripción antes de despachar.");
+      setStatusMessage("Completá la ubicación y qué está pasando antes de despachar.");
       return;
     }
 
@@ -180,6 +190,7 @@ export default function NewAlertPage() {
         location: address.trim(),
         type: emergencyTypeMap[selectedEmergency],
         priority: priorityMap[selectedPriority],
+        ...(phone.trim() ? { contactPhone: phone.trim() } : {}),
       });
 
       setStatusType("success");
@@ -187,6 +198,7 @@ export default function NewAlertPage() {
       setTitle("");
       setAddress("");
       setNotes("");
+      setPhone("");
     } catch (error: unknown) {
       setStatusType("error");
       setStatusMessage(
@@ -202,8 +214,8 @@ export default function NewAlertPage() {
     <ProtectedLayout>
       <AnimatedPage className="space-y-6 max-w-4xl mx-auto">
         <PageHeader
-          title="Despachar Nueva Alerta"
-          subtitle="Emisión inmediata de llamada de emergencia a la dotación de bomberos"
+          title="Despachar alerta"
+          subtitle="Convoca a la dotación al instante. Completá los 3 pasos y confirmá."
           icon={<AlertTriangle className="h-6 w-6" />}
         />
 
@@ -218,153 +230,83 @@ export default function NewAlertPage() {
           />
         )}
 
-        <form ref={alertForm} onSubmit={handleSubmit} className="space-y-6">
-          {/* Emergency type selector */}
-          <div className="rounded-3xl border border-white/[0.08] bg-[#121316] p-5 sm:p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <label className="font-[family-name:var(--font-bebas)] text-xl uppercase tracking-wider text-white">
-                1. Tipo de Siniestro
-              </label>
-              <span className="font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-wider text-red-400">
-                Seleccionado: {selectedEmergencyLabel}
-              </span>
+        <form ref={alertForm} onSubmit={handleSubmit} className="space-y-4">
+          {/* 1. Donde: es el dato que la dotacion necesita primero para salir. */}
+          <section className="rounded-2xl border border-white/[0.08] bg-[#121316] p-4 sm:p-6 space-y-4">
+            <h2 className="flex items-center gap-2 text-base font-bold text-white"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs font-bold">1</span> ¿Dónde?</h2>
+            <div>
+              <label htmlFor="location" className="mb-1.5 block text-sm font-semibold text-white/80">Dirección o referencia <span className="text-red-400">*</span></label>
+              <div className="relative">
+                <MapPin className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-red-400" aria-hidden />
+                <input id="location" type="text" required autoFocus autoComplete="off" list="frequent-locations" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Ej. San Martín 450 / Ruta 8 km 612" className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-base text-white placeholder:text-white/30 outline-none transition-all focus:border-red-500/50 focus:ring-2 focus:ring-red-500/15 pl-10" />
+              </div>
             </div>
+            <datalist id="frequent-locations">{frequent.data?.map((row) => <option key={row.location} value={row.location}>{row.uses > 1 ? `${row.uses} avisos anteriores` : "1 aviso anterior"}</option>)}</datalist>
+            {!address && frequent.data && frequent.data.length > 0 && <div className="-mt-1 flex flex-wrap gap-2" aria-label="Direcciones frecuentes">{frequent.data.slice(0, 4).map((row) => <button key={row.location} type="button" onClick={() => setAddress(row.location)} className="max-w-full truncate rounded-full border border-[var(--bord)] px-3 py-1 text-xs text-[var(--mut)] hover:text-[var(--txt)]">{row.location}</button>)}</div>}
+            <div>
+              <label htmlFor="phone" className="mb-1.5 block text-sm font-semibold text-white/80">Teléfono de quien avisa <span className="font-normal text-white/50">(opcional)</span></label>
+              <div className="relative">
+                <Phone className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" aria-hidden />
+                <input id="phone" type="tel" inputMode="tel" autoComplete="off" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Para poder volver a llamar" className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-base text-white placeholder:text-white/30 outline-none transition-all focus:border-red-500/50 focus:ring-2 focus:ring-red-500/15 pl-10" />
+              </div>
+            </div>
+          </section>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
+          {/* 2. Que: tipo y prioridad compactos, sin ocupar toda la pantalla del celular. */}
+          <section className="rounded-2xl border border-white/[0.08] bg-[#121316] p-4 sm:p-6 space-y-4">
+            <h2 className="flex items-center gap-2 text-base font-bold text-white"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs font-bold">2</span> ¿Qué pasa?</h2>
+            <div role="radiogroup" aria-label="Tipo de siniestro" className="grid grid-cols-3 gap-2 sm:grid-cols-7">
               {emergencyTypes.map((item) => {
                 const Icon = item.icon;
                 const isActive = selectedEmergency === item.id;
-
                 return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setSelectedEmergency(item.id)}
-                    className={`flex flex-col items-center justify-center gap-2.5 rounded-2xl border p-4 text-center transition-all ${
-                      isActive
-                        ? "border-red-500 bg-red-500/15 text-white shadow-lg shadow-red-900/30 ring-1 ring-red-400"
-                        : "border-white/[0.08] bg-white/[0.02] text-white/60 hover:border-white/20 hover:text-white"
-                    }`}
-                  >
-                    <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-xl transition-transform ${
-                        isActive
-                          ? "bg-red-500 text-white"
-                          : "bg-white/[0.04] text-white/70"
-                      }`}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <span className="font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-wider">
-                      {item.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Priority selector */}
-          <div className="rounded-3xl border border-white/[0.08] bg-[#121316] p-5 sm:p-6 shadow-xl space-y-4">
-            <label className="font-[family-name:var(--font-bebas)] text-xl uppercase tracking-wider text-white block border-b border-white/[0.06] pb-3">
-              2. Nivel de Prioridad
-            </label>
-
-            <div className="grid grid-cols-3 gap-3">
-              {priorities.map((item) => {
-                const isActive = selectedPriority === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setSelectedPriority(item.id)}
-                    className={`flex items-center justify-center gap-2.5 rounded-xl border py-3 text-xs font-bold uppercase tracking-wider font-[family-name:var(--font-barlow-condensed)] transition-all ${
-                      isActive
-                        ? "border-white/30 bg-white/10 text-white ring-1 ring-white/20"
-                        : "border-white/[0.08] bg-white/[0.02] text-white/50 hover:text-white"
-                    }`}
-                  >
-                    <span className={`h-2.5 w-2.5 rounded-full ${item.dotClassName}`} />
+                  <button key={item.id} type="button" role="radio" aria-checked={isActive} onClick={() => setSelectedEmergency(item.id)}
+                    className={`flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-xs font-semibold transition-colors ${isActive ? "border-red-500 bg-red-500/15 text-white ring-1 ring-red-400" : "border-white/[0.08] bg-white/[0.02] text-white/65 hover:border-white/20 hover:text-white"}`}>
+                    <Icon className={`h-5 w-5 ${isActive ? "text-red-400" : ""}`} />
                     {item.label}
                   </button>
                 );
               })}
             </div>
-          </div>
-
-          {/* Location and details */}
-          <div className="rounded-3xl border border-white/[0.08] bg-[#121316] p-5 sm:p-6 shadow-xl space-y-4">
-            <label className="font-[family-name:var(--font-bebas)] text-xl uppercase tracking-wider text-white block border-b border-white/[0.06] pb-3">
-              3. Datos del Despacho
-            </label>
-
-            <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="location"
-                  className="block font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-wider text-white/60 mb-1.5"
-                >
-                  Ubicación / Dirección exacta <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-red-400" />
-                  <input
-                    id="location"
-                    type="text"
-                    required
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Ej. Ruta 8 Km 612 / Calle San Martín 450"
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] pl-10 pr-4 py-3 text-sm text-white placeholder:text-white/20 outline-none transition-all focus:border-red-500/50 focus:ring-2 focus:ring-red-500/15"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="title"
-                  className="block font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-wider text-white/60 mb-1.5"
-                >
-                  Título descriptivo (opcional)
-                </label>
-                <input
-                  id="title"
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={`Por defecto: ${selectedEmergencyLabel}`}
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none transition-all focus:border-red-500/50 focus:ring-2 focus:ring-red-500/15"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="notes"
-                  className="block font-[family-name:var(--font-barlow-condensed)] text-xs font-bold uppercase tracking-wider text-white/60 mb-1.5"
-                >
-                  Observaciones / Novedades iniciales
-                </label>
-                <div className="relative">
-                  <textarea
-                    id="notes"
-                    rows={3}
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Detalles de víctimas, vehículos involucrados, dotaciones requeridas..."
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] p-4 text-sm text-white placeholder:text-white/20 outline-none transition-all focus:border-red-500/50 focus:ring-2 focus:ring-red-500/15"
-                  />
-                </div>
+            <div>
+              <p className="mb-1.5 block text-sm font-semibold text-white/80" id="priority-label">Prioridad</p>
+              <div role="radiogroup" aria-labelledby="priority-label" className="grid grid-cols-3 gap-2">
+                {priorities.map((item) => {
+                  const isActive = selectedPriority === item.id;
+                  return (
+                    <button key={item.id} type="button" role="radio" aria-checked={isActive} onClick={() => setSelectedPriority(item.id)}
+                      className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-semibold transition-colors ${isActive ? "border-white/40 bg-white/10 text-white ring-1 ring-white/20" : "border-white/[0.08] bg-white/[0.02] text-white/55 hover:text-white"}`}>
+                      <span className={`h-2.5 w-2.5 rounded-full ${item.dotClassName}`} aria-hidden />
+                      {item.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          </div>
+          </section>
+
+          {/* 3. Detalle: un solo campo obligatorio; el titulo es un atajo opcional. */}
+          <section className="rounded-2xl border border-white/[0.08] bg-[#121316] p-4 sm:p-6 space-y-4">
+            <h2 className="flex items-center gap-2 text-base font-bold text-white"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs font-bold">3</span> Detalles</h2>
+            <div>
+              <label htmlFor="notes" className="mb-1.5 block text-sm font-semibold text-white/80">¿Qué está pasando? <span className="text-red-400">*</span></label>
+              <textarea id="notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Víctimas, vehículos, riesgos, accesos, qué se necesita…" className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-base text-white placeholder:text-white/30 outline-none transition-all focus:border-red-500/50 focus:ring-2 focus:ring-red-500/15" />
+            </div>
+            <div>
+              <label htmlFor="title" className="mb-1.5 block text-sm font-semibold text-white/80">Título corto <span className="font-normal text-white/50">(opcional)</span></label>
+              <input id="title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={`Ej. ${selectedEmergencyLabel} en vivienda`} className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-base text-white placeholder:text-white/30 outline-none transition-all focus:border-red-500/50 focus:ring-2 focus:ring-red-500/15" />
+            </div>
+          </section>
 
           {/* Submit button */}
           <div className="pt-2">
-            <p className="mb-2 text-sm text-white/60">
-              La ubicación y una descripción (título u observaciones) son obligatorias.
-            </p>
+            <div className="mb-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-sm" aria-live="polite">
+              <p className="text-white/55">Se va a convocar a la dotación por:</p>
+              <p className="mt-1 font-semibold text-white">{selectedEmergencyLabel} · prioridad {selectedPriority}{address.trim() ? ` · ${address.trim()}` : ""}</p>
+              {!isFormValid && <p className="mt-1 text-amber-300">Falta {address.trim().length < 4 ? "la dirección (mínimo 4 caracteres)" : "describir qué está pasando"}.</p>}
+            </div>
             <p id="hold-to-confirm-instructions" className="mb-2 text-sm text-white/60">
-              Mantené presionado durante 1,5 segundos. Soltá antes para cancelar.
+              Para evitar envíos accidentales, mantené presionado el botón 1,5 segundos.
             </p>
             <Button
               type="button"
@@ -401,10 +343,10 @@ export default function NewAlertPage() {
               )}
               <span className="relative">
                 {createAlertMutation.isPending
-                  ? "Transmitiendo Alerta a la Dotación..."
+                  ? "Enviando alerta a la dotación…"
                   : holding
-                    ? "Mantené presionado..."
-                    : "Mantener presionado para despachar alerta"}
+                    ? "Seguí presionando…"
+                    : "Mantener presionado para despachar"}
               </span>
             </Button>
           </div>

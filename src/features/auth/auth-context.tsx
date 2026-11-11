@@ -14,6 +14,9 @@ import { api } from "@/lib/api-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { AuthUser } from "@/types/auth";
 import { clearTaskOutbox, readTaskOutbox } from "@/lib/task-outbox";
+import { isAxiosError } from "axios";
+import { clearOfflineCache } from "@/lib/offline-cache";
+import { clearChatOutbox } from "@/lib/chat-outbox";
 
 type AuthContextType = {
   user: AuthUser | null;
@@ -54,9 +57,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const bootstrap = async () => {
       try {
         const current = DEV_BYPASS ? DEV_USER : getAccessToken() ? await getMeRequest() : null;
-        if (active) setUserState(current);
-      } catch {
-        if (active) { clearTokens(); setUserState(null); }
+        if (active) { setUserState(current); if (current && !DEV_BYPASS) try { localStorage.setItem(USER_KEY, JSON.stringify(current)); } catch { /* sin almacenamiento */ } }
+      } catch (error) {
+        // 41: sin conexion el servidor no responde; eso no invalida la sesion. Se sigue con la ultima
+        // identidad guardada y las credenciales se validan al volver la señal.
+        const cached = (() => { try { return JSON.parse(localStorage.getItem(USER_KEY) || "null") as AuthUser | null; } catch { return null; } })();
+        if (active && isAxiosError(error) && !error.response && cached && getAccessToken()) setUserState(cached);
+        else if (active) { clearTokens(); setUserState(null); }
       } finally { if (active) setIsLoading(false); }
     };
     void bootstrap();
@@ -104,7 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     clearTokens();
     queryClient.clear();
-    if (user) clearTaskOutbox(user.id);
+    clearOfflineCache();
+    if (user) { clearTaskOutbox(user.id); clearChatOutbox(user.id); }
     setUser(null);
 
     if (typeof window !== "undefined") {

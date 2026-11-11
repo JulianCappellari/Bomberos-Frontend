@@ -28,6 +28,7 @@ import {
   Wind,
   Wrench,
   type LucideIcon,
+  MonitorPlay,
 } from "lucide-react";
 import { showNavigationItem } from "./permissions";
 
@@ -64,6 +65,7 @@ export const navItems: NavItem[] = [
   { href: "/incidents", label: "Intervenciones", shortLabel: "Interv.", description: "Planillas de emergencia, dotaciones y cierre", Icon: Siren, group: "emergency" },
   { href: "/departures", label: "Salidas de móviles", shortLabel: "Salidas", description: "Traslados, logística y capacitación", Icon: Truck, group: "emergency" },
   { href: "/station", label: "Personal en el cuartel", shortLabel: "Presentes", description: "Quién está presente ahora", Icon: UserCheck, group: "emergency" },
+  { href: "/board", label: "Tablero de comando", shortLabel: "Tablero", description: "Pantalla en vivo para el cuartel: alertas, móviles y personal", Icon: MonitorPlay, group: "emergency" },
   { href: "/readiness", label: "Estado operativo", shortLabel: "Estado", description: "Móviles, dotación y advertencias", Icon: Gauge, group: "emergency" },
 
   { href: "/guard-qr", label: "QR del cuartel", shortLabel: "QR base", description: "Mostrar el código de ingreso", Icon: QrCode, group: "duty" },
@@ -77,6 +79,7 @@ export const navItems: NavItem[] = [
   { href: "/personal-equipment", label: "EPP institucional", shortLabel: "EPP", description: "Stock y entregas de prendas", Icon: Shirt, group: "fleet" },
   { href: "/compliance", label: "Vencimientos", shortLabel: "Vencim.", description: "Seguros, VTV, certificaciones", Icon: BadgeCheck, group: "fleet" },
 
+  { href: "/agenda", label: "Agenda del cuartel", shortLabel: "Agenda", description: "Capacitaciones, reuniones y eventos con confirmación", Icon: CalendarDays, group: "station" },
   { href: "/chat", label: "Comunicaciones", shortLabel: "Mensajes", description: "Mensajes con confirmación de lectura", Icon: MessageCircle, group: "station" },
   { href: "/documents", label: "Protocolos y documentos", shortLabel: "Docs", description: "Protocolos y actas publicadas", Icon: BookOpen, group: "station" },
   { href: "/contacts", label: "Contactos", shortLabel: "Contactos", description: "Directorio telefónico operativo", Icon: ContactRound, group: "station" },
@@ -88,7 +91,6 @@ export const navItems: NavItem[] = [
   { href: "/driver-licenses", label: "Licencias de conducir", shortLabel: "Licencias", description: "Habilitaciones de conductores", Icon: BadgeCheck, group: "command" },
   { href: "/participations", label: "Asistencia a servicios", shortLabel: "Servicios", description: "Verificar participaciones", Icon: ShieldCheck, group: "command" },
   { href: "/ranking", label: "Ranking", shortLabel: "Ranking", description: "Puntaje y tareas de recuperación", Icon: Trophy, group: "command" },
-  { href: "/control-groups", label: "Grupos de control", shortLabel: "Grupos", description: "Rotación semanal de controles", Icon: Users, group: "command" },
 ];
 
 export type NavUser = { role?: string; profile?: { rank?: string | null } | null; specialPermissions?: string[] } | null | undefined;
@@ -100,7 +102,6 @@ export function isTechnicalAdmin(user: NavUser) {
 export function visibleNavItems(user: NavUser) {
   return navItems.filter((item) => {
     if (item.href === "/dashboard" && isTechnicalAdmin(user)) return false;
-    if (item.href === "/control-groups") return user?.role === "ADMIN";
     return showNavigationItem(item.href, user?.role, user?.profile?.rank, user?.specialPermissions);
   });
 }
