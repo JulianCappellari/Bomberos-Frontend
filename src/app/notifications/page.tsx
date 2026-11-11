@@ -1,4 +1,6 @@
 "use client";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
+import { toast } from "@/lib/toast";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -33,7 +35,7 @@ export default function NotificationsPage() {
   }
   async function readAll() {
     setBusy(true); setError("");
-    try { await api.post("/members/notifications/read-all"); await refresh(); }
+    try { await api.post("/members/notifications/read-all"); await refresh(); toast.success("Todas las notificaciones quedaron leídas"); }
     catch { setError("No se pudieron marcar como leídas."); }
     finally { setBusy(false); }
   }
@@ -54,11 +56,11 @@ export default function NotificationsPage() {
       {([[false, "Todas"], [true, "Sin leer"]] as Array<[boolean, string]>).map(([value, label]) => <button key={label} type="button" role="tab" aria-selected={onlyUnread === value} onClick={() => setOnlyUnread(value)} className={`rounded-lg px-4 py-1.5 text-sm font-semibold ${onlyUnread === value ? "bg-red-600 text-white" : "text-white/65"}`}>{label}</button>)}
     </div>
 
-    {query.isLoading && <p className="mt-4 text-sm text-[var(--mut)]">Cargando…</p>}
+    {query.isLoading && <ListSkeleton label="Cargando" />}
     {(error || query.isError) && <p role="alert" className="my-3 text-red-300">{error || "No se pudieron consultar los avisos."}</p>}
     {query.data && items.length === 0 && <p className="py-8 text-center text-sm text-[var(--mut)]">{onlyUnread ? "No tenés notificaciones sin leer." : "No hay notificaciones."}</p>}
 
-    <ul className="mt-4 space-y-2">{items.map((row) => <li key={row.id}>
+    <ul className="stagger mt-4 space-y-2">{items.map((row) => <li key={row.id}>
       <button type="button" onClick={() => void open(row)} className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors hover:border-white/25 ${row.readAt ? "border-[var(--bord)] bg-transparent" : "border-red-500/30 bg-red-500/[0.06]"}`}>
         <span aria-hidden className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${row.readAt ? "bg-transparent" : "bg-red-500"}`} />
         <span className="min-w-0 flex-1">

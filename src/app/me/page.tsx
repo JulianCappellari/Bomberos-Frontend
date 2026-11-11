@@ -1,4 +1,5 @@
 "use client";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -36,7 +37,7 @@ export default function MyAccountPage() {
     {error && <ErrorNotice>{error}</ErrorNotice>}{notice && <p role="status" className="mb-4 text-sm text-emerald-200">{notice}</p>}
     {tab === "profile" && <>
       <div id="grupo-control" className="mb-4"><NextControlBanner /></div>
-      {profile.isLoading && <p role="status">Cargando perfil…</p>}{profile.isError && <ErrorNotice>No se pudo cargar el perfil.</ErrorNotice>}
+      {profile.isLoading && <ListSkeleton label="Cargando perfil" />}{profile.isError && <ErrorNotice>No se pudo cargar el perfil.</ErrorNotice>}
       {p && <form key={p.updatedAt} onSubmit={saveProfile}><fieldset disabled={busy} className="space-y-5">
         <section className="rounded-2xl border border-[var(--bord)] bg-[var(--card)] p-4"><h2 className="font-semibold text-white">Contacto</h2><div className="mt-3 grid gap-3 sm:grid-cols-2">{input("phone", "Teléfono", p.phone, 40, { type: "tel", autoComplete: "tel" })}{input("altPhone", "Teléfono alternativo", p.altPhone, 40, { type: "tel" })}{input("email", "Correo electrónico", profile.data?.email, 120, { type: "email", autoComplete: "email" })}{input("address", "Domicilio", p.address, 180, { autoComplete: "street-address" })}</div></section>
         <section className="rounded-2xl border border-[var(--bord)] bg-[var(--card)] p-4"><h2 className="font-semibold text-white">Salud y contacto de emergencia</h2><p className="mt-1 text-xs text-[var(--mut)]">Solo lo ven jefatura, administración y la guardia mientras hay una emergencia activa.</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><Field label="Grupo sanguíneo"><select name="bloodType" className="app-input" defaultValue={p.bloodType || ""}>{["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((v) => <option key={v} value={v}>{v || "No informado"}</option>)}</select></Field>{input("contactName", "Nombre del contacto de emergencia", c?.fullName, 120, { required: true })}{input("contactPhone", "Teléfono del contacto", c?.phone, 40, { required: true, type: "tel" })}{input("relationship", "Vínculo (por ejemplo: madre, pareja)", c?.relationship, 60)}</div></section>

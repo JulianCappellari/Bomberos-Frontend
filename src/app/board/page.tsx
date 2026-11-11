@@ -1,4 +1,5 @@
 "use client";
+import { CountUp } from "@/components/ui/count-up";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Maximize2, Minimize2, Siren, Truck, Users } from "lucide-react";
@@ -54,7 +55,7 @@ export default function CommandBoardPage() {
         {[[<Siren key="a" className="h-5 w-5" />, "Alertas activas", r?.alerts.activeCount ?? "–"], [<Truck key="b" className="h-5 w-5" />, "Móviles en la calle", vehiclesOut], [<Users key="c" className="h-5 w-5" />, "Personal en el cuartel", r?.personnel.presentCount ?? "–"], [<Truck key="d" className="h-5 w-5" />, "Móviles listos", r ? `${r.vehicles.readyCount}/${r.vehicles.total}` : "–"]].map(([icon, label, value]) => (
           <div key={String(label)} className="rounded-2xl border border-[var(--bord)] bg-[var(--card)] p-4">
             <div className="flex items-center gap-2 text-[var(--mut)]">{icon}<span className="text-sm">{label}</span></div>
-            <p className="mt-1 text-4xl font-black tabular-nums">{value}</p>
+            <p className="mt-1 text-4xl font-black tabular-nums">{typeof value === "number" ? <CountUp value={value} /> : value}</p>
           </div>
         ))}
       </div>

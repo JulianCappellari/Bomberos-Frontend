@@ -1,4 +1,5 @@
 "use client";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { label, recordStatusLabels } from "@/lib/labels";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -15,7 +16,7 @@ export function PersonalActivity({ userId }: { userId: string }) {
     <label className="my-3 block">Actividad<select aria-label="Tipo de actividad personal" className="app-input mt-1" value={kind} onChange={(e) => { setKind(e.target.value); setPage(1); }}>
       {[["ATTENDANCE", "Permanencias"], ["SHIFT", "Guardias asignadas"], ["INCIDENT", "Emergencias asignadas"], ["INSPECTION", "Controles realizados"], ["WORK", "Trabajos"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}
     </select></label>
-    {query.isLoading && <p>Cargando historial...</p>}{query.isError && <p role="alert">No se pudo consultar el historial.</p>}
+    {query.isLoading && <ListSkeleton label="Cargando historial" />}{query.isError && <p role="alert">No se pudo consultar el historial.</p>}
     <ul className="divide-y divide-[var(--bord)]">{query.data?.items.map((row) => <li key={row.id} className="py-3">
       <p className="break-words font-bold">{row.title}</p>
       <p className="text-sm">{formatOperationalDate(row.date, row.dateOnly)} · {label(recordStatusLabels, row.status)}</p>

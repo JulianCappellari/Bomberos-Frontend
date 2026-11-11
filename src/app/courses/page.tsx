@@ -1,4 +1,5 @@
 "use client";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { GraduationCap, Plus } from "lucide-react";
@@ -65,7 +66,7 @@ export default function Courses() {
     </form>}
 
     <section className="mt-5" aria-label={scope === "mine" ? "Mis cursos" : "Cursos para revisar"}>
-      {list.isLoading && <p className="text-sm text-[var(--mut)]">Cargando cursos…</p>}
+      {list.isLoading && <ListSkeleton label="Cargando cursos" />}
       {list.isError && <ErrorNotice>No se pudieron cargar los cursos. <button className="underline" onClick={() => list.refetch()}>Reintentar</button></ErrorNotice>}
       {list.data && rows.length === 0 && <div className="card text-center text-sm text-[var(--mut)]">{scope === "mine" ? <>Todavía no declaraste cursos. <button type="button" className="underline" onClick={() => setFormOpen(true)}>Declarar el primero</button></> : "No hay cursos esperando revisión."}</div>}
       <ul className="space-y-2">{rows.map((row) => <li key={row.id} className="card mb-0">

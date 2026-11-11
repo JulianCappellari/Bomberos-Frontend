@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "@/lib/toast";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
@@ -82,6 +83,7 @@ export default function ChatPage() {
     try {
       await createMutation.mutateAsync({ body: trimmed, audience });
       setBody("");
+      toast.success("Mensaje enviado");
     } catch (error: unknown) {
       if (user && isNetworkError(error)) queue();
       else setSendError(getErrorMessage(error, "No se pudo enviar el mensaje."));

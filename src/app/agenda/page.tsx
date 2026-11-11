@@ -1,4 +1,6 @@
 "use client";
+import { toast } from "@/lib/toast";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, MapPin, Plus } from "lucide-react";
@@ -61,11 +63,11 @@ export default function AgendaPage() {
     </div>
 
     {error && !draft && !cancelling && <ErrorNotice>{error}</ErrorNotice>}
-    {query.isLoading && <p className="mt-4 text-sm text-[var(--mut)]">Cargando agenda…</p>}
+    {query.isLoading && <ListSkeleton label="Cargando agenda" />}
     {query.isError && <ErrorNotice>No se pudo cargar la agenda. <button className="underline" onClick={() => query.refetch()}>Reintentar</button></ErrorNotice>}
     {query.data && !rows.length && <p className="card mt-4 text-center text-sm text-[var(--mut)]">{scope === "upcoming" ? "No hay actividades programadas." : "No hay actividades en los últimos meses."}</p>}
 
-    <ul className="mt-4 space-y-3">{rows.map((ev) => {
+    <ul className="stagger mt-4 space-y-3">{rows.map((ev) => {
       const past = scope === "past"; // el servidor separa proximas y anteriores por la hora de fin
       return <li key={ev.id} className={`card mb-0 ${ev.cancelledAt ? "opacity-70" : ""}`}>
         <div className="flex flex-wrap items-start justify-between gap-2">
@@ -80,7 +82,7 @@ export default function AgendaPage() {
         {ev.description && <p className="mt-2 whitespace-pre-wrap break-words text-sm">{ev.description}</p>}
         {ev.cancelledAt && <p className="mt-2 text-sm text-amber-300">Motivo de la cancelación: {ev.cancelReason}</p>}
         {!ev.cancelledAt && !past && <div role="group" aria-label="Mi asistencia" className="mt-3 flex flex-wrap gap-2">
-          {responses.map(([value, label]) => <button key={value} type="button" disabled={busy} aria-pressed={ev.myResponse === value} onClick={() => run(() => api.post(`/station/events/${ev.id}/rsvp`, { response: value }))}
+          {responses.map(([value, label]) => <button key={value} type="button" disabled={busy} aria-pressed={ev.myResponse === value} onClick={async () => { if (await run(() => api.post(`/station/events/${ev.id}/rsvp`, { response: value }))) toast.success(value === "GOING" ? "Confirmaste que vas" : value === "MAYBE" ? "Respondiste: tal vez" : "Avisaste que no vas", ev.title); }}
             className={`min-h-10 rounded-xl border px-4 text-sm font-semibold ${ev.myResponse === value ? value === "GOING" ? "border-emerald-500 bg-emerald-700 text-white" : value === "NOT_GOING" ? "border-red-500 bg-red-700 text-white" : "border-amber-500 bg-amber-600 text-white" : "border-[var(--bord)] text-[var(--mut)] hover:text-[var(--txt)]"}`}>{label}</button>)}
         </div>}
         {(ev.attendees || manager) && <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[var(--bord)] pt-3 text-sm">

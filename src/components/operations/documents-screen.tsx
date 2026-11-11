@@ -1,4 +1,5 @@
 "use client";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { DocumentRectification } from "./document-rectification";
 import { FormEvent, useState } from "react";
 import { Archive, BookOpen, Copy, Download, ExternalLink, Pencil, Plus, RefreshCw, Search, Send, X } from "lucide-react";
@@ -101,7 +102,7 @@ export function DocumentsScreen({ guardLog = false }: { guardLog?: boolean }) {
       <label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-[var(--mut)]" /><input type="search" className="app-input pl-9" aria-label="Buscar documentos" placeholder="Buscar por titulo, categoria o contenido" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
       {manager && <select className="app-input" aria-label="Estado del documento" value={status} onChange={(event) => setStatus(event.target.value as "" | DocumentStatus)}><option value="">Todos los estados</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>}
     </div>
-    {query.isLoading && <p className="py-4 text-sm text-[var(--mut)]">Cargando documentos...</p>}
+    {query.isLoading && <ListSkeleton label="Cargando documentos" />}
     {query.isError && <ErrorNotice>No se pudieron cargar los documentos. <button type="button" className="underline" onClick={() => query.refetch()}>Reintentar</button></ErrorNotice>}
     {!guardLog && kind === "PROTOCOL" && <Link href="/hazmat" className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-[var(--bord)] bg-[var(--card)] p-4 hover:border-white/25"><span><span className="block text-xs text-[var(--mut)]">Protocolo de consulta · GRE 2024</span><span className="block font-bold">Materiales peligrosos: buscar por número ONU o nombre</span></span><span aria-hidden className="text-[var(--mut)]">›</span></Link>}
     <div className="space-y-3">{visible.map((document) => {

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
+import { Toaster } from "@/components/ui/toaster";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { LogOut, Menu, Search, ChevronRight, Siren } from "lucide-react";
 import { StationCrest } from "@/components/layout/station-crest";
 import { useAuth } from "@/features/auth/auth-context";
@@ -168,7 +170,10 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
   }).format(now);
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className="app-shell flex min-h-screen text-white">
+      <ProgressBar />
+      <Toaster />
       <aside
         className="fixed top-0 left-0 z-30 hidden h-dvh w-[var(--sidebar)] flex-col border-r border-white/[0.08] bg-[#0c0e13]/95 backdrop-blur-xl lg:flex"
         aria-label="Navegación principal"
@@ -499,5 +504,6 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
         </div>
       </Modal>
     </div>
+    </MotionConfig>
   );
 }

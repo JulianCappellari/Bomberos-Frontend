@@ -1,4 +1,6 @@
 "use client";
+import { CountUp } from "@/components/ui/count-up";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Lock, LockOpen, ShieldAlert, ShieldCheck } from "lucide-react";
@@ -59,12 +61,12 @@ export default function SecurityCenterPage() {
       <h1 className="flex items-center gap-2 text-2xl font-bold"><ShieldCheck className="h-6 w-6 text-red-400" aria-hidden /> Centro de seguridad</h1>
       <p className="mt-1 text-sm text-[var(--mut)]">Intentos de ingreso, fraudes posibles y medidas activas. Se actualiza cada 30 segundos; cada evento queda en la auditoría inalterable.</p>
     </header>
-    {query.isLoading && <p className="text-sm text-[var(--mut)]">Cargando…</p>}
+    {query.isLoading && <ListSkeleton label="Cargando" />}
     {query.isError && <ErrorNotice>No se pudo cargar el centro de seguridad. <button className="underline" onClick={() => query.refetch()}>Reintentar</button></ErrorNotice>}
     {error && <ErrorNotice>{error}</ErrorNotice>}
     {d && <>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {[["Alarmas (7 días)", alarms, alarms ? "text-red-300" : "text-emerald-300"], ["Ingresos fallidos", d.counts.AUTH_LOGIN_FAILED ?? 0, ""], ["Cuentas bloqueadas ahora", d.lockedAccounts.length, d.lockedAccounts.length ? "text-amber-300" : ""], ["Ubicaciones sospechosas", d.counts.PRESENCE_GPS_SUSPICIOUS ?? 0, ""]].map(([l, v, t]) => <div key={String(l)} className="rounded-xl border border-[var(--bord)] bg-[var(--card)] p-3"><p className="text-xs text-[var(--mut)]">{l}</p><p className={`text-2xl font-black ${t}`}>{v}</p></div>)}
+        {[["Alarmas (7 días)", alarms, alarms ? "text-red-300" : "text-emerald-300"], ["Ingresos fallidos", d.counts.AUTH_LOGIN_FAILED ?? 0, ""], ["Cuentas bloqueadas ahora", d.lockedAccounts.length, d.lockedAccounts.length ? "text-amber-300" : ""], ["Ubicaciones sospechosas", d.counts.PRESENCE_GPS_SUSPICIOUS ?? 0, ""]].map(([l, v, t]) => <div key={String(l)} className="rounded-xl border border-[var(--bord)] bg-[var(--card)] p-3"><p className="text-xs text-[var(--mut)]">{l}</p><p className={`text-2xl font-black ${t}`}>{typeof v === "number" ? <CountUp value={v} /> : v}</p></div>)}
       </div>
 
       <section className={`rounded-xl border p-3 text-sm ${d.protection.auditAppendOnly ? "border-emerald-500/40 bg-emerald-500/10" : "border-red-500/50 bg-red-500/10"}`}>

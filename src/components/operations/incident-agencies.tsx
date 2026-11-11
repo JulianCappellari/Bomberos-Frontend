@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "@/lib/toast";
 import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Building2, LogOut, Pencil, Phone, Plus, XCircle } from "lucide-react";
@@ -36,7 +37,7 @@ export function IncidentAgencies({ incidentId }: { incidentId: string }) {
   async function save(e: FormEvent) {
     e.preventDefault(); if (!draft) return;
     const body = { agencyType: draft.agencyType, name: draft.name, contactId: draft.contactId, unit: draft.unit, inCharge: draft.inCharge, phone: draft.phone || null, arrivedAt: draft.arrivedAt ? new Date(draft.arrivedAt).toISOString() : null, leftAt: draft.leftAt ? new Date(draft.leftAt).toISOString() : null, notes: draft.notes };
-    if (await run(() => draft.id ? api.put(`/incidents/${incidentId}/agencies/${draft.id}`, { ...body, revision: draft.revision }) : api.post(`/incidents/${incidentId}/agencies`, body))) setDraft(null);
+    if (await run(() => draft.id ? api.put(`/incidents/${incidentId}/agencies/${draft.id}`, { ...body, revision: draft.revision }) : api.post(`/incidents/${incidentId}/agencies`, body))) { toast.success(draft.id ? "Institución actualizada" : "Institución agregada", draft.name); setDraft(null); }
   }
   function pickName(name: string) {
     const contact = contacts.data?.find((c) => c.name === name);

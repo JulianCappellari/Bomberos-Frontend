@@ -1,4 +1,5 @@
 "use client";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { isDutyManager } from "@/lib/permissions";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
@@ -100,7 +101,7 @@ export default function MaintenancePage() {
       <select className="app-input" aria-label="Filtrar equipo" value={assetId} onChange={(event) => setAssetId(event.target.value)}><option value="">Todos los equipos</option>{(assets.data || []).map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}</select>
       <label className="flex items-center gap-2 text-sm text-[var(--mut)]"><input type="checkbox" checked={showClosed} onChange={(event) => setShowClosed(event.target.checked)} /> Incluir cerrados</label>
     </div>
-    {query.isLoading && <p className="py-4 text-sm text-[var(--mut)]">Cargando trabajos...</p>}
+    {query.isLoading && <ListSkeleton label="Cargando trabajos" />}
     {query.isError && <ErrorNotice>No se pudieron cargar los trabajos. <button type="button" className="underline" onClick={() => query.refetch()}>Reintentar</button></ErrorNotice>}
     <div className="grid gap-3 lg:grid-cols-2">{visible.map((job) => {
       const active = job.status === "OPEN" || job.status === "IN_PROGRESS";

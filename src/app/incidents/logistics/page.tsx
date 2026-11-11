@@ -1,4 +1,5 @@
 "use client";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
@@ -122,7 +123,7 @@ export default function DriverAuthorizationsPage() {
             {(error || options.isError) && (
               <ErrorNotice>{error || "No se pudieron consultar las habilitaciones."}</ErrorNotice>
             )}
-            {options.isLoading && <p>Cargando habilitaciones...</p>}
+            {options.isLoading && <ListSkeleton label="Cargando habilitaciones" />}
             {pending && pending.length > 0 && (
               <section className="my-4 border-l-4 border-amber-500 pl-3">
                 <h2 className="font-bold">Conductores pendientes de revalidación</h2>

@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "@/lib/toast";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Users } from "lucide-react";
@@ -23,7 +24,7 @@ export function DocumentReading({ documentId, revision, manager }: { documentId:
   const technicalAdmin = user?.profile?.rank?.toLowerCase() === "administrador";
   async function confirm() {
     setBusy(true); setError("");
-    try { await api.post(`/station/documents/${documentId}/read`); await client.invalidateQueries({ queryKey: ["document-reads"] }); }
+    try { await api.post(`/station/documents/${documentId}/read`); await client.invalidateQueries({ queryKey: ["document-reads"] }); toast.success("Lectura registrada"); }
     catch (err) { setError(getErrorMessage(err, "No se pudo registrar la lectura")); } finally { setBusy(false); }
   }
   return <>

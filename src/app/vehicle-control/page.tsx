@@ -1,4 +1,5 @@
 "use client";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -44,7 +45,7 @@ export default function VehicleControlPage() {
         <li className="flex items-center gap-2"><Users className="h-4 w-4 text-emerald-400" aria-hidden />Esta semana le toca a tu grupo{eligibility.data?.group ? `: ${eligibility.data.group.name}` : ""}.</li>
         <li className="flex items-center gap-2"><ScanLine className="h-4 w-4 text-sky-300" aria-hidden />Necesitás tener tu ingreso al cuartel registrado con el QR. <Link href="/attendance" className="text-red-300 underline">Registrar</Link></li>
       </ol>
-      {query.isError && <p role="alert" className="text-red-300">No se pudieron cargar los móviles.</p>}{query.isLoading && <p role="status">Cargando móviles…</p>}
+      {query.isError && <p role="alert" className="text-red-300">No se pudieron cargar los móviles.</p>}{query.isLoading && <ListSkeleton label="Cargando móviles" />}
       <label className="block"><span className="app-label">Tipo de móvil</span><select className="app-input" value={kind} onChange={(e) => { setKind(e.target.value); setId(""); }}><option value="">Todos los tipos</option>{Object.entries(vehicleKinds).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
       <label className="block"><span className="app-label">Móvil a controlar</span><select className="app-input" value={id} onChange={(e) => setId(e.target.value)}><option value="">Seleccionar unidad</option>{vehicles.map((asset) => <option key={asset.id} value={asset.id}>{asset.vehicle?.unitNumber} · {asset.name} · {asset.vehicle?.plate || "Sin patente"}</option>)}</select></label>
       {id ? <Link className="app-button app-button-red w-auto" href={`/equipment/${id}/inspection/new`}>Abrir planilla de control</Link> : <p className="text-sm text-[var(--mut)]">Elegí un móvil para abrir su planilla.</p>}

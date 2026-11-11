@@ -1,4 +1,5 @@
 "use client";
+import { CountUp } from "@/components/ui/count-up";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, CalendarRange, Clock3, Shield, Timer } from "lucide-react";
@@ -55,7 +56,7 @@ export function HoursStatistics() {
     {query.isError && <ErrorNotice>No se pudieron calcular las horas. <button className="underline" onClick={() => query.refetch()}>Reintentar</button></ErrorNotice>}
     {d && <>
       <div className="grid grid-cols-3 gap-2">
-        {[[fmtHours(d.totalMinutes), "horas"], [`${fmtHours(d.averageMinutes)}h`, d.averageUnit === "month" ? "por mes" : "por día"], [d.audience === "ALL" ? d.people : "Vos", d.audience === "ALL" ? "bomberos" : "tus horas"]].map(([v, l]) => <div key={String(l)} className="rounded-xl border border-[var(--bord)] bg-[var(--card)] p-3 text-center"><p className="text-2xl font-black tabular-nums text-red-400">{v}</p><p className="text-xs text-[var(--mut)]">{l}</p></div>)}
+        {[[<CountUp key="t" value={d.totalMinutes / 60} format={(n) => fmtHours(n * 60)} />, "horas"], [`${fmtHours(d.averageMinutes)}h`, d.averageUnit === "month" ? "por mes" : "por día"], [d.audience === "ALL" ? d.people : "Vos", d.audience === "ALL" ? "bomberos" : "tus horas"]].map(([v, l]) => <div key={String(l)} className="rounded-xl border border-[var(--bord)] bg-[var(--card)] p-3 text-center"><p className="text-2xl font-black tabular-nums text-red-400">{v}</p><p className="text-xs text-[var(--mut)]">{l}</p></div>)}
       </div>
       <p className="text-xs text-[var(--mut)]">{period}. Se actualiza en vivo. {kind === "normal" ? "Cuentan las horas con ingreso por QR fuera de una guardia asignada" : "Cuentan las horas con ingreso por QR dentro de una guardia asignada"}; quien sigue adentro suma hasta este momento. Sin superponer intervalos ni contar registros rechazados.</p>
 

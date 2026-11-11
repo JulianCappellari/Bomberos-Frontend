@@ -1,4 +1,5 @@
 "use client";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 
 import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -128,7 +129,7 @@ export default function ContactsPage() {
           <label className="flex items-center gap-2 text-sm text-[var(--mut)]"><input type="checkbox" checked={emergencyOnly} onChange={(event) => setEmergencyOnly(event.target.checked)} /> Prioritarios</label>
         </div>
 
-        {contacts.isLoading && <p className="py-6 text-sm text-[var(--mut)]">Cargando contactos...</p>}
+        {contacts.isLoading && <ListSkeleton label="Cargando contactos" />}
         {contacts.isError && <div role="alert" className="py-4 text-red-300">No se pudieron cargar los contactos. <button type="button" className="underline" onClick={() => contacts.refetch()}>Reintentar</button></div>}
         {!contacts.isLoading && !contacts.isError && visible.length === 0 && <p className="py-8 text-center text-sm text-[var(--mut)]">{rows.length ? "No hay contactos para estos filtros." : "Todavia no hay contactos registrados."}</p>}
 

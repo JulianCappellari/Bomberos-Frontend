@@ -1,4 +1,5 @@
 "use client";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 
 import { FormEvent, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -154,7 +155,7 @@ export function IncidentMovements({
 
       {canWrite && incidentOpen && (
         <form onSubmit={registerMovement} className="space-y-3">
-          {options.isLoading && <p role="status">Cargando móviles y dotación...</p>}
+          {options.isLoading && <ListSkeleton label="Cargando móviles y dotación" />}
           {options.isError && (
             <p role="alert" className="text-sm text-red-300">
               No se pudo cargar la información para registrar una salida.

@@ -1,4 +1,5 @@
 "use client";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -59,7 +60,7 @@ export default function NoticesPage() {
       <div className="flex flex-wrap items-end gap-2"><button className="app-button w-auto">{editing ? "Guardar corrección" : "Registrar sin convocar"}</button>{editing && <button type="button" className="app-button w-auto" onClick={() => setEditing(null)}>Descartar edición</button>}</div>
     </fieldset></form>
     {error && <ErrorNotice>{error}</ErrorNotice>}<h2 className="my-4 text-lg font-bold">Avisos recibidos</h2>
-    {list.isLoading && <p>Cargando avisos...</p>}{list.isError && <ErrorNotice>No se pudieron cargar los avisos. <button onClick={() => list.refetch()}>Reintentar</button></ErrorNotice>}
+    {list.isLoading && <ListSkeleton label="Cargando avisos" />}{list.isError && <ErrorNotice>No se pudieron cargar los avisos. <button onClick={() => list.refetch()}>Reintentar</button></ErrorNotice>}
     {list.data?.length === 0 && <p>No hay avisos en esta página.</p>}
     {list.data?.map(row => <article key={row.id} className="border-b border-[var(--bord)] py-4"><h3 className="font-bold">{types[row.type]} · {row.location}</h3><p className="text-sm">{new Date(row.receivedAt).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" })} · {row.operator.username} · Prioridad {priorities[row.priority]}</p><p>Origen: {row.source} {row.phone}</p>{row.notes && <p>{row.notes}</p>}{row.referral && <p>Derivado a: {row.referral}</p>}
     {row.cancelledAt ? <p className="mt-2 text-sm">Anulado: {row.cancelReason}</p> : row.alertId ? <Link href={row.alert?.incident ? "/incidents" : "/alerts"} className="underline">{row.alert?.incident ? "Intervención despachada" : "Ver convocatoria en alertas"}</Link> : <>

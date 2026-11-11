@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "@/lib/toast";
 import Link from "next/link";
 import {useState} from "react";
 import {useQuery,useQueryClient} from "@tanstack/react-query";
@@ -13,7 +14,7 @@ export function QuickAvailability(){
  const {user}=useAuth(),client=useQueryClient(),[busy,setBusy]=useState(false),[error,setError]=useState("");
  const enabled=Boolean(user&&!user.mustChangePassword&&user.profile?.rank?.toLowerCase()!=="administrador");
  const query=useQuery({queryKey:["emergency-availability",user?.id],enabled,queryFn:async()=>(await api.get<{status:Status;presentByQr:boolean;deployed:boolean}>("/members/availability")).data,refetchInterval:15000});
- async function change(available:boolean){setBusy(true);setError("");try{await api.post("/members/availability"+(available?"/available-now":""),available?{}:{startsAt:new Date().toISOString(),endsAt:null});await client.invalidateQueries({queryKey:["emergency-availability"]});await client.invalidateQueries({queryKey:["operational-availability"]});}catch(err){setError(getErrorMessage(err,"No se pudo cambiar la disponibilidad"));}finally{setBusy(false);}}
+ async function change(available:boolean){setBusy(true);setError("");try{await api.post("/members/availability"+(available?"/available-now":""),available?{}:{startsAt:new Date().toISOString(),endsAt:null});await client.invalidateQueries({queryKey:["emergency-availability"]});await client.invalidateQueries({queryKey:["operational-availability"]});toast.success(available?"Estás disponible para emergencias":"Marcado como no disponible",available?"Vas a recibir las convocatorias.":"No vas a recibir convocatorias hasta que vuelvas a estar disponible.");}catch(err){setError(getErrorMessage(err,"No se pudo cambiar la disponibilidad"));}finally{setBusy(false);}}
  if(!enabled)return null;
  const automatic=query.data?.presentByQr||query.data?.deployed;
  const status=query.data?.status;

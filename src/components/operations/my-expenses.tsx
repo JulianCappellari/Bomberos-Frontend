@@ -1,4 +1,5 @@
 "use client";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/features/auth/auth-context";
@@ -19,7 +20,7 @@ export function MyExpenses() {
         <h2 id="my-expenses-title" className="text-lg font-bold">Mis gastos presentados</h2>
         {pending > 0 && <p className="text-sm text-sky-200">A cobrar: <strong>{money(pending)}</strong></p>}
       </div>
-      {query.isLoading && <p className="text-sm text-[var(--mut)]">Cargando…</p>}
+      {query.isLoading && <ListSkeleton label="Cargando" />}
       {query.isError && <p role="alert" className="text-sm text-red-300">No se pudieron consultar tus gastos. <button className="underline" onClick={() => query.refetch()}>Reintentar</button></p>}
       {query.data?.length === 0 && <p className="text-sm text-[var(--mut)]">Todavía no presentaste gastos.</p>}
       <ul className="space-y-2">

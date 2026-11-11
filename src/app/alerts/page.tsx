@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "@/lib/toast";
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -311,6 +312,8 @@ function AlertCard({
     try {
       await respondMutation.mutateAsync({ id: alert.id, response });
       setPendingResponse(null);
+      if (response === "GOING") toast.success("Respuesta registrada: Voy", "Dirigite al cuartel. Al llegar, fichá con el QR.");
+      else toast.info("Respuesta registrada: No voy");
     } catch (error: unknown) {
       setActionError(getErrorMessage(error, "No se pudo registrar tu respuesta."));
     }

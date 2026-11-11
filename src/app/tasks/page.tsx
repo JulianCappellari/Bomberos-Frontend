@@ -1,4 +1,6 @@
 "use client";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
+import { toast } from "@/lib/toast";
 import { TaskTransfers } from "@/components/operations/task-transfers";
 import { TaskPhotoPicker, TaskPhoto } from "@/components/operations/task-photos";
 import { FormEvent, useState } from "react";
@@ -66,20 +68,22 @@ export default function TasksPage() {
         else if (mode === "assign") await taskAction(task.id, "assign", { ...body, userIds: ids });
         else await taskAction(task.id, "member", { ...body, action: mode === "transfer" ? "TRANSFER" : "DECLINE", ...(mode === "transfer" ? { targetUserId: target } : {}) });
       }
+      const done: Partial<Record<Mode, string>> = { create: "Tarea publicada", report: "Trabajo informado a jefatura", submit: "Enviada a verificación", review: "Revisión registrada", plan: "Planificación guardada", assign: "Tarea reasignada", transfer: "Transferencia propuesta", decline: "Se avisó a jefatura que no podés" };
+      if (mode && done[mode]) toast.success(done[mode]!);
       setMode(null); refresh();
     } catch (err) { setError(getErrorMessage(err, "No se pudo completar la operacion. Actualice antes de reintentar si hubo un conflicto.")); }
     finally { setBusy(false); }
   }
-  async function claim(row: WorkTask) { setBusy(true); setError(""); try { await taskAction(row.id, "claim", { revision: row.revision }); refresh(); } catch (err) { setError(getErrorMessage(err, "No se pudo tomar la tarea. Recargue si cambio.")); } finally { setBusy(false); } }
+  async function claim(row: WorkTask) { setBusy(true); setError(""); try { await taskAction(row.id, "claim", { revision: row.revision }); refresh(); toast.success("Tarea tomada", row.title); } catch (err) { setError(getErrorMessage(err, "No se pudo tomar la tarea. Recargue si cambio.")); } finally { setBusy(false); } }
   const names: Record<Mode, string> = { plan:"Planificar tarea y reparación", create: "Publicar tarea pendiente", report: "Informar trabajo realizado", submit: "Informar finalizacion", review: "Revisar tarea", transfer: "Proponer transferencia", decline: "Informar imposibilidad", assign: "Reasignar equipo", history: "Historial de tarea" };
   return <ProtectedLayout><main className="screen-body">
     <header className="mb-5"><h1 className="flex items-center gap-2 text-2xl font-bold"><ClipboardList className="h-6 w-6 text-red-400" aria-hidden /> Tareas</h1><p className="mt-1 text-sm text-[var(--mut)]">Tomá un trabajo, avisá cuando lo terminás y jefatura lo verifica.</p><div className="mt-4 flex flex-wrap gap-2">{manager && <button className="app-button app-button-red w-auto" onClick={() => open("create")}><Plus className="h-4 w-4" aria-hidden /> Asignar tarea</button>}{!systemAdmin && <button className="app-button w-auto" onClick={() => open("report")}><CheckCheck className="h-4 w-4" aria-hidden /> Informar trabajo ya hecho</button>}{!manager && !systemAdmin && <button type="button" className="app-button app-button-outline w-auto" onClick={() => open("create")}><Plus className="h-4 w-4" aria-hidden /> Proponer una tarea</button>}<button className="btn-icon ml-auto" title="Actualizar" aria-label="Actualizar tareas" onClick={refresh}><RefreshCw className="h-4 w-4" aria-hidden /></button></div></header>
     <TaskTransfers />
     <div role="tablist" aria-label="Qué tareas ver" className="mb-3 flex gap-1 rounded-xl border border-[var(--bord)] bg-black/20 p-1">{([[true, "Mis tareas"], [false, manager ? "Todas" : "Todas las disponibles"]] as const).map(([value, text]) => <button key={text} type="button" role="tab" aria-selected={onlyMine === value} className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${onlyMine === value ? "bg-red-600 text-white" : "text-white/70 hover:bg-white/[0.06]"}`} onClick={() => { setMine(value); setPage(1); }}>{text}</button>)}</div>
     <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_200px]"><input className="app-input" type="search" aria-label="Buscar tareas" placeholder="Buscar por título o descripción" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /><select className="app-input" aria-label="Estado de tareas" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}><option value="">Todos los estados</option>{Object.entries(labels).filter(([id]) => manager || ["ASSIGNED", "RETURNED", "SUBMITTED"].includes(id)).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></div>
-    {error && !mode && <ErrorNotice>{error}</ErrorNotice>}{tasks.isLoading && <p role="status">Cargando tareas...</p>}{tasks.isError && <ErrorNotice>No se pudieron cargar las tareas. <button className="underline" onClick={refresh}>Reintentar</button></ErrorNotice>}
+    {error && !mode && <ErrorNotice>{error}</ErrorNotice>}{tasks.isLoading && <ListSkeleton label="Cargando tareas" />}{tasks.isError && <ErrorNotice>No se pudieron cargar las tareas. <button className="underline" onClick={refresh}>Reintentar</button></ErrorNotice>}
     {!tasks.isLoading && !tasks.isError && !tasks.data?.items.length && <p className="py-10 text-center text-[var(--mut)]">{onlyMine ? "No tenés tareas a tu cargo. Podés tomar una en \u201cTodas las disponibles\u201d." : "No hay tareas para estos filtros."}</p>}
-    <div className="grid gap-3 lg:grid-cols-2">{tasks.data?.items.map((row) => {
+    <div className="stagger grid gap-3 lg:grid-cols-2">{tasks.data?.items.map((row) => {
       const member = row.members.find((m) => m.userId === user?.id), active = ["ASSIGNED", "RETURNED"].includes(row.status);
       const canReview = manager && row.status === "SUBMITTED" && !member && !(row.isSelfReported && row.createdByUserId === user?.id);
       const overdue = active && row.dueOn && row.dueOn.slice(0, 10) < stationDate();
@@ -118,7 +122,7 @@ export default function TasksPage() {
     })}</div>
     {tasks.data && <Pager page={page} total={tasks.data.total} onPage={setPage} />}
     {mode && <OperationDialog title={names[mode]} pending={busy} onClose={() => setMode(null)}>
-      {mode === "history" ? <div className="space-y-3">{history.isLoading && <p>Cargando historial...</p>}{history.isError && <ErrorNotice>No se pudo cargar el historial.</ErrorNotice>}{history.data?.map((item) => <div key={item.id} className="border-b border-[var(--bord)] pb-3"><div className="text-sm font-bold">{eventLabels[item.action]||item.action} · {personName(item.actor)}</div><div className="text-xs text-[var(--mut)]">{dateTime(item.createdAt)}</div><p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.notes}</p></div>)}</div> : <form onSubmit={submit}><fieldset disabled={busy} className="space-y-3">
+      {mode === "history" ? <div className="space-y-3">{history.isLoading && <ListSkeleton label="Cargando historial" />}{history.isError && <ErrorNotice>No se pudo cargar el historial.</ErrorNotice>}{history.data?.map((item) => <div key={item.id} className="border-b border-[var(--bord)] pb-3"><div className="text-sm font-bold">{eventLabels[item.action]||item.action} · {personName(item.actor)}</div><div className="text-xs text-[var(--mut)]">{dateTime(item.createdAt)}</div><p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.notes}</p></div>)}</div> : <form onSubmit={submit}><fieldset disabled={busy} className="space-y-3">
         {error && <ErrorNotice>{error}</ErrorNotice>}
         {(mode === "create" || mode === "report") && <><Field label="Titulo"><input autoFocus required minLength={3} maxLength={160} className="app-input" value={title} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Descripcion"><textarea required minLength={5} maxLength={4000} className="app-input" value={description} onChange={(e) => setDescription(e.target.value)} /></Field>{mode === "create" && <Field label="Fecha limite"><input className="app-input" type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} /></Field>}</>}
         {(["report", "assign"].includes(mode) || mode === "create" && manager) && <>{people.isError && <ErrorNotice>No se pudo cargar el personal.</ErrorNotice>}<PeoplePicker people={people.data || []} value={ids} onChange={setIds} /></>}
