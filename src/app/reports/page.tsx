@@ -24,7 +24,8 @@ type Report = {
 type FuelReport = { totals: { liters: number; loads: number; cost: number; pricedLoads: number }; vehicles: Array<{ assetId: string; name: string; liters: number; loads: number; cost: number; pricedLoads: number; distanceKm: number; odometerReadings: number }> };
 const periods = { THIS_MONTH: "Este mes", LAST_MONTH: "Mes anterior", THIS_YEAR: "Este año", LAST_YEAR: "Año anterior", ROLLING_YEAR: "12 meses", ALL: "Todo" } as const;
 const alertLabels: Record<string, string> = { FIRE: "Incendio", RESCUE: "Rescate", ACCIDENT: "Accidente", CHEMICAL: "Químico", MEDICAL: "Médico", FLOOD: "Inundación", OTHER: "Otro" };
-type ReportTab = "month" | "year" | "guards" | "compare" | "fuel" | "mine";
+type ReportTab = "month" | "year" | "guards" | "compare" | "fuel" | "mine" | "mymonth";
+type Section = "station" | "personal";
 function hours(minutes: number) { return `${Math.floor(minutes / 60)} h ${minutes % 60} min`; }
 export default function ReportsPage() {
   const { user, isAuthenticated } = useAuth();
@@ -32,6 +33,7 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState<keyof typeof periods>("THIS_YEAR");
   const [vehicleId, setVehicleId] = useState("");
   const [tab, setTab] = useState<ReportTab>("month");
+  const [section, setSection] = useState<Section>("station");
   const canSeeFuel = isDutyManager(user?.role);
   const fuel = useQuery({ queryKey: ["operations", "fuel-report", period, vehicleId], queryFn: async () => (await api.get<FuelReport>("/operations/reports/fuel", { params: { period, ...(vehicleId ? { assetId: vehicleId } : {}) } })).data, enabled: isAuthenticated && canSeeFuel });
   const [vehicleOptions, setVehicleOptions] = useState<Array<{ assetId: string; name: string }>>([]);
@@ -43,7 +45,12 @@ export default function ReportsPage() {
   const report = query.data;
   const showMine = Boolean(user && user.profile?.rank?.toLowerCase() !== "administrador");
   const command = isCommand(user?.role);
-  const tabs: Array<[ReportTab, string]> = [["month", "Mensual"], ["year", "Horas"], ...(command ? [["guards", "Guardias"], ["compare", "Comparativa"]] as Array<[ReportTab, string]> : []), ...(canSeeFuel ? [["fuel", "Combustible"] as [ReportTab, string]] : []), ...(showMine ? [["mine", "Mi actividad"] as [ReportTab, string]] : [])];
+  // Cuartel y Personal separados: los datos del cuartel no se mezclan con las horas propias.
+  const stationTabs: Array<[ReportTab, string]> = [["month", "Resumen mensual"], ...(command ? [["year", "Horas del personal"], ["guards", "Guardias"], ["compare", "Comparativa"]] as Array<[ReportTab, string]> : []), ...(canSeeFuel ? [["fuel", "Combustible"] as [ReportTab, string]] : [])];
+  const personalTabs: Array<[ReportTab, string]> = [["mymonth", "Mi mes"], ...(!command ? [["year", "Mis horas"] as [ReportTab, string]] : []), ["mine", "Mi actividad"]];
+  const tabs = section === "personal" && showMine ? personalTabs : stationTabs;
+  const mine = report?.people.find((row) => row.user.id === user?.id);
+  function pickSection(next: Section) { setSection(next); setTab(next === "personal" ? "mymonth" : "month"); }
   function download() {
     if (!report) return;
     const csv = reportCsv(report.people.map((row) => ({
@@ -56,8 +63,11 @@ export default function ReportsPage() {
   return <ProtectedLayout><main className="screen-body">
     <header className="mb-4">
       <h1 className="text-2xl font-bold text-white">Reportes</h1>
-      <p className="mt-1 text-sm text-[var(--mut)]">{report?.scope === "SELF" ? "Tus horas y el resumen operativo del cuartel." : "Horas del personal, actividad operativa y consumo de la flota."}</p>
+      <p className="mt-1 text-sm text-[var(--mut)]">{section === "personal" ? "Tus horas, registros y actividad." : command ? "Actividad operativa del cuartel, horas del personal y consumo de la flota." : "Actividad operativa del cuartel."}</p>
     </header>
+    {showMine && <div role="tablist" aria-label="Sección de reportes" className="mb-3 grid grid-cols-2 gap-1 rounded-xl border border-[var(--bord)] bg-[var(--card)] p-1">
+      {([["station", "Cuartel"], ["personal", "Personal"]] as const).map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={section === id} onClick={() => pickSection(id)} className={`rounded-lg px-3 py-2.5 text-sm font-bold transition-colors ${section === id ? "bg-[var(--txt)] text-[var(--bg)]" : "text-[var(--mut)] hover:text-[var(--txt)]"}`}>{label}</button>)}
+    </div>}
     <div role="tablist" aria-label="Tipo de reporte" className="mb-5 flex gap-1 overflow-x-auto rounded-xl border border-[var(--bord)] bg-[var(--card)] p-1">
       {tabs.map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`min-w-fit flex-1 whitespace-nowrap rounded-lg px-2.5 py-2 text-[13px] font-semibold sm:text-sm transition-colors ${tab === id ? "bg-red-600 text-white" : "text-white/65 hover:text-white"}`}>{label}</button>)}
     </div>
@@ -65,31 +75,33 @@ export default function ReportsPage() {
     <div className="mb-5 flex flex-wrap items-end gap-2">
       <label className="text-sm text-[var(--mut)]"><span className="mb-1 block">Mes del reporte</span><input type="month" className="app-input w-auto" value={month} onChange={(event) => event.target.value && setMonth(event.target.value)} /></label>
       <button type="button" className="btn-icon" title="Actualizar reporte" aria-label="Actualizar reporte" onClick={() => query.refetch()}><RefreshCw className="h-4 w-4" /></button>
-      <button type="button" className="app-button app-button-outline w-auto" disabled={!report || !report.people.length} onClick={download}><Download className="h-4 w-4" /> Exportar CSV</button>
+      {command && <button type="button" className="app-button app-button-outline w-auto" disabled={!report || !report.people.length} onClick={download}><Download className="h-4 w-4" /> Exportar CSV</button>}
     </div>
     {query.isLoading && <p className="py-4 text-sm text-[var(--mut)]">Calculando reporte...</p>}
     {query.isError && <ErrorNotice>No se pudo generar el reporte. <button type="button" className="underline" onClick={() => query.refetch()}>Reintentar</button></ErrorNotice>}
     {report && <>
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="border-l-2 border-red-500/50 pl-3"><div className="text-xl font-bold text-white">{hours(report.totals.workedMinutes)}</div><div className="text-xs text-[var(--mut)]">{report.scope === "SELF" ? "Mi permanencia" : "Permanencia total"}</div></div>
-        <Metric label="Registros de permanencia" value={report.totals.sessions} />
         <Metric label="Alertas" value={report.totals.alerts} />
         <Metric label="Intervenciones" value={report.totals.incidents} />
         <Metric label="Controles vehiculares" value={report.totals.inspections} />
         <Metric label="Turnos programados" value={report.totals.shifts} />
-        <Metric label="Personal con registros" value={report.totals.people} />
-        <Metric label="Permanencias abiertas" value={report.totals.openSessions} />
+        {report.scope !== "SELF" && <>
+          <div className="border-l-2 border-red-500/50 pl-3"><div className="text-xl font-bold text-white">{hours(report.totals.workedMinutes)}</div><div className="text-xs text-[var(--mut)]">Permanencia total del personal</div></div>
+          <Metric label="Registros de permanencia" value={report.totals.sessions} />
+          <Metric label="Personal con registros" value={report.totals.people} />
+          <Metric label="Permanencias abiertas" value={report.totals.openSessions} />
+        </>}
       </div>
-      {report.totals.openSessions > 0 && <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">Las permanencias abiertas se calculan hasta el momento de generar el reporte.</p>}
+      {report.scope !== "SELF" && report.totals.openSessions > 0 && <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">Las permanencias abiertas se calculan hasta el momento de generar el reporte.</p>}
       {report.totals.excludedSessions > 0 && <p role="status" className="mb-4 text-sm text-amber-200">{report.totals.excludedSessions} registros inconsistentes o rechazados fueron excluidos del cálculo.</p>}
-      <section className="mb-6">
-        <h2 className="mb-3 text-lg font-bold text-white">{report.scope === "SELF" ? "Mis registros" : "Horas por integrante"}</h2>
+      {report.scope !== "SELF" && <section className="mb-6">
+        <h2 className="mb-3 text-lg font-bold text-white">Horas por integrante</h2>
         <div className="space-y-2">{report.people.map((row) => <article key={row.user.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--bord)] bg-[var(--card)] p-4">
           <div><div className="font-bold text-white">{personName(row.user)}</div><div className="mt-1 text-xs text-[var(--mut)]">{row.user.profile?.rank} · {row.sessions} registros{row.openSessions ? ` · ${row.openSessions} abiertos` : ""}</div></div>
           <div className="text-lg font-bold text-red-300">{hours(row.workedMinutes)}</div>
         </article>)}</div>
         {!report.people.length && <p className="py-6 text-center text-sm text-[var(--mut)]">Sin registros de permanencia en el mes.</p>}
-      </section>
+      </section>}
       <section><h2 className="mb-3 text-lg font-bold text-white">Alertas por tipo</h2><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {report.alertsByType.map((group) => <div key={group.type} className="flex justify-between border-b border-[var(--bord)] py-3 text-sm"><span className="text-[var(--mut)]">{alertLabels[group.type] || group.type}</span><span className="font-bold text-white">{group.count}</span></div>)}
       </div></section>
@@ -97,6 +109,21 @@ export default function ReportsPage() {
     </>}
     <OperationalReport month={month}/>
     </>}
+    {tab === "mymonth" && section === "personal" && <section aria-label="Mi mes">
+      <label className="mb-5 block text-sm text-[var(--mut)]"><span className="mb-1 block">Mes</span><input type="month" className="app-input w-auto" value={month} onChange={(event) => event.target.value && setMonth(event.target.value)} /></label>
+      {query.isLoading && <p className="py-4 text-sm text-[var(--mut)]">Calculando…</p>}
+      {query.isError && <ErrorNotice>No se pudo calcular. <button type="button" className="underline" onClick={() => query.refetch()}>Reintentar</button></ErrorNotice>}
+      {report && <>
+        <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <div className="border-l-2 border-red-500/50 pl-3"><div className="text-2xl font-bold text-white">{hours(mine?.workedMinutes ?? 0)}</div><div className="text-xs text-[var(--mut)]">Mi permanencia en el cuartel</div></div>
+          <Metric label="Mis registros" value={mine?.sessions ?? 0} />
+          <Metric label="Abiertos ahora" value={mine?.openSessions ?? 0} />
+        </div>
+        {(mine?.openSessions ?? 0) > 0 && <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">Tu permanencia abierta se cuenta hasta este momento.</p>}
+        {!mine && <p className="py-4 text-sm text-[var(--mut)]">No tenés registros de permanencia en este mes.</p>}
+        <Link href="/attendance" className="app-button app-button-outline w-fit">Ver mi asistencia</Link>
+      </>}
+    </section>}
     {tab === "year" && <HoursStatistics />}
     {tab === "fuel" && canSeeFuel && <section aria-labelledby="fuel-title">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 id="fuel-title" className="text-xl font-bold">Informe de combustible</h2><button type="button" className="btn-icon" title="Actualizar combustible" aria-label="Actualizar combustible" onClick={() => fuel.refetch()}><RefreshCw className="h-4 w-4" /></button></div>

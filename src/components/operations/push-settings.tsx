@@ -55,6 +55,14 @@ export function PushSettings() {
     finally { setBusy(false); }
   }
   const registered = Boolean(query.data?.subscriptions.length);
+  // Las alertas solo llegan a quien esta convocado (disponible y sin ausencia): se muestra el motivo si no.
+  const readiness = useQuery({ queryKey: ["alert-readiness", user?.id], queryFn: async () => (await api.get<{ status: "YES" | "INFO" | "NONE"; canFix: boolean; reason: string }>("/push/alert-readiness")).data, enabled: Boolean(user && !user.mustChangePassword) });
+  async function becomeAvailable() {
+    setBusy(true); setMessage("");
+    try { await api.post("/members/availability/available-now"); await readiness.refetch(); await client.invalidateQueries({ queryKey: ["dashboard-summary"] }); setMessage("Listo: ahora te convocan a las alertas y el aviso te llega a este celular."); }
+    catch { setMessage("No se pudo marcar tu disponibilidad. Probá desde Mi perfil."); }
+    finally { setBusy(false); }
+  }
   return <section className="pb-4" aria-label="Avisos en este dispositivo">
     {query.isLoading ? <p className="mt-2 text-sm">Consultando configuración…</p> : query.isError ? <p role="alert" className="mt-2 text-sm">No se pudo consultar. <button className="underline" onClick={() => query.refetch()}>Reintentar</button></p> : <>
       <p className="mt-2 text-sm text-[var(--mut)]">{!query.data?.enabled ? "Los avisos en el celular todavía no están habilitados en el sistema. Mientras tanto, vas a ver todo acá y en la campana." : !supported ? "Requiere HTTPS y un navegador compatible. En iPhone, instalá la app en la pantalla de inicio y abrila desde ahí." : registered ? "Este dispositivo recibe avisos mientras la sesión siga abierta." : "Los avisos están desactivados en este dispositivo."}</p>
@@ -63,6 +71,10 @@ export function PushSettings() {
         {registered && <><button className="app-button w-auto" disabled={busy} onClick={test}><Send size={16} /> Enviar prueba</button><button className="app-button w-auto" disabled={busy} onClick={deactivate}><BellOff size={16} /> Desactivar</button></>}
       </div>}
       {permission === "denied" && <p className="mt-2 text-sm">El navegador tiene bloqueados los avisos. Habilitalos en sus ajustes.</p>}
+      {readiness.data && <div role="status" className={`mt-3 rounded-xl border p-3 text-sm ${readiness.data.status === "NONE" ? "border-amber-500/40 bg-amber-500/10" : "border-[var(--bord)] bg-[var(--card2)]"}`}>
+        <p><strong>Alertas:</strong> {readiness.data.reason}</p>
+        {readiness.data.canFix && <button type="button" className="app-button app-button-red mt-2 w-auto" disabled={busy} onClick={() => void becomeAvailable()}>Estoy disponible para emergencias</button>}
+      </div>}
     </>}
     {message && <p role="status" className="mt-3 text-sm">{message}</p>}
     <p className="mt-3 text-xs text-[var(--mut)]">Con la pantalla bloqueada se muestra un aviso genérico. La entrega depende de la conexión y del ahorro de energía del celular: no reemplaza la sirena ni la radio del cuartel.</p>

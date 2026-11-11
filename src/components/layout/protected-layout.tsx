@@ -13,6 +13,7 @@ import { PresencePrompt } from "@/components/operations/presence-prompt";
 import { TaskSyncPanel } from "@/components/operations/task-sync-panel";
 import { AppUpdateBanner } from "@/components/operations/app-lifecycle";
 import { OfflineBanner, PendingAlertBanner } from "@/components/operations/status-banners";
+import { AlertGate } from "@/components/operations/alert-gate";
 import { StepUpDialog } from "@/components/operations/step-up-dialog";
 import { NotificationBell } from "@/components/operations/notification-bell";
 import { GuardMode } from "@/components/operations/guard-mode";
@@ -338,6 +339,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
               <StepUpDialog />
               <OfflineBanner />
               <PendingAlertBanner />
+              <AlertGate />
               <PresencePrompt />
               <TaskSyncPanel />
               <AppUpdateBanner />

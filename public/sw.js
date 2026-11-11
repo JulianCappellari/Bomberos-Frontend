@@ -1,4 +1,4 @@
-const BUILD_VERSION = "474a72738df576f4";
+const BUILD_VERSION = "7b32e19c88993351";
 /* Version is injected by prepare-release.mjs. Never cache API or private HTML. */
 const CACHE = `bomberos-public-${BUILD_VERSION}`;
 self.addEventListener("install", (event) => { event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(["/offline.html", "/app-icon-192.png", "/app-icon-512.png"]))); });
@@ -13,15 +13,22 @@ self.addEventListener("push", (event) => {
     return;
   }
   const expired = data.expiresAt <= Date.now(), alert = data.alert === true, urgent = !expired && alert && data.priority === "HIGH";
-  event.waitUntil(self.registration.showNotification(expired ? "Bomberos: aviso anterior" : urgent ? "Alerta operativa prioritaria" : alert ? "Nueva alerta operativa" : "Bomberos: tiene un aviso", {
-    body: expired ? "Consulte el historial actualizado en la aplicacion." : "Abra la aplicacion para consultar los detalles.", icon: "/app-icon-192.png", badge: "/notification-badge.png", vibrate: urgent ? [300, 120, 300, 120, 600] : [200],
+  // El servidor arma el texto segun el tipo de aviso; aca solo se limpia y se recorta.
+  const text = (value, max) => typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
+  const route = typeof data.href === "string" && data.href.startsWith("/") && !data.href.startsWith("//") ? data.href.slice(0, 200) : null;
+  const title = expired ? "Bomberos: aviso anterior" : text(data.title, 80) || (urgent ? "Alerta operativa prioritaria" : alert ? "Nueva alerta operativa" : "Bomberos: tiene un aviso");
+  const body = expired ? "Consulte el historial actualizado en la aplicacion." : text(data.body, 180) || "Abra la aplicacion para consultar los detalles.";
+  event.waitUntil(self.registration.showNotification(title, {
+    body, icon: "/app-icon-192.png", badge: "/notification-badge.png", vibrate: urgent ? [300, 120, 300, 120, 600] : [200],
     tag: `bomberos-${data.id}`, renotify: false, requireInteraction: urgent,
-    data: { href: !expired && alert ? "/alerts" : "/notifications" },
+    data: { href: expired ? "/notifications" : alert ? "/alerts" : route || "/notifications" },
   }));
 });
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const href = event.notification.data?.href === "/alerts" ? "/alerts" : "/notifications";
+  // Solo rutas propias de la app (nunca enlaces externos).
+  const raw = event.notification.data?.href;
+  const href = typeof raw === "string" && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/notifications";
   const target = new URL(href, self.location.origin).href;
   event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
     for (const client of clients) {
