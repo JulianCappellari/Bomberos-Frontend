@@ -81,14 +81,23 @@ export default function CalendarPage() {
   const { user } = useAuth();
   const manager = isManager(user?.role);
   const [monthDate, setMonthDate] = useState(() => new Date());
-  const [selectedDate, setSelectedDate] = useState<string | null>(() => toDateKey(new Date()));
+  // undefined = sin eleccion: cada vista abre en su dia por defecto (Todas: hoy; Mis guardias: el mes).
+  const [pickedDate, setSelectedDate] = useState<string | null | undefined>(undefined);
   const [mineChoice, setMineChoice] = useState<boolean | null>(null);
-  const onlyMine = mineChoice ?? !manager;
   const monthGrid = useMemo(() => getMonthGrid(monthDate), [monthDate]);
   const { data: shifts = [], isLoading, isError } = useShifts({
     from: monthGrid.from,
     to: monthGrid.to,
   });
+  // Vista inicial: "Mis guardias" si la persona tiene alguna guardia asignada (en el mes que mira o en los
+  // proximos 90 dias); si no tiene ninguna, "Todas". Despues manda lo que elija.
+  const [range] = useState(() => { const now = new Date(); return { from: toDateKey(now), to: toDateKey(new Date(now.getTime() + 90 * 86_400_000)) }; });
+  const todayKey = range.from;
+  const upcoming = useShifts(range);
+  const isMine = (shift: Shift) => shift.assignments.some((assignment) => assignment.userId === user?.id);
+  const hasOwnShifts = shifts.some(isMine) || (upcoming.data ?? []).some(isMine);
+  const onlyMine = mineChoice ?? (upcoming.isLoading ? false : hasOwnShifts);
+  const selectedDate = pickedDate === undefined ? (onlyMine ? null : todayKey) : pickedDate;
   const { data: roster = [] } = useUserRoster();
   const monthShifts = shifts.filter((shift) => {
     const key = getDateKeyFromApi(shift.date);
@@ -97,7 +106,7 @@ export default function CalendarPage() {
   const displayedShifts = (selectedDate
     ? shifts.filter((shift) => getDateKeyFromApi(shift.date) === selectedDate)
     : monthShifts
-  ).filter((shift) => !onlyMine || shift.assignments.some((assignment) => assignment.userId === user?.id));
+  ).filter((shift) => !onlyMine || isMine(shift));
 
   const shiftsByDate = (() => {
     const grouped = new Map<string, Shift[]>();
@@ -158,7 +167,7 @@ export default function CalendarPage() {
           </div>
         </section>
 
-        {manager && (
+        {manager && !onlyMine && (
           <CreateShiftPanel
             roster={roster}
             defaultDate={toDateKey(new Date())}
@@ -174,7 +183,7 @@ export default function CalendarPage() {
         <section className="mb-3 flex flex-wrap items-center gap-2">
           <div role="tablist" aria-label="Qué guardias ver" className="flex flex-1 gap-1 rounded-xl border border-[var(--bord)] bg-black/20 p-1">
             {([[true, "Mis guardias"], [false, "Todas"]] as const).map(([value, text]) => (
-              <button key={text} type="button" role="tab" aria-selected={onlyMine === value} onClick={() => setMineChoice(value)}
+              <button key={text} type="button" role="tab" aria-selected={onlyMine === value} onClick={() => { setMineChoice(value); setSelectedDate(undefined); }}
                 className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${onlyMine === value ? "bg-red-600 text-white" : "text-white/70 hover:bg-white/[0.06]"}`}>{text}</button>
             ))}
           </div>
@@ -200,7 +209,7 @@ export default function CalendarPage() {
             <div className="grid grid-cols-7">
               {monthGrid.days.map((day) => {
                 const key = toDateKey(day);
-                const dayShifts = shiftsByDate.get(key) || [];
+                const dayShifts = (shiftsByDate.get(key) || []).filter((shift) => !onlyMine || isMine(shift));
                 const isCurrentMonth = day.getMonth() === monthDate.getMonth();
                 const isToday = key === toDateKey(new Date());
                 const mine = dayShifts.some((shift) => shift.assignments.some((assignment) => assignment.userId === user?.id));
@@ -281,7 +290,7 @@ export default function CalendarPage() {
           </div>
           {displayedShifts.length === 0 && !isLoading && !isError ? (
             <div className="card text-sm text-[var(--mut)]">
-              {onlyMine ? (selectedDate ? "No tenés guardia este día." : "No tenés guardias este mes.") : "No hay guardias cargadas para este rango."}
+              {onlyMine ? (selectedDate ? "No tenés guardia este día." : "No tenés guardias asignadas este mes. En “Todas” ves la agenda completa del cuartel.") : "No hay guardias cargadas para este rango."}
             </div>
           ) : (
             displayedShifts.map((shift) => (
@@ -290,7 +299,7 @@ export default function CalendarPage() {
           )}
         </section>
 
-        <ShiftSwaps shifts={shifts} people={roster} />
+        {!onlyMine && <ShiftSwaps shifts={shifts} people={roster} />}
       </main>
     </ProtectedLayout>
   );

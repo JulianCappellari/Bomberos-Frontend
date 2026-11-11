@@ -46,7 +46,8 @@ export function PendingAlertBanner() {
     const order = { HIGH: 0, MEDIUM: 1, LOW: 2 } as const;
     playAlertTone(fresh.sort((a, b) => order[a.priority] - order[b.priority])[0].priority);
   }, [pendingKey, alerts.data]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!user || pathname.startsWith("/alerts")) return null;
+  // En Alertas y en el Inicio la alerta ya se muestra en grande con su boton "Responder": no se repite el aviso.
+  if (!user || pathname.startsWith("/alerts") || pathname === "/dashboard" || pathname === "/") return null;
   if (pending.length === 0) return null;
   const first = pending[0];
   return (
