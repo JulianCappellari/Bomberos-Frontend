@@ -5,6 +5,7 @@ export type AssetType = "VEHICLE" | "PPE" | "OTHER";
 
 export interface Vehicle {
   kind?: VehicleKind;
+  licenseCategory?: string;
   id: string;
   assetId: string;
   unitNumber: string;
@@ -39,6 +40,7 @@ export interface UpdateAssetPayload {
 
 export interface UpsertVehiclePayload {
   kind?: VehicleKind;
+  licenseCategory?: string;
   unitNumber?: string;
   plate?: string | null;
   year?: number;
@@ -54,6 +56,7 @@ export interface CreateAssetPayload {
   lastCheckDate?: string | null;
   vehicle?: {
     kind?: VehicleKind;
+    licenseCategory?: string;
     unitNumber: string;
     plate?: string | null;
     year?: number;

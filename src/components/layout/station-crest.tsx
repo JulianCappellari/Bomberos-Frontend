@@ -5,9 +5,9 @@ export function StationCrest({ height, label = "" }: { height: number; label?: s
     <Image
       src="/escudo-sampacho.png"
       alt={label}
-      width={Math.round(height * 1026 / 1280)}
+      width={Math.round(height * 1122 / 1402)}
       height={height}
-      className="block shrink-0 rounded-sm"
+      className="block shrink-0"
     />
   );
 }

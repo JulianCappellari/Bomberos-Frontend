@@ -31,7 +31,9 @@ type Options = {
     requiresException: boolean;
     expiredControl?: boolean;
     hasBlockingIssue: boolean;
+    licenseRule?: { category: string; label: string; required: string[] };
   }>;
+  licensed?: Array<{ assetId: string; userId: string }>;
   people: UserRosterItem[];
   authorizations: Array<{
     assetId: string;
@@ -87,7 +89,9 @@ export function IncidentMovements({
   const selectedPeople =
     options.data?.people.filter((person) => userIds.includes(person.id)) || [];
 
+  // Habilitado por licencia (movil con categoria configurada) o por habilitacion manual de jefatura.
   function hasCurrentPermit(userId: string) {
+    if (selectedAsset?.licenseRule?.required.length) return Boolean(options.data?.licensed?.some((row) => row.assetId === assetId && row.userId === userId));
     return Boolean(
       options.data?.authorizations.some(
         (permit) =>
@@ -238,7 +242,7 @@ export function IncidentMovements({
                 }}
               />
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Conductor (solo habilitados con licencia vigente)">
+                <Field label={selectedAsset?.licenseRule?.required.length ? `Conductor (licencia ${selectedAsset.licenseRule.required.join(" + ")} vigente)` : "Conductor (habilitado por jefatura con licencia vigente)"}>
                   <select
                     required
                     className="app-input"
@@ -251,7 +255,7 @@ export function IncidentMovements({
                       return (
                         <option key={person.id} value={person.id} disabled={!enabled}>
                           {personName(person)}
-                          {enabled ? " · Apto" : " · No habilitado/licencia no vigente"}
+                          {enabled ? " · Apto" : selectedAsset?.licenseRule?.required.length ? " · Sin la licencia que exige" : " · No habilitado/licencia no vigente"}
                         </option>
                       );
                     })}

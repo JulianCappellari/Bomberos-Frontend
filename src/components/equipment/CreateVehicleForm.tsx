@@ -1,4 +1,5 @@
 "use client";
+import { VEHICLE_LICENSE_CATEGORIES } from "@/lib/license-classes";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -8,6 +9,7 @@ import { AssetStatus, vehicleKinds, VehicleKind } from "@/types/asset";
 
 type FormState = {
   kind: VehicleKind;
+  licenseCategory: string;
   name: string;
   status: AssetStatus;
   lastCheckDate: string;
@@ -32,6 +34,7 @@ export default function CreateVehicleForm() {
 
   const [form, setForm] = useState<FormState>({
     kind: "UNCLASSIFIED",
+    licenseCategory: "UNSET",
     name: "",
     status: "OPERATIONAL",
     lastCheckDate: "",
@@ -61,6 +64,7 @@ export default function CreateVehicleForm() {
         lastCheckDate: form.lastCheckDate ? `${form.lastCheckDate}T00:00:00.000Z` : null,
         vehicle: {
           kind: form.kind,
+          licenseCategory: form.licenseCategory,
           unitNumber: form.unitNumber.trim(),
           plate: form.plate.trim() ? form.plate.trim() : null,
           year: parseOptionalNumber(form.year),
@@ -144,6 +148,7 @@ export default function CreateVehicleForm() {
           </Field>
 
           <Field label="Tipo de movil"><select className="input-dark" value={form.kind} onChange={(e) => setField("kind", e.target.value as VehicleKind)}>{Object.entries(vehicleKinds).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></Field>
+            <Field label="Licencia que exige (para habilitar conductores)"><select className="input-dark" value={form.licenseCategory} onChange={(e) => setField("licenseCategory", e.target.value)}>{Object.entries(VEHICLE_LICENSE_CATEGORIES).map(([key, c]) => <option key={key} value={key}>{c.label}{c.required.length ? ` — ${c.required.join(" + ")}` : ""}</option>)}</select></Field>
           <Field label="Patente">
             <input
               className="input-dark"
