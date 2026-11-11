@@ -3,6 +3,7 @@ import { api } from "@/lib/api-client";
 export type BoardIncident = {
   id: string; title: string; type: string; location: string; occurredAt: string;
   alert: { priority: "HIGH" | "MEDIUM" | "LOW"; createdAt: string } | null;
+  agencies: Array<{ id: string; agencyType: string; name: string; unit: string }>;
   movements: Array<{ id: string; departedAt: string; arrivedAt: string | null; vehicle: string; driver: string; leader: string; crew: number }>;
 };
 export const getBoard = async () => (await api.get<{ generatedAt: string; incidents: BoardIncident[] }>("/station/board")).data;
@@ -23,7 +24,7 @@ export type GuardReport = {
   totals: { shifts: number; finishedAssignments: number; attended: number; missed: number; rate: number | null };
   people: Array<{ userId: string; name: string; rank: string; assigned: number; attended: number; missed: number; upcoming: number; rate: number | null; missedDates: string[] }>;
 };
-export type YearData = { year: number; incidents: number; alerts: number; months: number[]; byType: Record<string, number>; medianDispatchMinutes: number | null; medianTravelMinutes: number | null; samples: { dispatch: number; travel: number } };
+export type YearData = { year: number; incidents: number; alerts: number; jointIncidents: number; agencies: Record<string, number>; months: number[]; byType: Record<string, number>; medianDispatchMinutes: number | null; medianTravelMinutes: number | null; samples: { dispatch: number; travel: number } };
 export type YearComparison = { current: YearData; previous: YearData; comparableMonths: number; comparable: { current: number; previous: number } };
 
 export type PromotionRule = { rank: string; nextRank: string; minYearsInRank: number; minYearsService: number; minApprovedCourses: number };

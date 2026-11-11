@@ -69,6 +69,7 @@ export default function CommandBoardPage() {
               <span className="font-mono text-2xl font-bold tabular-nums" title="Tiempo desde el aviso">{elapsed(inc.alert?.createdAt ?? inc.occurredAt, now)}</span>
             </div>
             <p className="text-sm text-[var(--mut)]">{inc.title}</p>
+            {inc.agencies.length > 0 && <p className="mt-1 text-sm">También en el lugar: <strong>{inc.agencies.map((a) => a.unit ? `${a.name} (${a.unit})` : a.name).join(" · ")}</strong></p>}
             {inc.movements.length ? <ul className="mt-3 grid gap-2 sm:grid-cols-2">{inc.movements.map((m) => <li key={m.id} className="rounded-xl border border-[var(--bord)] bg-[var(--card)] p-3">
               <div className="flex items-center justify-between gap-2"><strong className="truncate">{m.vehicle}</strong><span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${m.arrivedAt ? "bg-emerald-700 text-white" : "bg-amber-600 text-white"}`}>{m.arrivedAt ? "En el lugar" : "En camino"}</span></div>
               <p className="mt-1 text-sm text-[var(--mut)]">A cargo: {m.leader} · Chofer: {m.driver} · {m.crew} en dotación</p>

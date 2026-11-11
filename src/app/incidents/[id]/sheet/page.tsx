@@ -10,6 +10,7 @@ import {api} from "@/lib/api-client";
 import {getErrorMessage} from "@/lib/get-error-message";
 import {SheetAmendments,SheetAmendment} from "@/components/operations/sheet-amendments";
 import {ReinforcementRequest} from "@/components/operations/reinforcement-request";
+import {IncidentAgencies} from "@/components/operations/incident-agencies";
 import {IncidentMovements} from "@/components/operations/incident-movements";
 import {IncidentNotebook} from "@/components/operations/incident-notebook";
 import {IncidentRedo} from "@/components/operations/incident-redo";
@@ -81,6 +82,7 @@ function Sheet({id,data,saved}:{id:string;data:Response;saved:()=>Promise<unknow
   <form onSubmit={close} className="mt-3 space-y-3"><Field label="Informe de cierre"><textarea className="app-input min-h-24" required minLength={10} maxLength={4000} value={closingReport} onChange={e=>setClosingReport(e.target.value)} placeholder="Resumen final de la emergencia"/></Field>
   <button className="app-button app-button-red w-auto" disabled={closing||busy||away>0||closingReport.trim().length<10}>{closing?"Cerrando…":"Cerrar intervención"}</button>{closeError&&<p role="alert" className="text-sm text-red-300">{closeError}</p>}</form>
  </Step>}
+ <IncidentAgencies incidentId={id}/>
  {sheet?.finalizedAt&&<SheetAmendments id={id} revision={sheet.revision} allowed={user?.role==="ADMIN"||user?.role==="OPERATOR"} items={data.amendments||[]} saved={saved}/>}</>;
 }
 export default function IncidentSheetPage(){

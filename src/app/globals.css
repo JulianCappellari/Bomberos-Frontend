@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -36,9 +35,11 @@
   --hdr: 64px;
   --sidebar: 272px;
   --content: 1440px;
-  --font-bebas: "Bebas Neue", sans-serif;
-  --font-barlow: "Barlow", sans-serif;
-  --font-barlow-condensed: "Barlow Condensed", sans-serif;
+  --font-sans: var(--font-plex), "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-bebas: var(--font-sans);
+  --font-barlow: var(--font-sans);
+  --font-barlow-condensed: var(--font-sans);
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 18px 40px rgba(0, 0, 0, 0.28);
   color-scheme: dark;
 }
@@ -93,6 +94,21 @@ html:not([data-theme="light"]) :is([class~="text-white/20"], [class~="text-white
 
 .app-button-red { background-color: var(--accent) !important; }
 
+/* ---- Tipografia ----
+   Los titulos que usaban Bebas Neue (todo mayusculas, letras espaciadas) pasan a Plex Sans en negrita
+   y con mayusculas normales; las etiquetas que usaban Barlow Condensed, a texto en oracion. */
+[class*="--font-bebas"] { text-transform: none !important; letter-spacing: -0.015em !important; font-weight: 700; }
+[class*="--font-barlow-condensed"] { text-transform: none !important; letter-spacing: 0 !important; }
+h1, h2, h3 { letter-spacing: -0.015em; }
+/* Numeros del mismo ancho en horas, contadores y montos: no "bailan" al actualizarse. */
+.tabular-nums, time, [class*="font-mono"] { font-variant-numeric: tabular-nums; }
+.font-mono { font-family: var(--font-mono); }
+/* Titulos y botones en mayusculas forzadas se ven genericos: se escriben en oracion. Las etiquetas chicas de
+   seccion (texto de 10 a 12 px en un parrafo) pueden seguir en versalitas: es un recurso tipografico valido. */
+:is(h1, h2, h3, h4, button, summary, a, label)[class~="uppercase"] { text-transform: none; letter-spacing: -0.005em; }
+/* Plex se carga hasta 700: los pesos mas gruesos se unifican para que no se vean sinteticos. */
+[class~="font-black"], [class~="font-extrabold"] { font-weight: 700; }
+
 /* Textos de ejemplo de los campos: legibles en ambos temas (antes eran blancos al 20%, invisibles en claro). */
 input::placeholder, textarea::placeholder { color: var(--dim) !important; opacity: 1; }
 /* Desplegables nativos: el menu toma los colores del tema. */
@@ -127,7 +143,7 @@ body {
   min-height: 100%;
   background: var(--bg);
   color: var(--txt);
-  font-family: "Barlow", sans-serif;
+  font-family: var(--font-sans);
 }
 
 body {
@@ -163,8 +179,8 @@ button {
   }
 
   .app-header-title {
-    font-family: "Bebas Neue", sans-serif;
-    @apply text-[22px] tracking-[1px] text-[var(--txt)];
+    font-family: var(--font-sans);
+    @apply text-[19px] font-semibold tracking-[-0.01em] text-[var(--txt)];
   }
 
   .app-header-title span {
@@ -192,8 +208,8 @@ button {
   }
 
   .section-title {
-    font-family: "Bebas Neue", sans-serif;
-    @apply text-[16px] tracking-[1px] text-[var(--mut)] mb-2.5 mt-1;
+    font-family: var(--font-sans);
+    @apply text-[15px] font-semibold text-[var(--mut)] mb-2.5 mt-1;
   }
 
   .app-input {
@@ -213,8 +229,8 @@ button {
   }
 
   .app-label {
-    font-family: "Barlow Condensed", sans-serif;
-    @apply block text-[12px] font-semibold uppercase tracking-[0.5px] text-[var(--mut)] mb-1.5;
+    font-family: var(--font-sans);
+    @apply block text-[13px] font-medium text-[var(--mut)] mb-1.5;
   }
 
   /* Evita que una tarjeta con texto largo ensanche la grilla y desborde la pantalla en celular. */
@@ -222,8 +238,8 @@ button {
 
   /* Boton base = accion secundaria visible. Las variantes (-red, -outline, -green) definen la jerarquia. */
   .app-button {
-    font-family: "Barlow Condensed", sans-serif;
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[var(--bord)] bg-[var(--card2)] px-5 py-[11px] text-[15px] font-bold uppercase tracking-[0.5px] text-[var(--txt)] transition-all w-full;
+    font-family: var(--font-sans);
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[var(--bord)] bg-[var(--card2)] px-5 py-[11px] text-[15px] font-semibold text-[var(--txt)] transition-all w-full;
   }
 
   .app-button:hover:not(:disabled) {
@@ -273,8 +289,8 @@ button {
   }
 
   .badge {
-    font-family: "Barlow Condensed", sans-serif;
-    @apply inline-flex items-center rounded-full px-2 py-[3px] text-[11px] font-bold uppercase tracking-[0.5px];
+    font-family: var(--font-sans);
+    @apply inline-flex items-center rounded-full px-2 py-[3px] text-[12px] font-semibold;
   }
 
   .badge-red {
@@ -314,13 +330,13 @@ button {
   }
 
   .stat-num {
-    font-family: "Bebas Neue", sans-serif;
+    font-family: var(--font-sans);
     @apply text-[32px] leading-none text-[var(--red)];
   }
 
   .stat-label {
-    font-family: "Barlow Condensed", sans-serif;
-    @apply text-[11px] text-[var(--mut)] mt-0.5 uppercase tracking-[0.5px];
+    font-family: var(--font-sans);
+    @apply text-[12px] text-[var(--mut)] mt-0.5;
   }
 
   .quick-grid {
@@ -349,8 +365,8 @@ button {
   }
 
   .quick-label {
-    font-family: "Barlow Condensed", sans-serif;
-    @apply text-[13px] font-bold uppercase tracking-[0.5px] text-center;
+    font-family: var(--font-sans);
+    @apply text-[13px] font-semibold text-center;
   }
 
   .bottom-nav {
@@ -379,8 +395,8 @@ button {
   }
 
   .nav-label {
-    font-family: "Barlow Condensed", sans-serif;
-    @apply text-[10px] font-semibold uppercase tracking-[0.5px];
+    font-family: var(--font-sans);
+    @apply text-[11px] font-medium;
   }
 
   .desktop-sidebar {
@@ -388,8 +404,8 @@ button {
   }
 
   .desktop-brand {
-    font-family: "Bebas Neue", sans-serif;
-    @apply mb-6 flex items-center gap-3 px-2 text-3xl tracking-[1px] text-[var(--txt)];
+    font-family: var(--font-sans);
+    @apply mb-6 flex items-center gap-3 px-2 text-2xl font-bold tracking-[-0.01em] text-[var(--txt)];
   }
 
   .desktop-brand span {
@@ -401,7 +417,7 @@ button {
   }
 
   .desktop-nav-link {
-    @apply flex items-center gap-3 rounded-xl border border-transparent px-3 py-3 text-sm font-bold uppercase tracking-[0.04em] text-[var(--mut)] transition hover:border-[var(--bord)] hover:bg-[var(--card)] hover:text-[var(--txt)];
+    @apply flex items-center gap-3 rounded-xl border border-transparent px-3 py-3 text-sm font-semibold text-[var(--mut)] transition hover:border-[var(--bord)] hover:bg-[var(--card)] hover:text-[var(--txt)];
   }
 
   .desktop-nav-link-active {
@@ -422,7 +438,7 @@ button {
 
   .login-root {
     @apply min-h-screen flex items-center justify-center px-6 py-6 bg-[var(--bg)] relative overflow-hidden;
-    font-family: "Barlow", sans-serif;
+    font-family: var(--font-sans);
   }
 
   .login-root::before {
@@ -471,8 +487,8 @@ button {
   }
 
   .badge-text {
-    font-family: "Barlow Condensed", sans-serif;
-    @apply text-[11px] font-bold uppercase whitespace-nowrap;
+    font-family: var(--font-sans);
+    @apply text-[12px] font-semibold whitespace-nowrap;
     letter-spacing: 0.2em;
     color: rgba(200, 30, 30, 0.8);
   }
@@ -495,8 +511,8 @@ button {
   }
 
   .logo-title {
-    font-family: "Barlow Condensed", sans-serif;
-    @apply text-[32px] font-black uppercase leading-none text-[#f5f5f5];
+    font-family: var(--font-sans);
+    @apply text-[30px] font-bold leading-none tracking-[-0.02em] text-[var(--txt)];
     letter-spacing: 0.05em;
   }
 
@@ -505,7 +521,7 @@ button {
   }
 
   .logo-subtitle {
-    @apply text-[11px] font-medium uppercase mt-1;
+    @apply text-[12px] font-medium mt-1;
     letter-spacing: 0.15em;
     color: rgba(255,255,255,0.35);
   }
@@ -533,8 +549,8 @@ button {
   }
 
   .card-title-modern {
-    font-family: "Barlow Condensed", sans-serif;
-    @apply text-[20px] font-bold uppercase text-[#f0f0f0] mb-1;
+    font-family: var(--font-sans);
+    @apply text-[19px] font-semibold text-[var(--txt)] mb-1;
     letter-spacing: 0.08em;
   }
 
@@ -544,8 +560,8 @@ button {
   }
 
   .field-label-modern {
-    font-family: "Barlow Condensed", sans-serif;
-    @apply flex items-center gap-1.5 text-[12px] font-bold uppercase mb-2;
+    font-family: var(--font-sans);
+    @apply flex items-center gap-1.5 text-[13px] font-semibold mb-2;
     letter-spacing: 0.15em;
     color: rgba(255,255,255,0.45);
   }
@@ -572,8 +588,8 @@ button {
   }
 
   .btn-submit-modern {
-    font-family: "Barlow Condensed", sans-serif;
-    @apply w-full rounded-[10px] py-3.5 text-[16px] font-extrabold uppercase text-white relative overflow-hidden transition-all mt-2;
+    font-family: var(--font-sans);
+    @apply w-full rounded-[10px] py-3.5 text-[16px] font-semibold text-white relative overflow-hidden transition-all mt-2;
     letter-spacing: 0.12em;
     background: linear-gradient(135deg, #dc2626, #b91c1c);
     box-shadow: 0 4px 20px rgba(185, 28, 28, 0.4);

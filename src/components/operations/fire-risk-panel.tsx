@@ -8,6 +8,7 @@ type FireRisk = {
   place: string; observedAt: string; stale?: boolean;
   level: "LOW" | "MODERATE" | "HIGH" | "VERY_HIGH" | "EXTREME"; levelLabel: string; levelIndex: number; levels: string[]; fwi: number;
   current: { temperature: number; humidity: number; wind: number; gusts: number; windFrom: string; spreadTowards: string };
+  tomorrow: { date: string; levelLabel: string; levelIndex: number } | null;
   dryDays: number; codes: { ffmc: number; dmc: number; dc: number; isi: number; bui: number }; source: string;
 };
 
@@ -51,6 +52,7 @@ export function FireRiskPanel() {
         {data.levels.map((label, i) => <div key={label} title={label} className={`h-2.5 rounded-full ${i <= data.levelIndex ? tones[i].bar : "bg-[var(--card2)]"} ${i === data.levelIndex ? "" : i < data.levelIndex ? "opacity-60" : ""}`} />)}
       </div>
       <p className="mt-2 text-sm">{advice[data.levelIndex]}</p>
+      {data.tomorrow && <p className="mt-1 text-sm">Mañana: <span className={`rounded px-1.5 py-0.5 text-xs font-bold uppercase ${tones[data.tomorrow.levelIndex].badge}`}>{data.tomorrow.levelLabel}</span>{data.tomorrow.levelIndex > data.levelIndex ? <span className="text-[var(--mut)]"> · sube respecto de hoy</span> : null}</p>}
 
       <dl className="mt-3 grid grid-cols-4 gap-2 text-center">
         {[

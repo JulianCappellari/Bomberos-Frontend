@@ -22,7 +22,7 @@ export function SeniorityPanel() {
 
   async function save(e: FormEvent) {
     e.preventDefault(); setBusy(true); setError("");
-    try { await api.put("/station/promotion-rules", { rules: draft, reason }); await client.invalidateQueries({ queryKey: ["station-seniority"] }); setEditing(false); setReason(""); }
+    try { await api.put("/station/promotion-rules", { rules: draft.map(({ rank, nextRank, minYearsInRank, minYearsService, minApprovedCourses }) => ({ rank, nextRank, minYearsInRank, minYearsService, minApprovedCourses })), reason }); await client.invalidateQueries({ queryKey: ["station-seniority"] }); setEditing(false); setReason(""); }
     catch (err) { setError(getErrorMessage(err, "No se pudieron guardar las reglas")); } finally { setBusy(false); }
   }
   return <section aria-labelledby="seniority-title">

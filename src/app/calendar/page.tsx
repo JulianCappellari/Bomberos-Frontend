@@ -138,7 +138,7 @@ export default function CalendarPage() {
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <h2 className="text-center font-['Bebas_Neue'] text-2xl tracking-[1px] text-white">
+            <h2 className="text-center font-bold text-2xl tracking-[1px] text-white">
               {monthTitle.charAt(0).toLocaleUpperCase() + monthTitle.slice(1)}
             </h2>
             <button

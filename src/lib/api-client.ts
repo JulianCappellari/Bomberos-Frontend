@@ -7,6 +7,7 @@ import {
   getRefreshToken,
   setTokens,
 } from "./auth";
+import { cachedStepUp, clearStepUp, requestStepUp } from "./step-up";
 
 const refreshApi = axios.create({ baseURL: api.defaults.baseURL, timeout: 15000 });
 const refresh = createRefreshCoordinator({
@@ -27,6 +28,8 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  const stepUp = cachedStepUp();
+  if (stepUp && !config.headers["X-Step-Up"]) config.headers["X-Step-Up"] = stepUp;
 
   return config;
 });
@@ -53,6 +56,16 @@ api.interceptors.response.use(
       } catch (failure) {
         return Promise.reject(failure);
       }
+    }
+
+    // Accion critica sin confirmacion reciente: se pide la contrasena y se reintenta una vez.
+    if (error.response?.status === 428 && error.response?.data?.code === "STEP_UP_REQUIRED" && originalRequest && !originalRequest._stepUp) {
+      originalRequest._stepUp = true;
+      clearStepUp();
+      const token = await requestStepUp();
+      if (token) { originalRequest.headers["X-Step-Up"] = token; return api(originalRequest); }
+      error.message = "Acción cancelada: no se confirmó la contraseña.";
+      if (error.response.data) error.response.data.message = "Acción cancelada: no se confirmó la contraseña.";
     }
 
     if (error.response?.data?.code === "PASSWORD_CHANGE_REQUIRED" && typeof window !== "undefined" && window.location.pathname !== "/security") {

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { ErrorNotice } from "@/components/operations/operations-ui";
 import { GuardReport, YearComparison } from "@/services/station.service";
+import { agencyLabels } from "@/components/operations/incident-agencies";
 
 const monthNames = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const typeLabel: Record<string, string> = { FIRE: "Incendio", RESCUE: "Rescate", ACCIDENT: "Accidente", CHEMICAL: "Químico", MEDICAL: "Médico", FLOOD: "Inundación", OTHER: "Otro" };
@@ -73,6 +74,9 @@ export function YearComparisonReport() {
       <h3 className="mb-2 mt-5 font-semibold">Por tipo</h3>
       {!types.length && <p className="text-sm text-[var(--mut)]">Sin intervenciones registradas.</p>}
       <ul className="divide-y divide-[var(--bord)]">{types.map((t) => <li key={t} className="flex justify-between gap-2 py-2 text-sm"><span>{typeLabel[t] ?? t}</span><span><strong>{data.current.byType[t] ?? 0}</strong> <span className="text-[var(--mut)]">vs {data.previous.byType[t] ?? 0} ({delta(data.current.byType[t] ?? 0, data.previous.byType[t] ?? 0)})</span></span></li>)}</ul>
+      <h3 className="mb-2 mt-5 font-semibold">Intervenciones con otras instituciones</h3>
+      <p className="text-sm"><strong>{data.current.jointIncidents}</strong> de {data.current.incidents} intervenciones en {year} tuvieron apoyo de otras instituciones <span className="text-[var(--mut)]">({data.previous.jointIncidents} en {year - 1})</span>.</p>
+      {Object.keys(data.current.agencies).length > 0 && <ul className="mt-2 divide-y divide-[var(--bord)]">{Object.entries(data.current.agencies).sort((a, b) => b[1] - a[1]).map(([t, n]) => <li key={t} className="flex justify-between gap-2 py-2 text-sm"><span>{agencyLabels[t as keyof typeof agencyLabels] ?? t}</span><strong>{n}</strong></li>)}</ul>}
       <p className="mt-3 text-xs text-[var(--mut)]">Los tiempos usan la primera salida de cada intervención con alerta; se descartan valores sin datos o fuera de rango. Muestras: {data.current.samples.dispatch} salidas y {data.current.samples.travel} llegadas en {year}.</p>
     </>}
   </section>;
