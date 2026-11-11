@@ -18,7 +18,7 @@ const fmtHours = (m: number) => { const h = m / 60; return h >= 100 ? `${Math.ro
 
 function Segmented<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: Array<[T, string, React.ReactNode]>; label: string }) {
   return <div role="tablist" aria-label={label} className="grid grid-cols-2 gap-2">
-    {options.map(([v, text, icon]) => <button key={v} type="button" role="tab" aria-selected={value === v} onClick={() => onChange(v)} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold uppercase tracking-wide transition-colors ${value === v ? "border-red-500 bg-red-600 text-white" : "border-[var(--bord)] bg-[var(--card)] text-[var(--mut)] hover:text-[var(--txt)]"}`}>{icon}{text}</button>)}
+    {options.map(([v, text, icon]) => <button key={v} type="button" role="tab" aria-selected={value === v} onClick={() => onChange(v)} className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-[13px] font-bold leading-tight transition-colors sm:text-sm ${value === v ? "border-red-500 bg-red-600 text-white" : "border-[var(--bord)] bg-[var(--card)] text-[var(--mut)] hover:text-[var(--txt)]"}`}>{icon}{text}</button>)}
   </div>;
 }
 function Bars({ rows, color }: { rows: Array<{ label: string; minutes: number }>; color: string }) {

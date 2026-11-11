@@ -87,6 +87,7 @@ export const navItems: NavItem[] = [
   { href: "/reports", label: "Reportes", shortLabel: "Reportes", description: "Horas, salidas y estadísticas", Icon: BarChart3, group: "station" },
 
   { href: "/admin", label: "Administración", shortLabel: "Admin", description: "Cuentas, cargos y permisos", Icon: UserCog, group: "command" },
+  { href: "/security-center", label: "Centro de seguridad", shortLabel: "Seguridad", description: "Ingresos fallidos, fraudes posibles y cuentas bloqueadas", Icon: ShieldCheck, group: "command" },
   { href: "/command", label: "Consulta de personal", shortLabel: "Personal", description: "Ficha privada y estadísticas", Icon: Users, group: "command" },
   { href: "/driver-licenses", label: "Licencias de conducir", shortLabel: "Licencias", description: "Habilitaciones de conductores", Icon: BadgeCheck, group: "command" },
   { href: "/participations", label: "Asistencia a servicios", shortLabel: "Servicios", description: "Verificar participaciones", Icon: ShieldCheck, group: "command" },

@@ -8,6 +8,7 @@ export function canOpenPage(path: string, role?: string, permissions: string[] =
   if (logistics.some((p) => path === p || path.startsWith(p + "/"))) return isDutyManager(role);
   if (path === "/personal-equipment") return isCommand(role);
   if (path === "/command") return role === "ADMIN";
+  if (path === "/security-center") return role === "ADMIN";
   if (path === "/admin") return isCommand(role);
   if (path === "/control-groups") return role === "ADMIN";
   if (path === "/guard-log") return isDutyManager(role);
