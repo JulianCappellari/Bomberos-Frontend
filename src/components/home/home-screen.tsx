@@ -9,6 +9,7 @@ import { QuickAvailability } from "@/components/operations/operational-availabil
 import { PresentPersonnelPanel } from "@/components/operations/present-personnel-panel";
 import { FireRiskPanel } from "@/components/operations/fire-risk-panel";
 import { ReviewQueue } from "./review-queue";
+import { MissionBriefing } from "@/components/operations/mission-briefing";
 import { useAuth } from "@/features/auth/auth-context";
 import { useDashboardSummary } from "@/hooks/use-dashboard";
 import { api } from "@/lib/api-client";
@@ -68,6 +69,8 @@ export function HomeScreen() {
           <h1 className="mt-1 text-2xl font-bold text-white sm:text-3xl">Hola, {firstName(user?.profile?.fullName, user?.username)}</h1>
           <p className="mt-1 text-sm text-white/60">{user?.profile?.rank || "Sin cargo"}{user?.profile?.badge ? ` · Legajo ${user.profile.badge}` : ""}{user?.role === "GUARD" ? " · En función de guardia" : ""}</p>
         </header>
+
+        <MissionBriefing />
 
         {awaitingResponse.length > 0 && (
           <section aria-label="Alertas que esperan tu respuesta" className="space-y-2">

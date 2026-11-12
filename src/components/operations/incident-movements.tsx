@@ -11,6 +11,7 @@ import { PeoplePicker } from "./work-ui";
 
 type Movement = {
   id: string;
+  assetId: string;
   asset: { name: string; status: string };
   driverUserId: string;
   leaderUserId: string;
@@ -80,6 +81,8 @@ export function IncidentMovements({
   const [manualDeparture, setManualDeparture] = useState(false);
   const [alreadyBack, setAlreadyBack] = useState(false);
   const [manualFor, setManualFor] = useState<string | null>(null);
+  // Corregir quien salio: quien se quita vuelve a aparecer para "personal en la base".
+  const [crewEdit, setCrewEdit] = useState<{ id: string; assetId: string; userIds: string[]; driverUserId: string; leaderUserId: string; reason: string } | null>(null);
   const [fixing, setFixing] = useState<{ id: string; departedAt: string; arrivedAt: string; returnedAt: string; reason: string } | null>(null);
   const [assetId, setAssetId] = useState("");
   const [userIds, setUserIds] = useState<string[]>([]);
@@ -163,6 +166,22 @@ export function IncidentMovements({
     if (manual && !at) { setError("Elegí la hora o tocá el botón «ahora»."); return; }
     const ok = await runAction(`/${movementId}/${action}`, at ? { at: iso(at) } : {});
     if (ok) { setWhen((w) => ({ ...w, [movementId]: "" })); setManualFor(null); }
+  }
+
+  // Apto para manejar un movil: por licencia (movil configurado) o por habilitacion de jefatura.
+  function canDrive(movementAssetId: string, userId: string) {
+    const asset = options.data?.assets.find((a) => a.id === movementAssetId);
+    if (asset?.licenseRule?.required.length) return Boolean(options.data?.licensed?.some((row) => row.assetId === movementAssetId && row.userId === userId));
+    return Boolean(options.data?.authorizations.some((p) => p.assetId === movementAssetId && p.userId === userId && p.licenseCurrent && p.validUntil.slice(0, 10) >= today()));
+  }
+  async function saveCrew() {
+    if (!crewEdit) return;
+    setBusy(true); setError("");
+    try {
+      await api.patch(`/incidents/logistics/${crewEdit.id}/crew`, { userIds: crewEdit.userIds, driverUserId: crewEdit.driverUserId, leaderUserId: crewEdit.leaderUserId, reason: crewEdit.reason.trim() });
+      setCrewEdit(null); await saved();
+    } catch (err) { setError(getErrorMessage(err, "No se pudo corregir la dotación.")); }
+    finally { setBusy(false); }
   }
 
   async function saveCorrection() {
@@ -392,9 +411,27 @@ export function IncidentMovements({
                 {!movement.arrivedAt && <button type="button" className="text-sm underline" disabled={busy} onClick={() => void returnWithoutArrival(movement.id)}>Regresó sin llegar al lugar (p. ej., falsa salida)</button>}
               </div>;
             })()}
-            {canWrite && incidentOpen && fixing?.id !== movement.id && (
-              <button type="button" className="mt-2 text-sm underline" onClick={() => setFixing({ id: movement.id, departedAt: toLocal(movement.departedAt), arrivedAt: toLocal(movement.arrivedAt), returnedAt: toLocal(movement.returnedAt), reason: "" })}>Corregir horarios</button>
+            {canWrite && incidentOpen && fixing?.id !== movement.id && crewEdit?.id !== movement.id && (
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                <button type="button" className="underline" onClick={() => setFixing({ id: movement.id, departedAt: toLocal(movement.departedAt), arrivedAt: toLocal(movement.arrivedAt), returnedAt: toLocal(movement.returnedAt), reason: "" })}>Corregir horarios</button>
+                <button type="button" className="underline" onClick={() => setCrewEdit({ id: movement.id, assetId: movement.assetId, userIds: movement.crew.map((c) => c.userId), driverUserId: movement.driverUserId, leaderUserId: movement.leaderUserId, reason: "" })}>Corregir dotación</button>
+              </div>
             )}
+            {crewEdit?.id === movement.id && (() => {
+              const chosen = options.data?.people.filter((p) => crewEdit.userIds.includes(p.id)) ?? [];
+              const toggle = (id: string) => setCrewEdit((c) => c && { ...c, userIds: c.userIds.includes(id) ? c.userIds.filter((x) => x !== id) : [...c.userIds, id], driverUserId: c.userIds.includes(id) && c.driverUserId === id ? "" : c.driverUserId, leaderUserId: c.userIds.includes(id) && c.leaderUserId === id ? "" : c.leaderUserId });
+              return <div className="mt-3 space-y-3 rounded-xl border border-[var(--bord)] p-3">
+                <p className="text-sm font-semibold">¿Quiénes salieron en este móvil?</p>
+                <div className="grid max-h-64 gap-1 overflow-y-auto sm:grid-cols-2">{options.data?.people.map((p) => <label key={p.id} className="flex min-h-10 items-center gap-2 rounded-lg border border-[var(--bord)] px-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={crewEdit.userIds.includes(p.id)} onChange={() => toggle(p.id)} />{personName(p)}</label>)}</div>
+                <div className="grid min-w-0 gap-2 sm:grid-cols-2">
+                  <Field label="Conductor"><select className="app-input" value={crewEdit.driverUserId} onChange={(e) => setCrewEdit({ ...crewEdit, driverUserId: e.target.value })}><option value="">Seleccionar</option>{chosen.map((p) => <option key={p.id} value={p.id} disabled={!canDrive(crewEdit.assetId, p.id)}>{personName(p)}{canDrive(crewEdit.assetId, p.id) ? "" : " · no habilitado"}</option>)}</select></Field>
+                  <Field label="A cargo de la unidad"><select className="app-input" value={crewEdit.leaderUserId} onChange={(e) => setCrewEdit({ ...crewEdit, leaderUserId: e.target.value })}><option value="">Seleccionar</option>{chosen.map((p) => <option key={p.id} value={p.id}>{personName(p)}</option>)}</select></Field>
+                </div>
+                <Field label="Motivo de la corrección"><input className="app-input" minLength={5} maxLength={500} value={crewEdit.reason} onChange={(e) => setCrewEdit({ ...crewEdit, reason: e.target.value })} placeholder="Ej. Se cargó a una persona que quedó en el cuartel" /></Field>
+                <p className="text-xs text-[var(--mut)]">Quien quites vuelve a aparecer para “personal en la base”; quien agregues deja de figurar ahí.</p>
+                <div className="flex gap-2"><button type="button" className="app-button app-button-red w-auto" disabled={busy || !crewEdit.userIds.length || !crewEdit.driverUserId || !crewEdit.leaderUserId || crewEdit.reason.trim().length < 5} onClick={() => void saveCrew()}>Guardar dotación</button><button type="button" className="app-button w-auto" onClick={() => setCrewEdit(null)}>Cancelar</button></div>
+              </div>;
+            })()}
             {fixing?.id === movement.id && (
               <div className="mt-3 space-y-2 rounded-xl border border-[var(--bord)] p-3">
                 <div className="grid gap-2 sm:grid-cols-3">

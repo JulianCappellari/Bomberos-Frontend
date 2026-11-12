@@ -31,7 +31,7 @@ export function IncidentAgencies({ incidentId }: { incidentId: string }) {
 
   async function run(fn: () => Promise<unknown>) {
     setBusy(true); setError("");
-    try { await fn(); await client.invalidateQueries({ queryKey: ["incident-agencies", incidentId] }); return true; }
+    try { await fn(); await client.invalidateQueries({ queryKey: ["incident-agencies", incidentId] }); await client.invalidateQueries({ queryKey: ["incident-sheet", incidentId] }); return true; } // tambien la planilla: la constancia lista los cuarteles presentes
     catch (err) { setError(getErrorMessage(err, "No se pudo guardar")); return false; } finally { setBusy(false); }
   }
   async function save(e: FormEvent) {
