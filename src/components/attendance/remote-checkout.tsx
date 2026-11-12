@@ -11,7 +11,13 @@ import { getDeviceFingerprint } from "@/helper/getDeviceFingerprint";
 import { toast } from "@/lib/toast";
 
 type Preview = { open: false } | { open: true; station: string; requiresLocation: boolean; checkInAt: string; verifiedUntil: string; creditedUntil: string; graceMinutes: number; onMission: boolean };
-const hour = (v: string) => new Date(v).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" });
+// Hora; si no es de hoy, tambien el dia (una permanencia olvidada puede venir de otro dia).
+const hour = (v: string) => {
+  const zone = "America/Argentina/Buenos_Aires", d = new Date(v);
+  const time = d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: zone });
+  const day = (x: Date) => x.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", timeZone: zone });
+  return day(d) === day(new Date()) ? time : `${day(d)} ${time}`;
+};
 const toLocal = (v: Date) => new Date(v.getTime() - v.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
 // Cerrar la permanencia sin QR. Nunca suma horas sin verificar: se acredita hasta la ultima presencia
