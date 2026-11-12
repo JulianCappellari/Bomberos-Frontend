@@ -21,6 +21,7 @@ import { useScanAttendanceQr } from "@/hooks/use-scan-attendance-qr";
 import { getCurrentPositionAsync } from "@/lib/geolocation";
 import { cameraErrorMessage, cameraSupportProblem, decodeImageFile, decodeVideoFrame, geolocationErrorMessage, openRearCamera } from "@/lib/qr-camera";
 import { LocationRequiredError } from "@/services/attendance.service";
+import { RemoteCheckout } from "@/components/attendance/remote-checkout";
 import { ProtectedLayout } from "@/components/layout/protected-layout";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -342,6 +343,8 @@ export default function AttendancePage() {
                 {/* Plan B si la camara en vivo no funciona (permisos, navegador interno, celular viejo). */}
                 <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-hidden onChange={(e) => void readPhoto(e.target.files?.[0])} />
                 <button type="button" disabled={scanMutation.isPending} onClick={() => photoInputRef.current?.click()} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-white/70 underline-offset-4 hover:text-white hover:underline disabled:opacity-50"><ImageUp className="h-4 w-4" aria-hidden /> Sacar foto del QR</button>
+                {/* Con la permanencia abierta: cerrar sin QR, acreditando solo hasta la ultima presencia verificada. */}
+                {isInside && <RemoteCheckout onClosed={() => void attendanceSummary.refetch()} />}
               </>
             )}
           </div>

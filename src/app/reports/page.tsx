@@ -17,8 +17,8 @@ import { HoursStatistics } from "@/components/operations/hours-statistics";
 
 type Report = {
   month: string; scope: "ALL" | "SELF"; generatedAt: string;
-  totals: { workedMinutes: number; sessions: number; people: number; openSessions: number; alerts: number; incidents: number; inspections: number; shifts: number; excludedSessions: number };
-  people: Array<{ user: UserRosterItem; workedMinutes: number; sessions: number; openSessions: number }>;
+  totals: { workedMinutes: number; sessions: number; people: number; openSessions: number; remoteCloses?: number; alerts: number; incidents: number; inspections: number; shifts: number; excludedSessions: number };
+  people: Array<{ user: UserRosterItem; workedMinutes: number; sessions: number; openSessions: number; remoteCloses?: number }>;
   alertsByType: Array<{ type: string; count: number }>;
 };
 type FuelReport = { totals: { liters: number; loads: number; cost: number; pricedLoads: number }; vehicles: Array<{ assetId: string; name: string; liters: number; loads: number; cost: number; pricedLoads: number; distanceKm: number; odometerReadings: number }> };
@@ -90,6 +90,7 @@ export default function ReportsPage() {
           <Metric label="Registros de permanencia" value={report.totals.sessions} />
           <Metric label="Personal con registros" value={report.totals.people} />
           <Metric label="Permanencias abiertas" value={report.totals.openSessions} />
+          <Metric label="Cierres sin QR" value={report.totals.remoteCloses ?? 0} />
         </>}
       </div>
       {report.scope !== "SELF" && report.totals.openSessions > 0 && <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">Las permanencias abiertas se calculan hasta el momento de generar el reporte.</p>}
@@ -97,7 +98,7 @@ export default function ReportsPage() {
       {report.scope !== "SELF" && <section className="mb-6">
         <h2 className="mb-3 text-lg font-bold text-white">Horas por integrante</h2>
         <div className="space-y-2">{report.people.map((row) => <article key={row.user.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--bord)] bg-[var(--card)] p-4">
-          <div><div className="font-bold text-white">{personName(row.user)}</div><div className="mt-1 text-xs text-[var(--mut)]">{row.user.profile?.rank} · {row.sessions} registros{row.openSessions ? ` · ${row.openSessions} abiertos` : ""}</div></div>
+          <div><div className="font-bold text-white">{personName(row.user)}</div><div className="mt-1 text-xs text-[var(--mut)]">{row.user.profile?.rank} · {row.sessions} registros{row.openSessions ? ` · ${row.openSessions} abiertos` : ""}{row.remoteCloses ? ` · ${row.remoteCloses} cerrados sin QR` : ""}</div></div>
           <div className="text-lg font-bold text-red-300">{hours(row.workedMinutes)}</div>
         </article>)}</div>
         {!report.people.length && <p className="py-6 text-center text-sm text-[var(--mut)]">Sin registros de permanencia en el mes.</p>}
