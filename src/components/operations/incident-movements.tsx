@@ -72,6 +72,11 @@ export function IncidentMovements({
 }: Props) {
   const [times, setTimes] = useState({ departedAt: "", arrivedAt: "", returnedAt: "" });
   const iso = (value: string) => (value ? new Date(value).toISOString() : undefined);
+  // Hora local para inputs datetime-local (la planilla se carga a veces despues de la salida).
+  const localNow = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
+  const toLocal = (value: string | null) => { if (!value) return ""; const d = new Date(value); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
+  const [when, setWhen] = useState<Record<string, string>>({});
+  const [fixing, setFixing] = useState<{ id: string; departedAt: string; arrivedAt: string; returnedAt: string; reason: string } | null>(null);
   const [assetId, setAssetId] = useState("");
   const [userIds, setUserIds] = useState<string[]>([]);
   const [driverUserId, setDriverUserId] = useState("");
@@ -134,9 +139,10 @@ export function IncidentMovements({
       ...(selectedAsset.requiresException
         ? { dispatchExceptionReason: exceptionReason }
         : {}),
-      ...(historical
-        ? { departedAt: iso(times.departedAt), arrivedAt: iso(times.arrivedAt), returnedAt: iso(times.returnedAt) }
-        : {}),
+      // Horarios reales si se cargaron; vacios = ahora.
+      ...(times.departedAt ? { departedAt: iso(times.departedAt) } : {}),
+      ...(times.arrivedAt ? { arrivedAt: iso(times.arrivedAt) } : {}),
+      ...(times.returnedAt ? { returnedAt: iso(times.returnedAt) } : {}),
     });
     if (!savedMovement) return;
     setAssetId("");
@@ -144,6 +150,17 @@ export function IncidentMovements({
     setDriverUserId("");
     setLeaderUserId("");
     setExceptionReason("");
+    setTimes({ departedAt: "", arrivedAt: "", returnedAt: "" });
+  }
+
+  async function saveCorrection() {
+    if (!fixing) return;
+    setBusy(true); setError("");
+    try {
+      await api.patch(`/incidents/logistics/${fixing.id}/times`, { departedAt: iso(fixing.departedAt), arrivedAt: fixing.arrivedAt ? iso(fixing.arrivedAt) : null, ...(fixing.returnedAt ? { returnedAt: iso(fixing.returnedAt) } : {}), reason: fixing.reason.trim() });
+      setFixing(null); await saved();
+    } catch (err) { setError(getErrorMessage(err, "No se pudieron corregir los horarios.")); }
+    finally { setBusy(false); }
   }
 
   async function returnWithoutArrival(movementId: string) {
@@ -151,7 +168,7 @@ export function IncidentMovements({
       "Retorno sin llegar al lugar. Puede indicar el motivo (opcional), por ejemplo falsa salida:",
     );
     if (reason === null) return;
-    await runAction(`/${movementId}/return-without-arrival`, reason.trim() ? { reason: reason.trim() } : {});
+    await runAction(`/${movementId}/return-without-arrival`, { ...(reason.trim() ? { reason: reason.trim() } : {}), ...(when[movementId] ? { at: iso(when[movementId]) } : {}) });
   }
 
   return (
@@ -222,15 +239,17 @@ export function IncidentMovements({
                 </div>
               )}
 
-              {historical && (
+              <fieldset className="rounded-xl border border-[var(--bord)] p-3">
+                <legend className="px-1 text-sm font-semibold">Horarios {historical ? "reales" : "(si cargás la planilla después)"}</legend>
+                <p className="mb-2 text-xs text-[var(--mut)]">{historical ? "Al rehacer una intervención cargá la salida y el retorno reales." : "Dejalos vacíos si el móvil sale ahora. Si ya salió, poné la hora real; si además ya volvió, completá el regreso y queda cargada la salida completa."}</p>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  {([["departedAt", "Salida real", true], ["arrivedAt", "Llegada al lugar (si hubo)", false], ["returnedAt", "Retorno real", true]] as const).map(([key, label, required]) => (
+                  {([["departedAt", "Hora de salida", historical], ["arrivedAt", "Llegada al lugar", false], ["returnedAt", "Regreso al cuartel", historical]] as const).map(([key, label, required]) => (
                     <Field key={key} label={label}>
-                      <input type="datetime-local" required={required} className="app-input" value={times[key]} onChange={(event) => setTimes((current) => ({ ...current, [key]: event.target.value }))} />
+                      <input type="datetime-local" required={required} max={localNow()} className="app-input" value={times[key]} onChange={(event) => setTimes((current) => ({ ...current, [key]: event.target.value }))} />
                     </Field>
                   ))}
                 </div>
-              )}
+              </fieldset>
 
               <PeoplePicker
                 people={options.data.people}
@@ -343,13 +362,20 @@ export function IncidentMovements({
               ))}
             </ul>
             {canWrite && incidentOpen && !movement.returnedAt && (
+              <label className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-[var(--mut)]">{movement.arrivedAt ? "Hora del regreso" : "Hora de la llegada"}</span>
+                <input type="datetime-local" className="app-input w-auto py-1.5" max={localNow()} value={when[movement.id] ?? ""} onChange={(e) => setWhen((w) => ({ ...w, [movement.id]: e.target.value }))} />
+                <span className="text-xs text-[var(--mut)]">vacío = ahora</span>
+              </label>
+            )}
+            {canWrite && incidentOpen && !movement.returnedAt && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {!movement.arrivedAt && (
                   <button
                     type="button"
                     className="app-button w-auto"
                     disabled={busy}
-                    onClick={() => void runAction(`/${movement.id}/arrive`)}
+                    onClick={() => void runAction(`/${movement.id}/arrive`, when[movement.id] ? { at: iso(when[movement.id]) } : {}).then((ok) => ok && setWhen((w) => ({ ...w, [movement.id]: "" })))}
                   >
                     Registrar llegada al lugar
                   </button>
@@ -359,7 +385,7 @@ export function IncidentMovements({
                     type="button"
                     className="app-button w-auto"
                     disabled={busy}
-                    onClick={() => void runAction(`/${movement.id}/return`)}
+                    onClick={() => void runAction(`/${movement.id}/return`, when[movement.id] ? { at: iso(when[movement.id]) } : {}).then((ok) => ok && setWhen((w) => ({ ...w, [movement.id]: "" })))}
                   >
                     Registrar retorno al cuartel
                   </button>
@@ -374,6 +400,20 @@ export function IncidentMovements({
                     Regresó sin llegar (p. ej., falsa salida)
                   </button>
                 )}
+              </div>
+            )}
+            {canWrite && incidentOpen && fixing?.id !== movement.id && (
+              <button type="button" className="mt-2 text-sm underline" onClick={() => setFixing({ id: movement.id, departedAt: toLocal(movement.departedAt), arrivedAt: toLocal(movement.arrivedAt), returnedAt: toLocal(movement.returnedAt), reason: "" })}>Corregir horarios</button>
+            )}
+            {fixing?.id === movement.id && (
+              <div className="mt-3 space-y-2 rounded-xl border border-[var(--bord)] p-3">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <Field label="Salida"><input type="datetime-local" required className="app-input" max={localNow()} value={fixing.departedAt} onChange={(e) => setFixing({ ...fixing, departedAt: e.target.value })} /></Field>
+                  <Field label="Llegada al lugar"><input type="datetime-local" className="app-input" max={localNow()} disabled={Boolean(movement.returnWithoutArrivalReason)} value={fixing.arrivedAt} onChange={(e) => setFixing({ ...fixing, arrivedAt: e.target.value })} /></Field>
+                  <Field label="Regreso"><input type="datetime-local" className="app-input" max={localNow()} disabled={!movement.returnedAt} value={fixing.returnedAt} onChange={(e) => setFixing({ ...fixing, returnedAt: e.target.value })} /></Field>
+                </div>
+                <Field label="Motivo de la corrección"><input className="app-input" minLength={5} maxLength={500} value={fixing.reason} onChange={(e) => setFixing({ ...fixing, reason: e.target.value })} placeholder="Ej. la planilla se cargó después de la salida" /></Field>
+                <div className="flex gap-2"><button type="button" className="app-button app-button-red w-auto" disabled={busy || fixing.reason.trim().length < 5 || !fixing.departedAt} onClick={() => void saveCorrection()}>Guardar horarios</button><button type="button" className="app-button w-auto" onClick={() => setFixing(null)}>Cancelar</button></div>
               </div>
             )}
           </article>
