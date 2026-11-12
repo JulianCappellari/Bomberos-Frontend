@@ -54,7 +54,7 @@ export default function DevAttendanceQrPage() {
                 </div>
                 <div className="mt-1">
                   <span className="text-white/40">Expira:</span>{" "}
-                  {new Date(qrData.expiresAt).toLocaleTimeString("es-AR")}
+                  {new Date(qrData.expiresAt).toLocaleTimeString("es-AR", { hourCycle: "h23" })}
                 </div>
               </div>
             </>

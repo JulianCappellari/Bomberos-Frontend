@@ -17,7 +17,7 @@ type Action = { type: "cylinder" | "compressor" | "hydro" | "cylinder-status" | 
 const names: Record<Action["type"], string> = { cylinder: "Registrar cilindro", compressor: "Registrar compresor", hydro: "Registrar prueba hidraulica", "cylinder-status": "Revision del cilindro", "compressor-status": "Revision del compresor", pressure: "Registrar presion medida", location: "Reubicar cilindro", filter: "Registrar recambio de filtro", "retire-cylinder": "Dar de baja cilindro", "retire-compressor": "Dar de baja compresor", fill: "Registrar carga terminada" };
 const reasons: Record<string, string> = { SERVICE: "Despues de un servicio", MAINTENANCE: "Control o mantenimiento", TRAINING: "Capacitacion", OTHER: "Otro" };
 const date = (value: string) => new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeZone: "UTC" }).format(new Date(value));
-const time = (value: string) => new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(value));
+const time = (value: string) => new Intl.DateTimeFormat("es-AR", { hourCycle: "h23", dateStyle: "short", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(value));
 const hours = (minutes: number) => `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 function Pager({ data, pending, onPage }: { data?: AirPage<unknown>; pending: boolean; onPage: (page: number) => void }) {
   if (!data || data.total <= data.pageSize) return null;

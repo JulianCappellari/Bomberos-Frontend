@@ -14,7 +14,7 @@ import { getErrorMessage } from "@/lib/get-error-message";
 import { eventKinds, listEvents, StationEvent } from "@/services/station.service";
 
 const fmtDay = (v: string) => new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(v));
-const fmtTime = (v: string) => new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(v));
+const fmtTime = (v: string) => new Intl.DateTimeFormat("es-AR", { hourCycle: "h23", hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(v));
 const toLocal = (v: string) => { const d = new Date(v); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
 const responses = [["GOING", "Voy"], ["MAYBE", "Tal vez"], ["NOT_GOING", "No voy"]] as const;
 type Draft = { id?: string; revision?: number; title: string; description: string; kind: StationEvent["kind"]; location: string; startsAt: string; endsAt: string };

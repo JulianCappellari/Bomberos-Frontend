@@ -107,7 +107,7 @@ export default function ReportsPage() {
       <section><h2 className="mb-3 text-lg font-bold text-white">Alertas por tipo</h2><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {report.alertsByType.map((group) => <div key={group.type} className="flex justify-between border-b border-[var(--bord)] py-3 text-sm"><span className="text-[var(--mut)]">{alertLabels[group.type] || group.type}</span><span className="font-bold text-white">{group.count}</span></div>)}
       </div></section>
-      <p className="mt-5 text-xs text-[var(--mut)]">Generado: {new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.generatedAt))}</p>
+      <p className="mt-5 text-xs text-[var(--mut)]">Generado: {new Intl.DateTimeFormat("es-AR", { hourCycle: "h23", dateStyle: "medium", timeStyle: "short" }).format(new Date(report.generatedAt))}</p>
     </>}
     <OperationalReport month={month}/>
     </>}

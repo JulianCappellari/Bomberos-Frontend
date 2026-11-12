@@ -163,7 +163,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
       .join("")
       .toUpperCase() || user?.username?.slice(0, 2).toUpperCase() || "BV";
 
-  const clock = new Intl.DateTimeFormat("es-AR", {
+  const clock = new Intl.DateTimeFormat("es-AR", { hourCycle: "h23",
     hour: "2-digit",
     minute: "2-digit",
   }).format(now);

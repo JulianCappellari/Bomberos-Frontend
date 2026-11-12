@@ -14,7 +14,7 @@ type Preview = { open: false } | { open: true; station: string; requiresLocation
 // Hora; si no es de hoy, tambien el dia (una permanencia olvidada puede venir de otro dia).
 const hour = (v: string) => {
   const zone = "America/Argentina/Buenos_Aires", d = new Date(v);
-  const time = d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: zone });
+  const time = d.toLocaleTimeString("es-AR", { hourCycle: "h23", hour: "2-digit", minute: "2-digit", timeZone: zone });
   const day = (x: Date) => x.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", timeZone: zone });
   return day(d) === day(new Date()) ? time : `${day(d)} ${time}`;
 };

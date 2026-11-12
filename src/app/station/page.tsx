@@ -24,7 +24,7 @@ function formatSince(value: string) {
 }
 
 function formatCheckIn(value: string) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-AR", { hourCycle: "h23",
     hour: "2-digit",
     minute: "2-digit",
     day: "2-digit",
@@ -115,7 +115,7 @@ function PresentCard({ item }: { item: PresentPersonnelItem }) {
             <div className="flex flex-wrap gap-2">
               {item.onGuard ? (
                 <span className="badge badge-yellow">
-                  De guardia{item.guardUntil ? ` hasta ${new Date(item.guardUntil).toLocaleTimeString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", hour: "2-digit", minute: "2-digit" })}` : ""}
+                  De guardia{item.guardUntil ? ` hasta ${new Date(item.guardUntil).toLocaleTimeString("es-AR", { hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires", hour: "2-digit", minute: "2-digit" })}` : ""}
                 </span>
               ) : (
                 <span className="badge">Sin guardia</span>

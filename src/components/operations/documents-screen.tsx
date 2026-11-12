@@ -24,7 +24,7 @@ function downloadDocument(document: OperationalDocument) {
   const text = [
     document.title, document.category, statusLabels[document.status], `Revision: ${document.revision}`,
     `Responsable: ${personName(document.createdBy)}`,
-    document.publishedAt ? `Publicado: ${new Date(document.publishedAt).toLocaleString("es-AR")}` : "",
+    document.publishedAt ? `Publicado: ${new Date(document.publishedAt).toLocaleString("es-AR", { hourCycle: "h23" })}` : "",
     "", document.body, "", assignments.length ? `Personal al publicar: ${assignments.map((item) => personName(item.user)).join(", ")}` : "",
     document.externalUrl || "",
   ].filter((line) => line !== undefined).join("\n");

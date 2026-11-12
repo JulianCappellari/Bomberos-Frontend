@@ -10,7 +10,7 @@ import { equipmentCategories, EquipmentRequest, EquipmentRequestStatus } from "@
 import { getErrorMessage } from "@/lib/get-error-message";
 
 const statuses: Record<EquipmentRequestStatus, string> = { PENDING: "Pendiente", APPROVED: "Aprobado · falta entrega", REJECTED: "Rechazado", FULFILLED: "Entregado", CANCELLED: "Cancelado" };
-const dateTime = (value: string) => new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(value));
+const dateTime = (value: string) => new Intl.DateTimeFormat("es-AR", { hourCycle: "h23", dateStyle: "short", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(value));
 type Form = { type: "create" | "edit" | "review"; request?: EquipmentRequest; decision?: "APPROVED" | "REJECTED" };
 export default function EquipmentRequestsPage() {
   const { user } = useAuth();

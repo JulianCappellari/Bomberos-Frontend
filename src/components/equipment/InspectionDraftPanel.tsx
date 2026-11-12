@@ -58,7 +58,7 @@ export default function InspectionDraftPanel({
     return <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-sky-500/30 bg-sky-500/10 p-3 text-sm text-sky-100">
       <div>
         <p className="font-bold">Hay un control sin finalizar</p>
-        <p className="mt-1 text-xs opacity-80">{new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" }).format(saved.savedAt)}</p>
+        <p className="mt-1 text-xs opacity-80">{new Intl.DateTimeFormat("es-AR", { hourCycle: "h23", dateStyle: "short", timeStyle: "short" }).format(saved.savedAt)}</p>
         {!compatible && <p className="mt-1">El inventario cambio. Inicie un control nuevo para revisar todos los materiales.</p>}
       </div>
       <div className="flex gap-2">

@@ -1,6 +1,6 @@
 // Novedades publicas: se leen sin sesion (comunidad y medios).
 export type PublicPostKind = "INCIDENT" | "TRAINING" | "NEWS";
-export type PublicPost = { id: string; kind: PublicPostKind; title: string; summary: string; body: string; happenedOn: string | null; publishedAt: string | null; photos: Array<{ id: string }> };
+export type PublicPost = { id: string; kind: PublicPostKind; title: string; summary: string; body: string; happenedOn: string | null; publishedAt: string | null; units?: string[]; peopleCount?: number | null; agencies?: string[]; photos: Array<{ id: string }> };
 export const POST_KIND_LABEL: Record<PublicPostKind, string> = { INCIDENT: "Intervención", TRAINING: "Capacitación", NEWS: "Novedad" };
 const base = () => (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 export const publicPhotoUrl = (postId: string, photoId: string) => `${base()}/public/posts/${postId}/photos/${photoId}`;

@@ -39,7 +39,7 @@ const shortcuts: Record<Profile, string[]> = {
   BOARD: ["/documents", "/contacts", "/chat", "/reports", "/me"],
 };
 
-const time = (value: string) => new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+const time = (value: string) => new Intl.DateTimeFormat("es-AR", { hourCycle: "h23", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 const shiftDay = (value: string) => { const text = new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${value.slice(0, 10)}T12:00:00`)); return text.charAt(0).toLocaleUpperCase() + text.slice(1); };
 
 function SectionTitle({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
@@ -173,7 +173,7 @@ export function HomeScreen() {
                 {(alerts.data || []).slice(0, 3).map((alert) => (
                   <li key={alert.id}><Link href="/alerts" className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[var(--card)] p-3 hover:border-white/20">
                     <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${alert.status === "ACTIVE" ? "bg-red-500" : "bg-white/25"}`} aria-hidden />
-                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{label(alertTypeLabels, alert.type)} · {alert.location}</span><span className="block text-xs text-white/55">{alert.status === "ACTIVE" ? "Activa" : alert.status === "CANCELLED" ? "Cancelada" : "Resuelta"} · {new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(alert.createdAt))}</span></span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{label(alertTypeLabels, alert.type)} · {alert.location}</span><span className="block text-xs text-white/55">{alert.status === "ACTIVE" ? "Activa" : alert.status === "CANCELLED" ? "Cancelada" : "Resuelta"} · {new Intl.DateTimeFormat("es-AR", { hourCycle: "h23", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(alert.createdAt))}</span></span>
                   </Link></li>
                 ))}
               </ul>

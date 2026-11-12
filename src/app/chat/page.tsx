@@ -51,7 +51,7 @@ function displayName(message: ChatMessage) {
 }
 
 function formatMessageTime(value: string) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-AR", { hourCycle: "h23",
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",

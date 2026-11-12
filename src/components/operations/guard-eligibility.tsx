@@ -8,7 +8,7 @@ import { useAuth } from "@/features/auth/auth-context";
 import { toast } from "@/lib/toast";
 
 type GuardAccount = { id: string; username: string; isActive: boolean; mustChangePassword: boolean; createdAt: string; lastUsedAt: string | null; onDuty: boolean };
-const when = (v: string) => new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(v));
+const when = (v: string) => new Intl.DateTimeFormat("es-AR", { hourCycle: "h23", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(v));
 
 // La guardia usa una cuenta propia (otro usuario y contraseña), separada de la cuenta personal.
 // Asi lo que se hace como guardia nunca suma a la asistencia personal de quien la cumple.

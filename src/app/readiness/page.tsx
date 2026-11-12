@@ -38,7 +38,7 @@ const statusConfig: Record<
 };
 
 function formatTime(value: string) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-AR", { hourCycle: "h23",
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));

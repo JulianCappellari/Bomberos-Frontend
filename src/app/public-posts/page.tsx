@@ -15,8 +15,8 @@ import { POST_KIND_LABEL, PublicPost, PublicPostKind, publicPhotoUrl } from "@/l
 import { toast } from "@/lib/toast";
 
 type Row = PublicPost & { status: "DRAFT" | "PUBLISHED" | "ARCHIVED"; incidentId: string | null; revision: number; updatedAt: string };
-type Draft = { id?: string; revision?: number; kind: PublicPostKind; title: string; summary: string; body: string; incidentId: string | null; happenedOn: string; keep: string[] };
-const empty: Draft = { kind: "NEWS", title: "", summary: "", body: "", incidentId: null, happenedOn: "", keep: [] };
+type Draft = { id?: string; revision?: number; kind: PublicPostKind; title: string; summary: string; body: string; incidentId: string | null; happenedOn: string; keep: string[]; units: string; peopleCount: string; agencies: string };
+const empty: Draft = { kind: "NEWS", title: "", summary: "", body: "", incidentId: null, happenedOn: "", keep: [], units: "", peopleCount: "", agencies: "" };
 const STATUS = { DRAFT: ["Borrador", ""], PUBLISHED: ["Publicada", "badge-green"], ARCHIVED: ["Retirada", ""] } as const;
 
 // Jefatura redacta y publica novedades para la comunidad y los medios (pagina publica /novedades).
@@ -31,7 +31,7 @@ export default function PublicPostsAdminPage() {
   async function fromIncident(id: string) {
     if (!id) return;
     setError("");
-    try { const d = (await api.get(`/public-posts/incident-draft/${id}`)).data; setDraft({ ...empty, ...d, keep: [] }); setPhotos([]); }
+    try { const d = (await api.get(`/public-posts/incident-draft/${id}`)).data; setDraft({ ...empty, ...d, keep: [], units: (d.units ?? []).join(", "), peopleCount: d.peopleCount ? String(d.peopleCount) : "", agencies: (d.agencies ?? []).join("\n") }); setPhotos([]); }
     catch (err) { setError(getErrorMessage(err, "No se pudo armar el borrador")); }
   }
   async function addPhotos(files: FileList | null) {
@@ -44,7 +44,8 @@ export default function PublicPostsAdminPage() {
     if (!draft) return;
     setBusy(true); setError("");
     try {
-      const body = { kind: draft.kind, title: draft.title, summary: draft.summary, body: draft.body, incidentId: draft.incidentId, happenedOn: draft.happenedOn || null, photos };
+      const list = (v: string, sep: RegExp) => v.split(sep).map((x) => x.trim()).filter(Boolean);
+      const body = { kind: draft.kind, title: draft.title, summary: draft.summary, body: draft.body, incidentId: draft.incidentId, happenedOn: draft.happenedOn || null, units: list(draft.units, /,/), peopleCount: draft.peopleCount ? Number(draft.peopleCount) : null, agencies: list(draft.agencies, /\n/), photos };
       let id = draft.id, revision = draft.revision;
       if (id) { await api.put(`/public-posts/${id}`, { ...body, keepPhotoIds: draft.keep, revision }); revision = (revision ?? 0) + 1; }
       else { id = (await api.post<{ id: string }>("/public-posts", body)).data.id; revision = 1; }
@@ -78,6 +79,11 @@ export default function PublicPostsAdminPage() {
         </div>
         <Field label="Título"><input className="app-input" required minLength={5} maxLength={160} value={draft.title} onChange={(e) => set({ title: e.target.value })} /></Field>
         <Field label="Resumen (se ve en el listado)"><textarea className="app-input min-h-16" required minLength={10} maxLength={400} value={draft.summary} onChange={(e) => set({ summary: e.target.value })} /></Field>
+        {draft.kind === "INCIDENT" && <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Móviles que salieron (separados por coma)"><input className="app-input" value={draft.units} onChange={(e) => set({ units: e.target.value })} placeholder="M-14, M-8" /></Field>
+          <Field label="Cantidad de personas que fueron"><input type="number" min={0} max={500} className="app-input" value={draft.peopleCount} onChange={(e) => set({ peopleCount: e.target.value })} /></Field>
+          <div className="sm:col-span-2"><Field label="Otras instituciones que participaron (una por línea, con quién estuvo a cargo)"><textarea className="app-input min-h-20" value={draft.agencies} onChange={(e) => set({ agencies: e.target.value })} placeholder="Policía: Comisaría Sampacho, a cargo de …" /></Field></div>
+        </div>}
         <Field label="Texto completo"><textarea className="app-input min-h-48" required minLength={10} maxLength={20000} value={draft.body} onChange={(e) => set({ body: e.target.value })} /></Field>
         <div>
           <p className="mb-2 text-sm font-semibold">Fotos (hasta 6)</p>
@@ -100,7 +106,7 @@ export default function PublicPostsAdminPage() {
         <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold">{p.title}</p><span className={`badge ${STATUS[p.status][1]}`}>{STATUS[p.status][0]}</span></div>
         <p className="text-xs text-[var(--mut)]">{POST_KIND_LABEL[p.kind]} · {p.photos.length} fotos{p.publishedAt ? ` · publicada ${new Date(p.publishedAt).toLocaleDateString("es-AR")}` : ""}</p>
         <div className="mt-2 flex flex-wrap gap-2">
-          <button className="app-button w-auto" onClick={() => { setDraft({ id: p.id, revision: p.revision, kind: p.kind, title: p.title, summary: p.summary, body: p.body, incidentId: p.incidentId, happenedOn: p.happenedOn?.slice(0, 10) ?? "", keep: p.photos.map((x) => x.id) }); setPhotos([]); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Editar</button>
+          <button className="app-button w-auto" onClick={() => { setDraft({ id: p.id, revision: p.revision, kind: p.kind, title: p.title, summary: p.summary, body: p.body, incidentId: p.incidentId, happenedOn: p.happenedOn?.slice(0, 10) ?? "", keep: p.photos.map((x) => x.id), units: (p.units ?? []).join(", "), peopleCount: p.peopleCount ? String(p.peopleCount) : "", agencies: (p.agencies ?? []).join("\n") }); setPhotos([]); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Editar</button>
           <button className="app-button app-button-outline w-auto" onClick={() => void toggle(p)}>{p.status === "PUBLISHED" ? "Retirar de la página" : "Publicar"}</button>
           {p.status === "PUBLISHED" && <Link href={`/novedades/${p.id}`} target="_blank" className="inline-flex min-h-11 items-center gap-1 text-sm underline">Ver <ExternalLink className="h-3.5 w-3.5" aria-hidden /></Link>}
         </div>

@@ -22,7 +22,7 @@ export function OfflineBanner() {
   if (online) return null;
   return (
     <p role="status" className="mb-4 flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-50">
-      <WifiOff className="h-4 w-4 shrink-0" aria-hidden /> <span>Sin conexión. {savedAt ? `Mostrando datos guardados a las ${new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit" }).format(savedAt)}. ` : ""}Los mensajes y tareas se guardan y se envían al volver la señal; fichar y responder alertas necesitan conexión.</span>
+      <WifiOff className="h-4 w-4 shrink-0" aria-hidden /> <span>Sin conexión. {savedAt ? `Mostrando datos guardados a las ${new Intl.DateTimeFormat("es-AR", { hourCycle: "h23", hour: "2-digit", minute: "2-digit" }).format(savedAt)}. ` : ""}Los mensajes y tareas se guardan y se envían al volver la señal; fichar y responder alertas necesitan conexión.</span>
     </p>
   );
 }

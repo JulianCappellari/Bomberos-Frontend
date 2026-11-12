@@ -12,7 +12,7 @@ const style = {
   warning: { Icon: AlertTriangle, box: "border-amber-500/40 bg-amber-500/10", icon: "text-amber-400", tag: "Atención" },
   info: { Icon: Info, box: "border-[var(--bord)] bg-[var(--card2)]", icon: "text-sky-400", tag: "Dato" },
 } as const;
-const hour = (v: string) => new Date(v).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" });
+const hour = (v: string) => new Date(v).toLocaleTimeString("es-AR", { hourCycle: "h23", hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" });
 
 // Inicio: si saliste a una emergencia, lo que tenés que saber del movil (fallas, faltantes, vencimientos).
 // Se actualiza solo y desaparece cuando el movil vuelve al cuartel.

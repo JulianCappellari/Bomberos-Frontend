@@ -18,7 +18,7 @@ export function MessageAcknowledgement({ message }: { message: ChatMessage }) {
     finally { setBusy(false); }
   }
   return <div className="mt-2 border-t border-[var(--bord)] pt-2 text-xs">
-    {query.isError ? <button className="text-red-300 underline" onClick={() => query.refetch()}>Reintentar estado de lectura</button> : query.data && !matches ? <button className="text-amber-200 underline" onClick={() => { client.invalidateQueries({ queryKey: ["chat", "messages"] }); query.refetch(); }}>El mensaje cambio: actualizar chat antes de confirmar</button> : query.data?.acknowledgedAt ? <span className="text-green-300">Lectura confirmada: {new Date(query.data.acknowledgedAt).toLocaleString("es-AR")}</span> : <button className="app-button w-auto text-xs" disabled={busy || !matches} onClick={confirm}>{busy ? "Confirmando..." : "Confirmo que lei este mensaje"}</button>}
+    {query.isError ? <button className="text-red-300 underline" onClick={() => query.refetch()}>Reintentar estado de lectura</button> : query.data && !matches ? <button className="text-amber-200 underline" onClick={() => { client.invalidateQueries({ queryKey: ["chat", "messages"] }); query.refetch(); }}>El mensaje cambio: actualizar chat antes de confirmar</button> : query.data?.acknowledgedAt ? <span className="text-green-300">Lectura confirmada: {new Date(query.data.acknowledgedAt).toLocaleString("es-AR", { hourCycle: "h23" })}</span> : <button className="app-button w-auto text-xs" disabled={busy || !matches} onClick={confirm}>{busy ? "Confirmando..." : "Confirmo que lei este mensaje"}</button>}
     {error && <p role="alert" className="mt-2 text-red-300">{error}</p>}
   </div>;
 }

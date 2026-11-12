@@ -17,6 +17,7 @@ import {IncidentRedo} from "@/components/operations/incident-redo";
 import {NotebookEntry} from "@/types/work";
 import {UserRosterItem} from "@/types/user";
 import {toast} from "@/lib/toast";
+import {ConstanciaPrint,CONSTANCIA_PRINT_CSS,printConstancia,PrintableIncident,PrintableSheet} from "@/components/operations/constancia-print";
 
 type Material={name:string;quantity:number;notes:string};
 type Person={userId:string;user:UserRosterItem};
@@ -27,7 +28,7 @@ const types:Record<string,string>={FIRE:"Incendio",RESCUE:"Rescate",ACCIDENT:"Ac
 // Clasificacion igual a la constancia en papel.
 const classifications:Array<[string,string]>=[["INCENDIO_VEHICULAR","Incendio vehicular"],["INCENDIO_ESTRUCTURAL","Incendio estructural"],["INCENDIO_FORESTAL","Incendio forestal"],["INCENDIO_INDUSTRIAL","Incendio industrial"],["INUNDACION","Inundación"],["RESCATE_PERSONA","Rescate de persona"],["PREVENCION","Prevención"],["COOPERACIONES_VARIAS","Cooperaciones varias"],["ACCIDENTE_VEHICULAR","Accidente vehicular"],["PERDIDA_GAS","Pérdida de gas"],["RESCATE_ANIMAL","Rescate de animal"],["FALSA_ALARMA","Falsa alarma"],["OTROS","Otros"]];
 const nameOf=(u:Named)=>u?u.profile?.fullName||u.username:"—";
-const hour=(date:string|null)=>date?new Date(date).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit",timeZone:"America/Argentina/Buenos_Aires"}):"—";
+const hour=(date:string|null)=>date?new Date(date).toLocaleTimeString("es-AR",{ hourCycle: "h23",hour:"2-digit",minute:"2-digit",timeZone:"America/Argentina/Buenos_Aires"}):"—";
 // "En base 12:34–12:50 · salió en M-5 12:50": la base y las salidas de la misma persona no se superponen.
 const baseTimeline=(p:{segments?:Array<{from:string;to:string}>;respondedOnly?:boolean;departures?:Array<{unit:string;departedAt:string;returnedAt:string|null}>})=>{
  const base=p.respondedOnly?"Respondió “Voy”, sin fichar en el cuartel":p.segments?.length?`En base ${p.segments.map(seg=>`${hour(seg.from)}–${hour(seg.to)}`).join(", ")}`:"En base";
@@ -138,7 +139,8 @@ function Constancia({incident,sheet,actingCrew,base}:{incident:Response["context
  const row=(label:string,value:React.ReactNode)=><div className="grid grid-cols-[minmax(0,190px)_1fr] gap-2 border-b border-[var(--bord)] py-1.5"><dt className="text-[var(--mut)]">{label}</dt><dd className="break-words">{value||"—"}</dd></div>;
  const materials=(sheet?.materials||[]).map(m=>`${m.name}${m.quantity>1?` ×${m.quantity}`:""}${m.notes?` (${m.notes})`:""}`).join(" · ");
  return <section id="constancia" className="mt-6 rounded-2xl border border-[var(--bord)] bg-[var(--card)] p-4 text-sm">
-  <style>{`@media print{body *{visibility:hidden!important}#constancia,#constancia *{visibility:visible!important;color:#000!important;background:#fff!important;border-color:#999!important}#constancia{position:absolute;inset:0 auto auto 0;width:100%}#constancia .no-print{display:none}}`}</style>
+  <style>{CONSTANCIA_PRINT_CSS}</style>
+  <ConstanciaPrint incident={incident as unknown as PrintableIncident} sheet={sheet as unknown as PrintableSheet} base={base} classifications={classifications} typeLabel={types[incident.type] ?? "Intervención"} />
   <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-xs uppercase tracking-wide text-[var(--mut)]">Sociedad de Bomberos Voluntarios de Sampacho</p><h2 className="text-lg font-bold">Constancia de intervención</h2></div><div className="text-right"><p className="text-xs text-[var(--mut)]">Pedido de auxilio N°</p><p className="font-mono text-lg font-bold">{requestLabel(incident)}</p></div></div>
   <dl className="mt-3">
    {row("Solicitado por",`${sheet?.callerName||"—"}${sheet?.callerPhone?` · Tel. ${sheet.callerPhone}`:""}`)}
@@ -157,6 +159,7 @@ function Constancia({incident,sheet,actingCrew,base}:{incident:Response["context
    <thead><tr className="border-b border-[var(--bord)] text-xs text-[var(--mut)]">{["Unidad N°","Salida","Llegada al lugar","Entrada","Chofer","Encargado"].map(h=><th key={h} className="py-1.5 pr-2 font-semibold">{h}</th>)}</tr></thead>
    <tbody>{incident.movements.length?incident.movements.map(m=><tr key={m.id} className="border-b border-[var(--bord)]"><td className="py-1.5 pr-2 font-semibold">{m.asset.vehicle?.unitNumber||m.asset.name}</td><td className="pr-2 font-mono">{hour(m.departedAt)}</td><td className="pr-2 font-mono">{hour(m.arrivedAt)}</td><td className="pr-2 font-mono">{hour(m.returnedAt)}</td><td className="pr-2">{nameOf(m.driver)}</td><td>{nameOf(m.leader)}</td></tr>):<tr><td colSpan={6} className="py-2 text-[var(--mut)]">Sin salidas registradas.</td></tr>}</tbody>
   </table></div>
-  <button type="button" className="no-print app-button app-button-outline mt-4 w-auto" onClick={()=>window.print()}>Imprimir constancia</button>
+  <button type="button" className="no-print app-button app-button-outline mt-4 w-auto" onClick={()=>printConstancia(requestLabel(incident))}>Descargar PDF / imprimir planilla</button>
+  <p className="mt-1 text-xs text-[var(--mut)]">Se abre la impresión: elegí «Guardar como PDF» para descargarla.</p>
  </section>;
 }

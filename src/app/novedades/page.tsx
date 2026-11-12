@@ -34,6 +34,7 @@ export default function PublicNewsPage() {
             <div className="flex flex-wrap items-center gap-2 text-xs"><span className="badge">{POST_KIND_LABEL[p.kind]}</span><span className="flex items-center gap-1 text-[var(--mut)]"><CalendarDays className="h-3.5 w-3.5" aria-hidden />{postDate(p)}</span></div>
             <h2 className="mt-2 text-lg font-bold leading-snug">{p.title}</h2>
             <p className="mt-1 text-sm text-[var(--mut)]">{p.summary}</p>
+            {p.kind === "INCIDENT" && (p.units?.length || p.peopleCount) ? <p className="mt-2 text-xs font-semibold">{[p.units?.length ? `Móviles ${p.units.join(", ")}` : "", p.peopleCount ? `${p.peopleCount} bomberos` : "", p.agencies?.length ? `${p.agencies.length} ${p.agencies.length === 1 ? "institución más" : "instituciones más"}` : ""].filter(Boolean).join(" · ")}</p> : null}
           </div>
         </Link>)}
       </div>

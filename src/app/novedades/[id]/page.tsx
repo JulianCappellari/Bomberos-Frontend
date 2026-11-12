@@ -29,6 +29,11 @@ export default function PublicPostPage({ params }: { params: Promise<{ id: strin
         <div className="flex flex-wrap items-center gap-2 text-sm"><span className="badge">{POST_KIND_LABEL[post.kind]}</span><span className="flex items-center gap-1 text-[var(--mut)]"><CalendarDays className="h-4 w-4" aria-hidden />{postDate(post)}</span></div>
         <h1 className="mt-3 text-3xl font-black leading-tight">{post.title}</h1>
         <p className="mt-3 text-lg text-[var(--mut)]">{post.summary}</p>
+        {(post.units?.length || post.peopleCount || post.agencies?.length) ? <dl className="mt-5 grid gap-3 rounded-2xl border border-[var(--bord)] bg-[var(--card)] p-4 sm:grid-cols-3">
+          <div><dt className="text-xs font-semibold uppercase tracking-wide text-[var(--mut)]">{post.units?.length === 1 ? "Móvil que salió" : "Móviles que salieron"}</dt><dd className="mt-1 font-bold">{post.units?.length ? post.units.join(", ") : "—"}</dd></div>
+          <div><dt className="text-xs font-semibold uppercase tracking-wide text-[var(--mut)]">Personal en el lugar</dt><dd className="mt-1 font-bold">{post.peopleCount ? `${post.peopleCount} ${post.peopleCount === 1 ? "bombero" : "bomberos"}` : "—"}</dd></div>
+          <div><dt className="text-xs font-semibold uppercase tracking-wide text-[var(--mut)]">Otras instituciones</dt><dd className="mt-1">{post.agencies?.length ? <ul className="space-y-1">{post.agencies.map((a) => <li key={a} className="font-semibold">{a}</li>)}</ul> : <span className="font-semibold">No participaron</span>}</dd></div>
+        </dl> : null}
         {post.photos.length > 0 && <div className={`mt-5 grid gap-2 ${post.photos.length > 1 ? "sm:grid-cols-2" : ""}`}>{post.photos.map((ph, i) => /* eslint-disable-next-line @next/next/no-img-element */ <img key={ph.id} src={publicPhotoUrl(post.id, ph.id)} alt={`Foto ${i + 1} de la publicación`} className="w-full rounded-xl object-cover" loading={i ? "lazy" : "eager"} />)}</div>}
         <div className="mt-5 whitespace-pre-wrap break-words leading-relaxed">{post.body}</div>
         <button type="button" onClick={() => void share()} className="app-button mt-6 w-auto"><Share2 className="h-4 w-4" aria-hidden /> Compartir</button>

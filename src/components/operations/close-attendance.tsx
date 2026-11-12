@@ -55,7 +55,7 @@ export function AttendanceCorrections() {
       const own = row.requestedBy.id === user?.id || row.attendance.userId === user?.id;
       return <article key={row.id} className="rounded-lg border border-[var(--bord)] p-3 text-sm">
         <p><strong>{row.action === "CLOSE" ? "Cierre" : "Apertura manual"}</strong> · {personName(row.attendance.user)} · {row.attendance.station.name}</p>
-        <p className="text-[var(--mut)]">Hora a aplicar: {new Date(row.effectiveAt).toLocaleString("es-AR")} · Solicitó: {personName(row.requestedBy)}</p>
+        <p className="text-[var(--mut)]">Hora a aplicar: {new Date(row.effectiveAt).toLocaleString("es-AR", { hourCycle: "h23" })} · Solicitó: {personName(row.requestedBy)}</p>
         <p className="my-2 whitespace-pre-wrap break-words">{row.reason}</p>
         {command && !own ? <div className="flex flex-wrap gap-2"><button disabled={busy} className="app-button app-button-red w-auto" onClick={() => decide(row.id, true)}>Autorizar</button><button disabled={busy} className="app-button w-auto" onClick={() => decide(row.id, false)}>Rechazar</button></div>
           : <p className="text-xs text-[var(--mut)]">{own ? "Debe autorizarla otra persona de jefatura, distinta del solicitante y del titular." : "Pendiente de autorización de jefatura."}</p>}

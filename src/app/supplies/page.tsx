@@ -25,7 +25,7 @@ const movementLabels: Record<string, string> = { IN: "Alta (ingreso)", OUT: "Baj
 const statusLabels: Record<string, string> = { PENDING: "Pendiente", APPROVED: "Aprobado", ORDERED: "Encargado", DELIVERED: "Entregado", REJECTED: "Rechazado", CANCELLED: "Cancelado" };
 const statusTone: Record<string, string> = { PENDING: "badge-yellow", APPROVED: "badge-blue", ORDERED: "badge-blue", DELIVERED: "badge-green", REJECTED: "badge-red", CANCELLED: "badge-gray" };
 const nextStatuses: Record<string, string[]> = { PENDING: ["APPROVED", "ORDERED", "DELIVERED", "REJECTED"], APPROVED: ["ORDERED", "DELIVERED", "REJECTED"], ORDERED: ["DELIVERED", "REJECTED"] };
-const when = (v: string) => new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(v));
+const when = (v: string) => new Intl.DateTimeFormat("es-AR", { hourCycle: "h23", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(v));
 const itemLabel = (i: { name: string; size: string | null }) => `${i.name}${i.size ? ` · talle ${i.size}` : ""}`;
 type Tab = "summary" | "stock" | "clothing" | "requests" | "movements";
 

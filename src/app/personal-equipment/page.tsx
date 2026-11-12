@@ -11,7 +11,7 @@ import { equipmentCategories, EquipmentCategory, EquipmentCondition, PersonalEqu
 import { getErrorMessage } from "@/lib/get-error-message";
 
 const conditionLabels = { OK: "Sin novedades", REVIEW: "Necesita revisión", OUT: "Fuera de servicio" };
-const dateTime = (value: string) => new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(value));
+const dateTime = (value: string) => new Intl.DateTimeFormat("es-AR", { hourCycle: "h23", dateStyle: "short", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(value));
 type Action = { type: "create" | "edit" | "checks" | "issues" | "return"; item?: PersonalEquipment };
 function EquipmentHistory({ item }: { item: PersonalEquipment }) {
   const [page, setPage] = useState(1);
