@@ -683,3 +683,11 @@ body { transition: background-color 200ms ease, color 200ms ease; }
 @media (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea { font-size: 16px; }
 }
+
+/* Fecha y hora en iPhone: Safari les da un ancho propio y se salen del recuadro; se ajustan al contenedor
+   y vacios conservan la altura de los demas campos. */
+input[type="datetime-local"], input[type="date"], input[type="time"] {
+  -webkit-appearance: none; appearance: none; display: block;
+  min-width: 0; max-width: 100%; width: 100%; min-height: 3rem;
+}
+input[type="datetime-local"]::-webkit-date-and-time-value, input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-date-and-time-value { text-align: left; }

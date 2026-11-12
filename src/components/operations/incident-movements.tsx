@@ -76,6 +76,10 @@ export function IncidentMovements({
   const localNow = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
   const toLocal = (value: string | null) => { if (!value) return ""; const d = new Date(value); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
   const [when, setWhen] = useState<Record<string, string>>({});
+  // Por defecto se registra en el momento ("ahora"); "Cargar hora" permite poner la hora real.
+  const [manualDeparture, setManualDeparture] = useState(false);
+  const [alreadyBack, setAlreadyBack] = useState(false);
+  const [manualFor, setManualFor] = useState<string | null>(null);
   const [fixing, setFixing] = useState<{ id: string; departedAt: string; arrivedAt: string; returnedAt: string; reason: string } | null>(null);
   const [assetId, setAssetId] = useState("");
   const [userIds, setUserIds] = useState<string[]>([]);
@@ -140,9 +144,9 @@ export function IncidentMovements({
         ? { dispatchExceptionReason: exceptionReason }
         : {}),
       // Horarios reales si se cargaron; vacios = ahora.
-      ...(times.departedAt ? { departedAt: iso(times.departedAt) } : {}),
-      ...(times.arrivedAt ? { arrivedAt: iso(times.arrivedAt) } : {}),
-      ...(times.returnedAt ? { returnedAt: iso(times.returnedAt) } : {}),
+      ...((manualDeparture || historical) && times.departedAt ? { departedAt: iso(times.departedAt) } : {}),
+      ...((alreadyBack || historical) && times.arrivedAt ? { arrivedAt: iso(times.arrivedAt) } : {}),
+      ...((alreadyBack || historical) && times.returnedAt ? { returnedAt: iso(times.returnedAt) } : {}),
     });
     if (!savedMovement) return;
     setAssetId("");
@@ -151,6 +155,14 @@ export function IncidentMovements({
     setLeaderUserId("");
     setExceptionReason("");
     setTimes({ departedAt: "", arrivedAt: "", returnedAt: "" });
+    setManualDeparture(false); setAlreadyBack(false);
+  }
+  // Llegada o regreso: en el momento o con la hora cargada a mano.
+  async function stamp(movementId: string, action: "arrive" | "return", manual: boolean) {
+    const at = manual ? when[movementId] : "";
+    if (manual && !at) { setError("Elegí la hora o tocá el botón «ahora»."); return; }
+    const ok = await runAction(`/${movementId}/${action}`, at ? { at: iso(at) } : {});
+    if (ok) { setWhen((w) => ({ ...w, [movementId]: "" })); setManualFor(null); }
   }
 
   async function saveCorrection() {
@@ -239,17 +251,6 @@ export function IncidentMovements({
                 </div>
               )}
 
-              <fieldset className="rounded-xl border border-[var(--bord)] p-3">
-                <legend className="px-1 text-sm font-semibold">Horarios {historical ? "reales" : "(si cargás la planilla después)"}</legend>
-                <p className="mb-2 text-xs text-[var(--mut)]">{historical ? "Al rehacer una intervención cargá la salida y el retorno reales." : "Dejalos vacíos si el móvil sale ahora. Si ya salió, poné la hora real; si además ya volvió, completá el regreso y queda cargada la salida completa."}</p>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {([["departedAt", "Hora de salida", historical], ["arrivedAt", "Llegada al lugar", false], ["returnedAt", "Regreso al cuartel", historical]] as const).map(([key, label, required]) => (
-                    <Field key={key} label={label}>
-                      <input type="datetime-local" required={required} max={localNow()} className="app-input" value={times[key]} onChange={(event) => setTimes((current) => ({ ...current, [key]: event.target.value }))} />
-                    </Field>
-                  ))}
-                </div>
-              </fieldset>
 
               <PeoplePicker
                 people={options.data.people}
@@ -296,8 +297,23 @@ export function IncidentMovements({
                   </select>
                 </Field>
               </div>
+              <fieldset className="min-w-0 space-y-3 rounded-xl border border-[var(--bord)] p-3">
+                <legend className="px-1 text-sm font-semibold">Hora de salida</legend>
+                {!historical && <div role="radiogroup" aria-label="Hora de salida" className="grid grid-cols-2 gap-2">
+                  {([[false, "Sale ahora"], [true, "Cargar hora"]] as const).map(([manual, label]) => <button key={label} type="button" role="radio" aria-checked={manualDeparture === manual} onClick={() => { setManualDeparture(manual); if (!manual) setAlreadyBack(false); }} className={`min-h-11 rounded-xl border px-3 text-sm font-semibold ${manualDeparture === manual ? "border-red-500 bg-red-500/15 text-[var(--txt)]" : "border-[var(--bord)] text-[var(--mut)]"}`}>{label}</button>)}
+                </div>}
+                {(manualDeparture || historical) && <>
+                  <Field label="Salió a las"><input type="datetime-local" required max={localNow()} className="app-input" value={times.departedAt} onChange={(e) => setTimes((t) => ({ ...t, departedAt: e.target.value }))} /></Field>
+                  {!historical && <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={alreadyBack} onChange={(e) => setAlreadyBack(e.target.checked)} /> El móvil ya volvió (cargar la salida completa)</label>}
+                  {(alreadyBack || historical) && <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                    <Field label="Llegó al lugar (si llegó)"><input type="datetime-local" max={localNow()} className="app-input" value={times.arrivedAt} onChange={(e) => setTimes((t) => ({ ...t, arrivedAt: e.target.value }))} /></Field>
+                    <Field label="Volvió al cuartel"><input type="datetime-local" required max={localNow()} className="app-input" value={times.returnedAt} onChange={(e) => setTimes((t) => ({ ...t, returnedAt: e.target.value }))} /></Field>
+                  </div>}
+                </>}
+                {!manualDeparture && !historical && <p className="text-xs text-[var(--mut)]">Se registra con la hora del momento en que tocás «Registrar salida».</p>}
+              </fieldset>
               <button
-                className="app-button app-button-red w-auto"
+                className="app-button app-button-red w-full sm:w-auto"
                 disabled={
                   busy ||
                   !selectedAsset?.dispatchable ||
@@ -361,47 +377,21 @@ export function IncidentMovements({
                 </li>
               ))}
             </ul>
-            {canWrite && incidentOpen && !movement.returnedAt && (
-              <label className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-[var(--mut)]">{movement.arrivedAt ? "Hora del regreso" : "Hora de la llegada"}</span>
-                <input type="datetime-local" className="app-input w-auto py-1.5" max={localNow()} value={when[movement.id] ?? ""} onChange={(e) => setWhen((w) => ({ ...w, [movement.id]: e.target.value }))} />
-                <span className="text-xs text-[var(--mut)]">vacío = ahora</span>
-              </label>
-            )}
-            {canWrite && incidentOpen && !movement.returnedAt && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {!movement.arrivedAt && (
-                  <button
-                    type="button"
-                    className="app-button w-auto"
-                    disabled={busy}
-                    onClick={() => void runAction(`/${movement.id}/arrive`, when[movement.id] ? { at: iso(when[movement.id]) } : {}).then((ok) => ok && setWhen((w) => ({ ...w, [movement.id]: "" })))}
-                  >
-                    Registrar llegada al lugar
-                  </button>
-                )}
-                {movement.arrivedAt && (
-                  <button
-                    type="button"
-                    className="app-button w-auto"
-                    disabled={busy}
-                    onClick={() => void runAction(`/${movement.id}/return`, when[movement.id] ? { at: iso(when[movement.id]) } : {}).then((ok) => ok && setWhen((w) => ({ ...w, [movement.id]: "" })))}
-                  >
-                    Registrar retorno al cuartel
-                  </button>
-                )}
-                {!movement.arrivedAt && (
-                  <button
-                    type="button"
-                    className="app-button w-auto"
-                    disabled={busy}
-                    onClick={() => void returnWithoutArrival(movement.id)}
-                  >
-                    Regresó sin llegar (p. ej., falsa salida)
-                  </button>
-                )}
-              </div>
-            )}
+            {canWrite && incidentOpen && !movement.returnedAt && (() => {
+              const next = movement.arrivedAt ? "return" as const : "arrive" as const;
+              const nowLabel = next === "arrive" ? "Llegó al lugar ahora" : "Volvió al cuartel ahora";
+              return <div className="mt-3 space-y-2">
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <button type="button" className="app-button app-button-red min-h-12 w-full" disabled={busy} onClick={() => void stamp(movement.id, next, false)}>{nowLabel}</button>
+                  <button type="button" className="app-button app-button-outline min-h-12 w-full sm:w-auto" disabled={busy} aria-expanded={manualFor === movement.id} onClick={() => setManualFor(manualFor === movement.id ? null : movement.id)}>Cargar hora</button>
+                </div>
+                {manualFor === movement.id && <div className="grid min-w-0 gap-2 rounded-xl border border-[var(--bord)] p-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <Field label={next === "arrive" ? "Llegó al lugar a las" : "Volvió al cuartel a las"}><input type="datetime-local" max={localNow()} className="app-input" value={when[movement.id] ?? ""} onChange={(e) => setWhen((w) => ({ ...w, [movement.id]: e.target.value }))} /></Field>
+                  <button type="button" className="app-button w-full sm:w-auto" disabled={busy || !when[movement.id]} onClick={() => void stamp(movement.id, next, true)}>Guardar hora</button>
+                </div>}
+                {!movement.arrivedAt && <button type="button" className="text-sm underline" disabled={busy} onClick={() => void returnWithoutArrival(movement.id)}>Regresó sin llegar al lugar (p. ej., falsa salida)</button>}
+              </div>;
+            })()}
             {canWrite && incidentOpen && fixing?.id !== movement.id && (
               <button type="button" className="mt-2 text-sm underline" onClick={() => setFixing({ id: movement.id, departedAt: toLocal(movement.departedAt), arrivedAt: toLocal(movement.arrivedAt), returnedAt: toLocal(movement.returnedAt), reason: "" })}>Corregir horarios</button>
             )}
