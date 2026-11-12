@@ -1,4 +1,5 @@
 "use client";
+import { SanctionsPanel } from "@/components/operations/sanctions-panel";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
@@ -21,7 +22,7 @@ export default function MyAccountPage() {
   const { user } = useAuth(); const [tab, setTab] = useState("profile"), [error, setError] = useState(""), [notice, setNotice] = useState(""), [busy, setBusy] = useState(false);
   const systemAdmin = user?.profile?.rank?.toLocaleLowerCase() === "administrador";
   // Permite enlazar a una pestaña concreta: /me?tab=availability
-  useEffect(() => { const wanted = new URLSearchParams(window.location.search).get("tab"); if (wanted && ["profile", "availability", "clothing", "licenses", "security", "preferences"].includes(wanted)) setTab(wanted); }, []);
+  useEffect(() => { const wanted = new URLSearchParams(window.location.search).get("tab"); if (wanted && ["profile", "availability", "clothing", "licenses", "record", "security", "preferences"].includes(wanted)) setTab(wanted); }, []);
   const profile = useQuery({ queryKey: ["member-profile", user?.id], queryFn: async () => (await api.get<PrivateProfile>("/members/profile")).data, enabled: Boolean(user) && !systemAdmin });
   async function saveProfile(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); const form = new FormData(e.currentTarget), text = (key: string) => String(form.get(key) || ""); setBusy(true); setError(""); setNotice("");
@@ -30,7 +31,7 @@ export default function MyAccountPage() {
   }
   if (systemAdmin) return <ProtectedLayout><main className="screen-body"><h1 className="mb-6 text-2xl font-bold">Configuración de la cuenta administradora</h1><SecuritySettings /></main></ProtectedLayout>;
   const p = profile.data?.profile, c = profile.data?.emergencyContact;
-  const tabs = [["profile", "Mis datos"], ["availability", "Disponibilidad"], ["clothing", "Prendas"], ["licenses", "Licencias"], ["security", "Seguridad"], ["preferences", "Preferencias"]] as const;
+  const tabs = [["profile", "Mis datos"], ["availability", "Disponibilidad"], ["clothing", "Prendas"], ["licenses", "Licencias"], ["record", "Legajo"], ["security", "Seguridad"], ["preferences", "Preferencias"]] as const;
   const input = (name: string, label: string, value: string | null | undefined, max: number, extra: Record<string, unknown> = {}) => <Field label={label}><input className="app-input" name={name} defaultValue={value || ""} maxLength={max} {...extra} /></Field>;
   return <ProtectedLayout><section className="screen-body"><h1 className="text-2xl font-bold">Mi perfil</h1><p className="mt-1 text-sm text-[var(--mut)]">{user?.profile?.fullName || user?.username} · {user?.profile?.rank}{user?.profile?.badge ? ` · Legajo ${user.profile.badge}` : ""}</p>
     <div role="tablist" aria-label="Secciones del perfil" className="my-5 flex gap-1 overflow-x-auto rounded-xl border border-[var(--bord)] bg-black/20 p-1">{tabs.map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={tab === id} className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${tab === id ? "bg-red-600 text-white" : "text-white/70 hover:bg-white/[0.06]"}`} onClick={() => { setTab(id); setError(""); setNotice(""); }}>{label}</button>)}</div>
@@ -48,6 +49,7 @@ export default function MyAccountPage() {
     {tab === "availability" && <EmergencyPeriods />}
     {tab === "clothing" && <><EquipmentAcceptance /><MyClothing /></>}
     {tab === "licenses" && <LicensesContent personalOnly />}
+    {tab === "record" && <SanctionsPanel />}
     {tab === "security" && <SecuritySettings />}
     {tab === "preferences" && <><AppearanceSettings /><AlertSoundSettings /><p className="mt-6 text-sm"><Link href="/app" className="text-red-300 underline">Aplicación y novedades</Link></p></>}
   </section></ProtectedLayout>;

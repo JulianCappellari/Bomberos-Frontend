@@ -28,7 +28,7 @@ export function canOpenPage(path: string, role?: string, permissions: string[] =
 }
 export function showNavigationItem(path: string, role?: string, rank?: string | null, permissions: string[] = []) {
   if (["/hazmat", "/app", "/availability", "/control-groups", "/security", "/notifications"].includes(path)) return false;
-  if (["/driver-licenses", "/participations", "/incidents/logistics"].includes(path)) return isCommand(role);
+  if (["/driver-licenses", "/participations", "/incidents/logistics", "/public-posts"].includes(path)) return isCommand(role);
   if (path === "/guard-log") return role === "GUARD";
   if (path === "/guard-qr") return role === "GUARD" || role === "ADMIN";
   if (path === "/attendance" && rank?.toLocaleLowerCase() === "administrador") return false;

@@ -14,6 +14,8 @@ import {
   Home,
   IdCard,
   Landmark,
+  Lightbulb,
+  Newspaper,
   MessageCircle,
   Package,
   QrCode,
@@ -86,6 +88,7 @@ export const navItems: NavItem[] = [
   { href: "/chat", label: "Comunicaciones", shortLabel: "Mensajes", description: "Mensajes con confirmación de lectura", Icon: MessageCircle, group: "station" },
   { href: "/documents", label: "Protocolos y documentos", shortLabel: "Docs", description: "Protocolos y actas publicadas", Icon: BookOpen, group: "station" },
   { href: "/contacts", label: "Contactos", shortLabel: "Contactos", description: "Directorio telefónico operativo", Icon: ContactRound, group: "station" },
+  { href: "/feedback", label: "Buzón de sugerencias", shortLabel: "Buzón", description: "Quejas, sugerencias e ideas para jefatura (anónimo si querés)", Icon: Lightbulb, group: "station" },
   { href: "/expenses", label: "Gastos y reintegros", shortLabel: "Gastos", description: "Presentar y seguir gastos", Icon: Receipt, group: "station" },
   { href: "/reports", label: "Reportes", shortLabel: "Reportes", description: "Horas, salidas y estadísticas", Icon: BarChart3, group: "station" },
 
@@ -95,6 +98,7 @@ export const navItems: NavItem[] = [
   { href: "/driver-licenses", label: "Licencias de conducir", shortLabel: "Licencias", description: "Licencias declaradas por el personal", Icon: BadgeCheck, group: "command" },
   { href: "/incidents/logistics", label: "Habilitaciones de conductores", shortLabel: "Habilitar", description: "Autorizar o rechazar qué móvil maneja cada persona", Icon: Truck, group: "command" },
   { href: "/participations", label: "Asistencia a servicios", shortLabel: "Servicios", description: "Verificar participaciones", Icon: ShieldCheck, group: "command" },
+  { href: "/public-posts", label: "Novedades públicas", shortLabel: "Prensa", description: "Informes para la comunidad y los medios", Icon: Newspaper, group: "command" },
   { href: "/commission", label: "Comisión directiva", shortLabel: "Comisión", description: "Finanzas y transparencia del cuartel", Icon: Landmark, group: "command" },
   { href: "/ranking", label: "Ranking", shortLabel: "Ranking", description: "Puntaje y tareas de recuperación", Icon: Trophy, group: "command" },
 ];

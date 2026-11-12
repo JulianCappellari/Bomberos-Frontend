@@ -1,5 +1,6 @@
 "use client";
 
+import { MaterialSearch } from "@/components/equipment/MaterialSearch";
 import Link from "next/link";
 import { useState } from "react";
 import { Plus, Search, Truck } from "lucide-react";
@@ -41,6 +42,8 @@ export default function EquipmentPage() {
             ) : undefined
           }
         />
+
+        <MaterialSearch />
 
         {isLoading ? (
           <div className="space-y-4">

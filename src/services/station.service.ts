@@ -28,6 +28,6 @@ export type YearData = { year: number; incidents: number; alerts: number; jointI
 export type YearComparison = { current: YearData; previous: YearData; comparableMonths: number; comparable: { current: number; previous: number } };
 
 export type PromotionRule = { rank: string; nextRank: string; minYearsInRank: number; minYearsService: number; minApprovedCourses: number };
-export type SeniorityRow = { userId: string; name: string; badge: string; rank: string; joinDate: string | null; rankSince: string | null; rankSinceEstimated: boolean; yearsService: number | null; yearsInRank: number | null; approvedCourses: number; nextRank: string | null; eligible: boolean; missing: string[] };
+export type SeniorityRow = { userId: string; name: string; badge: string; rank: string; joinDate: string | null; rankSince: string | null; rankSinceEstimated: boolean; yearsService: number | null; yearsInRank: number | null; approvedCourses: number; ranking?: { points: number; average: number; lowLine: number; low: boolean; months: number }; activeSanctions?: number; nextRank: string | null; eligible: boolean; missing: string[] };
 
 export type DocumentReads = { document: { id: string; title: string; revision: number }; read: Array<{ userId: string; name: string; rank: string; readAt: string }>; pending: Array<{ userId: string; name: string; rank: string }> };

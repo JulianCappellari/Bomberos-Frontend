@@ -60,6 +60,8 @@ export function SeniorityPanel() {
           <div><dt className="text-xs text-[var(--mut)]">Antigüedad</dt><dd>{yrs(p.yearsService)}</dd></div>
           <div><dt className="text-xs text-[var(--mut)]">En el cargo</dt><dd>{yrs(p.yearsInRank)}{p.rankSinceEstimated && p.yearsInRank !== null ? " *" : ""}</dd></div>
           <div><dt className="text-xs text-[var(--mut)]">Cursos aprobados</dt><dd>{p.approvedCourses}</dd></div>
+          {p.ranking && <div><dt className="text-xs text-[var(--mut)]">Ranking ({p.ranking.months} meses)</dt><dd className={p.ranking.low ? "font-semibold text-red-400" : ""}>{p.ranking.points} pts{p.ranking.low ? " · rango bajo" : ""}</dd></div>}
+          {!!p.activeSanctions && <div><dt className="text-xs text-[var(--mut)]">Sanciones vigentes</dt><dd className="font-semibold text-red-400">{p.activeSanctions}</dd></div>}
         </dl>
         {!p.eligible && p.missing.length > 0 && <p className="mt-2 text-xs text-amber-300">Falta: {p.missing.join(" · ")}</p>}
       </li>)}</ul>

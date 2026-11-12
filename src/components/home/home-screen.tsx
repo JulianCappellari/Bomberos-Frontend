@@ -10,6 +10,7 @@ import { PresentPersonnelPanel } from "@/components/operations/present-personnel
 import { FireRiskPanel } from "@/components/operations/fire-risk-panel";
 import { ReviewQueue } from "./review-queue";
 import { MissionBriefing } from "@/components/operations/mission-briefing";
+import { PushStatusBanner } from "@/components/operations/push-status-banner";
 import { useAuth } from "@/features/auth/auth-context";
 import { useDashboardSummary } from "@/hooks/use-dashboard";
 import { api } from "@/lib/api-client";
@@ -70,6 +71,7 @@ export function HomeScreen() {
           <p className="mt-1 text-sm text-white/60">{user?.profile?.rank || "Sin cargo"}{user?.profile?.badge ? ` · Legajo ${user.profile.badge}` : ""}{user?.role === "GUARD" ? " · En función de guardia" : ""}</p>
         </header>
 
+        <PushStatusBanner />
         <MissionBriefing />
 
         {awaitingResponse.length > 0 && (

@@ -1,4 +1,5 @@
 "use client";
+import { ClothingToReplace } from "@/components/operations/clothing-to-replace";
 import Link from "next/link";
 import { FormEvent, Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -26,7 +27,7 @@ const statusTone: Record<string, string> = { PENDING: "badge-yellow", APPROVED: 
 const nextStatuses: Record<string, string[]> = { PENDING: ["APPROVED", "ORDERED", "DELIVERED", "REJECTED"], APPROVED: ["ORDERED", "DELIVERED", "REJECTED"], ORDERED: ["DELIVERED", "REJECTED"] };
 const when = (v: string) => new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(v));
 const itemLabel = (i: { name: string; size: string | null }) => `${i.name}${i.size ? ` · talle ${i.size}` : ""}`;
-type Tab = "summary" | "stock" | "requests" | "movements";
+type Tab = "summary" | "stock" | "clothing" | "requests" | "movements";
 
 // Deposito del cuartel: el encargado de vestimenta y materiales lleva el stock y atiende los pedidos.
 export default function SuppliesPage() {
@@ -77,7 +78,7 @@ function SuppliesScreen() {
     void run(() => api.post(`/supplies/requests/${dialog.request.id}/decide`, { status: dialog.status, notes: String(f.get("notes") || "") || null, revision: dialog.request.revision, supplyItemId: String(f.get("supplyItemId") || "") || null }), `Pedido ${statusLabels[dialog.status].toLowerCase()}`);
   }
 
-  const tabs: Array<[Tab, string]> = manager ? [["summary", "Resumen"], ["stock", "Stock"], ["requests", "Pedidos"], ["movements", "Movimientos"]] : [["requests", "Pedidos de materiales"]];
+  const tabs: Array<[Tab, string]> = manager ? [["summary", "Resumen"], ["stock", "Stock"], ["clothing", "Prendas a reemplazar"], ["requests", "Pedidos"], ["movements", "Movimientos"]] : [["requests", "Pedidos de materiales"]];
   return <ProtectedLayout><main className="screen-body">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div>
@@ -158,6 +159,7 @@ function SuppliesScreen() {
       </li>)}</ul>
     </section>}
 
+    {current === "clothing" && manager && <ClothingToReplace />}
     {current === "movements" && manager && <section className="mt-4">
       {movements.isLoading && <ListSkeleton label="Cargando movimientos" />}
       {movements.data && <MovementList rows={movements.data} />}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -247,6 +248,7 @@ export default function LoginPage() {
         <div className="text-center font-[family-name:var(--font-barlow-condensed)] text-xs font-semibold tracking-widest text-white/30 uppercase lg:hidden">
           Asociación Bomberos Voluntarios Sampacho · Córdoba, Argentina
         </div>
+        <Link href="/novedades" className="block text-center text-sm font-semibold text-white/70 underline underline-offset-4 hover:text-white">Novedades del cuartel para la comunidad</Link>
       </motion.div>
       </div>
     </div>

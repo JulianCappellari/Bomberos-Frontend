@@ -9,7 +9,7 @@ import { getErrorMessage } from "@/lib/get-error-message";
 import { equipmentCategories } from "@/types/personal-equipment";
 import { ErrorNotice, Field } from "./operations-ui";
 type Clothing = { id: string; title: string; details: string; revision: number; clothingBrand: string | null; clothingModel: string | null; clothingSize: string | null; clothingCondition: string | null; clothingNovelties: string | null };
-const conditions = { OK: "En condiciones", REVIEW: "Requiere revision", OUT: "Fuera de servicio", UNKNOWN: "Sin evaluar" };
+const conditions = { OK: "En condiciones", WORN: "Gastada, se sigue usando (reemplazar cuando se pueda)", REVIEW: "Requiere revision", OUT: "Fuera de servicio", UNKNOWN: "Sin evaluar" };
 export function MyClothing() {
   const { user } = useAuth(); const [editing, setEditing] = useState<Clothing | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState(""), [request, setRequest] = useState(false);
   const query = useQuery({ queryKey: ["my-clothing", user?.id], queryFn: async () => (await api.get<Clothing[]>("/members/declarations", { params: { category: "CLOTHING" } })).data, enabled: Boolean(user) });
