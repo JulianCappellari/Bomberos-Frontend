@@ -9,6 +9,7 @@ import { useAuth } from "@/features/auth/auth-context";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { createContactRequest, deleteContactRequest, getContactsRequest, updateContactRequest } from "@/services/contacts.service";
 import { ContactInput, OperationalContact } from "@/types/contact";
+import { StaffDirectory } from "@/components/operations/staff-directory";
 
 const emptyForm: ContactInput = {
   name: "", category: "", phone: "", radioFrequency: "", email: "", address: "", notes: "", isEmergency: false,
@@ -26,6 +27,7 @@ export default function ContactsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<ContactInput>(emptyForm);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState<"ops" | "staff">("ops");
   const rows = contacts.data || [];
   const categories = [...new Set(rows.map((contact) => contact.category))].sort();
   const visible = rows.filter((contact) =>
@@ -79,14 +81,19 @@ export default function ContactsPage() {
       <main className="screen-body">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-white">Contactos operativos</h1>
-            <p className="mt-1 text-sm text-[var(--mut)]">{rows.length} contactos · {rows.filter((row) => row.isEmergency).length} prioritarios</p>
+            <h1 className="text-2xl font-bold text-white">Contactos</h1>
+            <p className="mt-1 text-sm text-[var(--mut)]">{tab === "ops" ? `${rows.length} contactos · ${rows.filter((row) => row.isEmergency).length} prioritarios` : "Personal del cuartel con su teléfono"}</p>
           </div>
-          <div className="flex gap-2">
+          {tab === "ops" && <div className="flex gap-2">
             <button type="button" className="btn-icon" title="Actualizar contactos" aria-label="Actualizar contactos" onClick={refresh}><RefreshCw className="h-4 w-4" /></button>
             {canManage && <button type="button" className="app-button app-button-red w-auto" disabled={pending} onClick={() => openForm(null)}><Plus className="h-4 w-4" /> Nuevo contacto</button>}
-          </div>
+          </div>}
         </div>
+        <div role="tablist" aria-label="Tipo de contacto" className="mb-4 grid grid-cols-2 gap-2 sm:inline-grid sm:w-auto">
+          <button type="button" role="tab" aria-selected={tab === "ops"} onClick={() => setTab("ops")} className={`min-h-11 rounded-full border px-4 text-sm font-semibold ${tab === "ops" ? "border-red-500 bg-red-500/10" : "border-[var(--bord)]"}`}>Operativos</button>
+          <button type="button" role="tab" aria-selected={tab === "staff"} onClick={() => setTab("staff")} className={`min-h-11 rounded-full border px-4 text-sm font-semibold ${tab === "staff" ? "border-red-500 bg-red-500/10" : "border-[var(--bord)]"}`}>Personal</button>
+        </div>
+        {tab === "staff" ? <StaffDirectory /> : <>
 
         {error && <div role="alert" className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</div>}
 
@@ -154,6 +161,7 @@ export default function ContactsPage() {
             </article>
           ))}
         </div>
+        </>}
       </main>
     </ProtectedLayout>
   );

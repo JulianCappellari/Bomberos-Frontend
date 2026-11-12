@@ -41,6 +41,10 @@ export type PresentPersonnelItem = {
       avatarUrl?: string | null;
     } | null;
   };
+  // Si esta en el cuartel cubriendo una guardia (grilla de guardias), con el turno.
+  onGuard?: boolean;
+  guardLabel?: string | null;
+  guardUntil?: string | null;
 };
 
 export async function createAttendanceQrChallenge(stationId: string) {

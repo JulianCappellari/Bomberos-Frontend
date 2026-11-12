@@ -53,7 +53,7 @@ export default function StationPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="section-title mb-1 mt-0">Personal en el cuartel</h2>
-              <p className="text-sm text-[var(--mut)]">En vivo, según los ingresos con QR abiertos.</p>
+              <p className="text-sm text-[var(--mut)]">En vivo, según los ingresos con QR abiertos.{present.length > 0 && ` ${present.filter((p) => p.onGuard).length} de guardia y ${present.filter((p) => !p.onGuard).length} sin guardia.`}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2 rounded-[10px] bg-red-500/10 px-3 py-2 text-red-300">
               <UserCheck className="h-5 w-5" aria-hidden />
@@ -112,9 +112,18 @@ function PresentCard({ item }: { item: PresentPersonnelItem }) {
               </p>
             </div>
 
-            <span className="badge badge-green">
-              {formatSince(item.checkInAt)}
-            </span>
+            <div className="flex flex-wrap gap-2">
+              {item.onGuard ? (
+                <span className="badge badge-yellow">
+                  De guardia{item.guardUntil ? ` hasta ${new Date(item.guardUntil).toLocaleTimeString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", hour: "2-digit", minute: "2-digit" })}` : ""}
+                </span>
+              ) : (
+                <span className="badge">Sin guardia</span>
+              )}
+              <span className="badge badge-green">
+                {formatSince(item.checkInAt)}
+              </span>
+            </div>
           </div>
 
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
