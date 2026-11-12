@@ -13,6 +13,7 @@ import { flattenInventoryItems } from "./equipment.utils";
 import InspectionItemRow from "./InspectionItemRow";
 import InspectionDraftPanel, { clearInspectionDraft } from "./InspectionDraftPanel";
 import { inventorySignature, InspectionDraft } from "@/lib/inspection-draft";
+import { FLUID_OPTIONS, FUEL_OPTIONS, FluidLevel, FuelLevel } from "@/lib/vehicle-fluids";
 import { useAuth } from "@/features/auth/auth-context";
 
 type Props = {
@@ -40,6 +41,7 @@ export default function InspectionForm({ vehicleId, inventory, roster }: Props) 
   const [onlyPending, setOnlyPending] = useState(false);
   const [incidentType, setIncidentType] = useState<AlertType | "">("");
   const [observations, setObservations] = useState("");
+  const [fluids, setFluids] = useState<{ oil: FluidLevel | ""; coolant: FluidLevel | ""; fuel: FuelLevel | "" }>({ oil: "", coolant: "", fuel: "" });
   const [sectionComments, setSectionComments] = useState<Record<string, string>>({});
   const [foundLocations, setFoundLocations] = useState<Record<string, string>>({});
   const [responsibleUserIds, setResponsibleUserIds] = useState<string[]>([]);
@@ -53,7 +55,7 @@ export default function InspectionForm({ vehicleId, inventory, roster }: Props) 
   const [results, setResults] = useState<Record<string, InspectionResult>>(
     Object.fromEntries(items.map((item) => [item.id, "UNCHECKED"])),
   );
-  async function abandonControl(){if(!draft||!window.confirm("¿Descartar este borrador sin registrar el control? Se perderán las marcas locales."))return;setLoading(true);setError("");try{await api.post(`/inspections/drafts/${draft.id}/abandon`,{revision:draft.revision,reason:"Borrador descartado por su autor antes de finalizar"});setDraft(null);setResponsibleUserIds([]);setLeaderUserId("");setResults(Object.fromEntries(items.map(i=>[i.id,"UNCHECKED"])));setObservations("");setSectionComments({});setItemObservations({});setFoundLocations({});setObservedQuantities(Object.fromEntries(items.map(i=>[i.id,i.expectedQuantity])));clearInspectionDraft(draftKey);}catch(e){setError(getErrorMessage(e,"No se pudo descartar el borrador"));}finally{setLoading(false);}}
+  async function abandonControl(){if(!draft||!window.confirm("¿Descartar este borrador sin registrar el control? Se perderán las marcas locales."))return;setLoading(true);setError("");try{await api.post(`/inspections/drafts/${draft.id}/abandon`,{revision:draft.revision,reason:"Borrador descartado por su autor antes de finalizar"});setDraft(null);setResponsibleUserIds([]);setLeaderUserId("");setResults(Object.fromEntries(items.map(i=>[i.id,"UNCHECKED"])));setObservations("");setFluids({oil:"",coolant:"",fuel:""});setSectionComments({});setItemObservations({});setFoundLocations({});setObservedQuantities(Object.fromEntries(items.map(i=>[i.id,i.expectedQuantity])));clearInspectionDraft(draftKey);}catch(e){setError(getErrorMessage(e,"No se pudo descartar el borrador"));}finally{setLoading(false);}}
   const [itemObservations, setItemObservations] = useState<
     Record<string, string>
   >({});
@@ -69,9 +71,9 @@ export default function InspectionForm({ vehicleId, inventory, roster }: Props) 
   const draftSnapshot = useMemo(() => ({
     inventorySignature: inventorySignature(items), foundLocations,
     inspectionDate, inspectionTime, incidentType, observations, sectionComments,
-    responsibleUserIds, leaderUserId, results, itemObservations, observedQuantities,
-  }), [items, inspectionDate, inspectionTime, incidentType, observations, sectionComments, responsibleUserIds, leaderUserId, results, itemObservations, observedQuantities, foundLocations]);
-  const hasChanges = checkedCount > 0 || observations.length > 0 || responsibleUserIds.length > 0 ||
+    responsibleUserIds, leaderUserId, results, itemObservations, observedQuantities, fluids,
+  }), [fluids, items, inspectionDate, inspectionTime, incidentType, observations, sectionComments, responsibleUserIds, leaderUserId, results, itemObservations, observedQuantities, foundLocations]);
+  const hasChanges = checkedCount > 0 || observations.length > 0 || Object.values(fluids).some(Boolean) || responsibleUserIds.length > 0 ||
     Object.values(itemObservations).some(Boolean) || Object.values(sectionComments).some(Boolean);
 
   function restoreDraft(draft: InspectionDraft) {
@@ -80,6 +82,7 @@ export default function InspectionForm({ vehicleId, inventory, roster }: Props) 
     setInspectionTime(draft.inspectionTime);
     setIncidentType(draft.incidentType);
     setObservations(draft.observations);
+    setFluids(draft.fluids ?? { oil: "", coolant: "", fuel: "" });
     setSectionComments(draft.sectionComments || {});
     setFoundLocations(draft.foundLocations || {});
     setLeaderUserId(responsibleUserIds.includes(draft.leaderUserId) ? draft.leaderUserId : user?.id||"");
@@ -100,6 +103,11 @@ export default function InspectionForm({ vehicleId, inventory, roster }: Props) 
     }
     if (!responsibleUserIds.length || !leaderUserId) {
       setError("Seleccioná quiénes realizaron el control y quién estuvo a cargo.");
+      setLoading(false);
+      return;
+    }
+    if (!fluids.oil || !fluids.coolant || !fluids.fuel) {
+      setError("Completá los fluidos del móvil: aceite, refrigerante y combustible.");
       setLoading(false);
       return;
     }
@@ -134,6 +142,7 @@ export default function InspectionForm({ vehicleId, inventory, roster }: Props) 
         observations: observations.trim() ? observations.trim() : null,
         leaderUserId,
         responsibleUserIds,
+        fluids: { oil: fluids.oil, coolant: fluids.coolant, fuel: fluids.fuel },
         sectionComments: inventory.compartments.filter((section) => sectionComments[section.id]?.trim()).map((section) => ({ compartmentId: section.id, observations: sectionComments[section.id].trim() })),
         items: items.map((item) => ({
           inventoryItemId: item.id,
@@ -253,6 +262,16 @@ export default function InspectionForm({ vehicleId, inventory, roster }: Props) 
         </div>
       </section>
 
+      <section className="rounded-3xl border border-white/10 bg-[#16171b] p-5" aria-labelledby="fluids-title">
+        <h2 id="fluids-title" className="text-lg font-black uppercase tracking-wide text-slate-300">Fluidos del móvil</h2>
+        <p className="mb-4 mt-1 text-sm text-[var(--mut)]">Revisá los niveles antes de cerrar el control. Lo que quede bajo se avisa a quien salga en la unidad.</p>
+        <div className="space-y-4">
+          <FluidChoice label="Aceite de motor" value={fluids.oil} options={FLUID_OPTIONS} onChange={(oil) => setFluids((f) => ({ ...f, oil }))} />
+          <FluidChoice label="Líquido refrigerante" value={fluids.coolant} options={FLUID_OPTIONS} onChange={(coolant) => setFluids((f) => ({ ...f, coolant }))} />
+          <FluidChoice label={`Combustible${inventory.fuelType ? ` (${inventory.fuelType})` : ""}`} value={fluids.fuel} options={FUEL_OPTIONS} onChange={(fuel) => setFluids((f) => ({ ...f, fuel }))} />
+        </div>
+      </section>
+
       <section className="space-y-4">
         <h2 className="text-lg font-black uppercase tracking-wide text-slate-300">
           Ítems a revisar
@@ -331,6 +350,32 @@ export default function InspectionForm({ vehicleId, inventory, roster }: Props) 
       </button>
       </fieldset>
     </form>
+  );
+}
+
+// Selector segmentado: botones grandes, faciles de tocar con guantes o en el celular.
+function FluidChoice<T extends string>({ label, value, options, onChange }: { label: string; value: T | ""; options: Array<{ value: T; label: string }>; onChange: (value: T) => void }) {
+  const bad = (v: string) => v === "LOW" || v === "QUARTER" || v === "RESERVE";
+  return (
+    <fieldset>
+      <legend className="mb-2 text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--mut)]">{label}</legend>
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+        {options.map((option) => {
+          const selected = value === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onChange(option.value)}
+              className={`min-h-11 rounded-xl border px-1 text-sm font-bold transition ${selected ? (bad(option.value) ? "border-amber-500 bg-amber-500/15 text-[var(--warn-text)]" : "border-emerald-500 bg-emerald-500/15 text-[var(--ok-text)]") : "border-[var(--bord)] bg-[var(--card2)] text-[var(--txt)]"}`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 

@@ -19,6 +19,7 @@ type FormState = {
   year: string;
   mileage: string;
   nextOilChangeMileage: string;
+  fuelType: string;
 };
 
 function parseOptionalNumber(value: string) {
@@ -44,6 +45,7 @@ export default function CreateVehicleForm() {
     year: "",
     mileage: "",
     nextOilChangeMileage: "",
+    fuelType: "",
   });
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -70,6 +72,7 @@ export default function CreateVehicleForm() {
           year: parseOptionalNumber(form.year),
           mileage: parseOptionalNumber(form.mileage),
           nextOilChangeMileage: parseOptionalNumber(form.nextOilChangeMileage),
+          fuelType: form.fuelType.trim() || null,
         },
       });
 
@@ -173,6 +176,18 @@ export default function CreateVehicleForm() {
               value={form.mileage}
               onChange={(e) => setField("mileage", e.target.value)}
             />
+          </Field>
+
+          <Field label="Combustible">
+            <input
+              className="input-dark"
+              list="fuel-types"
+              maxLength={60}
+              placeholder="Ej. Gasoil Súper"
+              value={form.fuelType}
+              onChange={(e) => setField("fuelType", e.target.value)}
+            />
+            <datalist id="fuel-types"><option value="Gasoil Súper" /><option value="Gasoil Premium" /><option value="Nafta Súper" /><option value="Nafta Premium" /><option value="GNC" /></datalist>
           </Field>
 
           <Field label="Próximo cambio de aceite">

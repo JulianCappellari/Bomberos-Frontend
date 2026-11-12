@@ -99,10 +99,10 @@ export default function InventoryAccordion({ inventory }: Props) {
     <div className="space-y-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <h3 className="text-lg font-black uppercase tracking-wide text-slate-300">
+          <h3 className="text-lg font-black uppercase tracking-wide text-[var(--txt)]">
             Inventario ({totalItems} ítems)
           </h3>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-[var(--mut)]">
             Editá cantidades, estado, baulera y observaciones sin perder
             historial.
           </p>
@@ -114,7 +114,7 @@ export default function InventoryAccordion({ inventory }: Props) {
           className={cn(
             "rounded-2xl border p-3 text-sm",
             message.type === "success"
-              ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+              ? "border-emerald-500/20 bg-emerald-500/10 text-[var(--ok-text)]"
               : "border-red-500/20 bg-red-500/10 text-red-300",
           )}
         >
@@ -128,9 +128,9 @@ export default function InventoryAccordion({ inventory }: Props) {
           name={compartment.name}
           itemsCount={compartment.items.length}
         >
-          <div className="divide-y divide-white/10">
+          <div className="divide-y divide-[var(--bord)]">
             {compartment.items.length === 0 ? (
-              <div className="py-4 text-sm text-slate-500">
+              <div className="py-4 text-sm text-[var(--mut)]">
                 No hay ítems cargados en este compartimiento.
               </div>
             ) : (
@@ -203,15 +203,15 @@ function InventoryItemRow({
         </div>
 
         <div>
-          <h4 className="text-lg font-extrabold text-white">{item.name}</h4>
-          <p className="text-sm text-slate-400">
+          <h4 className="text-base font-extrabold text-[var(--txt)] sm:text-lg">{item.name}</h4>
+          <p className="text-sm text-[var(--mut)]">
             Cantidad esperada: {item.expectedQuantity}
           </p>
-          <p className="mt-1 text-sm text-slate-300">{state.label}</p>
-          {(item.labelCode || item.expiresOn) && <p className="mt-1 text-xs text-sky-200">{item.labelCode && `Etiqueta: ${item.labelCode}`}{item.expiresOn && ` · Vence: ${item.expiresOn.slice(0, 10)}`}</p>}
-          {item.inspectionItems?.[0] && item.inspectionItems[0].observedQuantity < item.inspectionItems[0].expectedQuantity && <p className="mt-1 text-xs text-amber-200">Ultimo control: faltan {item.inspectionItems[0].expectedQuantity - item.inspectionItems[0].observedQuantity} unidades. Requiere nuevo control para confirmar reposicion.</p>}
+          <p className="mt-1 text-sm text-[var(--txt)]">{state.label}</p>
+          {(item.labelCode || item.expiresOn) && <p className="mt-1 text-xs text-[var(--info-text)]">{item.labelCode && `Etiqueta: ${item.labelCode}`}{item.expiresOn && ` · Vence: ${item.expiresOn.slice(0, 10)}`}</p>}
+          {item.inspectionItems?.[0] && item.inspectionItems[0].observedQuantity < item.inspectionItems[0].expectedQuantity && <p className="mt-1 text-xs text-[var(--warn-text)]">Ultimo control: faltan {item.inspectionItems[0].expectedQuantity - item.inspectionItems[0].observedQuantity} unidades. Requiere nuevo control para confirmar reposicion.</p>}
           {item.notes && (
-            <p className="mt-1 text-sm text-slate-500">{item.notes}</p>
+            <p className="mt-1 text-sm text-[var(--mut)]">{item.notes}</p>
           )}
         </div>
       </div>
@@ -221,7 +221,7 @@ function InventoryItemRow({
         <button
           type="button"
           onClick={onEdit}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-orange-300 transition hover:bg-white/10"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--bord)] bg-[var(--card2)] text-orange-300 transition hover:brightness-95"
           aria-label={`Editar ${item.name}`}
         >
           <Pencil className="h-4 w-4" />
@@ -380,7 +380,7 @@ function InventoryItemEditor({
           type="button"
           onClick={onCancel}
           disabled={isSaving}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-black uppercase tracking-wide text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--bord)] bg-[var(--card2)] px-4 py-3 text-sm font-black uppercase tracking-wide text-[var(--txt)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <X className="h-4 w-4" />
           Cancelar
@@ -399,7 +399,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.18em] text-slate-400">
+      <span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--mut)]">
         {label}
       </span>
       {children}
@@ -419,20 +419,20 @@ function CompartmentCard({
   const [open, setOpen] = useState(true);
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-sky-500/20 bg-[radial-gradient(circle_at_top,_rgba(20,60,120,0.15),_rgba(16,17,24,1)_80%)]">
+    <div className="overflow-hidden rounded-3xl border border-[var(--bord)] bg-[var(--card)] shadow-sm">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className="flex w-full items-center justify-between px-5 py-4 text-left"
       >
         <div>
-          <div className="text-xl font-black text-white">{name}</div>
-          <div className="text-sm text-slate-400">{itemsCount} ítems</div>
+          <div className="text-lg font-black text-[var(--txt)] sm:text-xl">{name}</div>
+          <div className="text-sm text-[var(--mut)]">{itemsCount} ítems</div>
         </div>
 
         <ChevronDown
           className={cn(
-            "h-5 w-5 text-slate-400 transition",
+            "h-5 w-5 text-[var(--mut)] transition",
             open && "rotate-180",
           )}
         />

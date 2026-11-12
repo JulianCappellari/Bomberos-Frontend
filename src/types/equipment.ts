@@ -27,6 +27,7 @@ export interface VehicleInventoryResponse {
   unitNumber: string;
   plate: string | null;
   mileage: number | null;
+  fuelType?: string | null;
   asset: {
     id: string;
     name: string;

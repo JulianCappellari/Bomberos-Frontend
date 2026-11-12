@@ -1,3 +1,4 @@
+import type { InspectionFluids } from "@/lib/vehicle-fluids";
 export type InspectionResult = "OK" | "MISSING" | "DAMAGED" | "UNCHECKED";
 export type AlertType =
   | "FIRE"
@@ -27,6 +28,7 @@ export interface CreateInspectionPayload {
   observations?: string | null;
   leaderUserId: string;
   responsibleUserIds: string[];
+  fluids?: InspectionFluids;
   items: InspectionItemPayload[];
 }
 
@@ -63,6 +65,9 @@ export interface InspectionHistoryEntry {
   inspectionDate: string;
   inspectionTime: string | null;
   observations: string | null;
+  oilLevel?: string | null;
+  coolantLevel?: string | null;
+  fuelLevel?: string | null;
   resultingAssetStatus: "OPERATIONAL" | "MAINTENANCE" | "OUT_OF_SERVICE" | null;
   leader?: { id: string; username: string; profile?: { fullName: string; rank: string } | null } | null;
   responsibles: Array<{

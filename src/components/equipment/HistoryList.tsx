@@ -2,6 +2,7 @@ import { InspectionHistoryEntry } from "@/types/inspection";
 import { formatDate } from "./equipment.utils";
 import { InspectionAmendment } from "@/components/operations/inspection-amendment";
 import { InspectionConfirmation } from "@/components/operations/inspection-confirmation";
+import { fluidLabel, fluidTone, fuelLabel } from "@/lib/vehicle-fluids";
 
 type Props = {
   history: InspectionHistoryEntry[];
@@ -50,6 +51,14 @@ export default function HistoryList({ history }: Props) {
             <SummaryPill label="Dañados" value={entry.summaryDamaged} />
             <SummaryPill label="Sin revisar" value={entry.summaryUnchecked} />
           </div>
+
+          {(entry.oilLevel || entry.coolantLevel || entry.fuelLevel) && (
+            <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-3" aria-label="Fluidos del móvil">
+              <FluidPill label="Aceite" value={fluidLabel(entry.oilLevel)} tone={fluidTone(entry.oilLevel)} />
+              <FluidPill label="Refrigerante" value={fluidLabel(entry.coolantLevel)} tone={fluidTone(entry.coolantLevel)} />
+              <FluidPill label="Combustible" value={fuelLabel(entry.fuelLevel)} tone={fluidTone(entry.fuelLevel)} />
+            </dl>
+          )}
 
           {entry.observations && (
             <p className="mt-4 whitespace-pre-wrap break-words text-sm text-slate-300">{entry.observations}</p>
@@ -104,6 +113,16 @@ function SummaryPill({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
       {label}: <span className="text-white">{value}</span>
+    </div>
+  );
+}
+
+function FluidPill({ label, value, tone }: { label: string; value: string | null; tone: "ok" | "warn" | "bad" | "muted" }) {
+  const color = tone === "bad" ? "text-red-400" : tone === "warn" ? "text-[var(--warn-text)]" : tone === "ok" ? "text-[var(--ok-text)]" : "text-[var(--mut)]";
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--bord)] bg-[var(--card2)] px-3 py-2 sm:block">
+      <dt className="text-xs font-bold uppercase tracking-wide text-[var(--mut)]">{label}</dt>
+      <dd className={`font-bold ${color}`}>{value ?? "—"}</dd>
     </div>
   );
 }

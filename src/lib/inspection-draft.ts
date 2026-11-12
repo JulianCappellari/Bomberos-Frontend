@@ -15,6 +15,11 @@ export const inspectionDraftSchema = z.object({
   results: z.record(z.string(), z.enum(["OK", "MISSING", "DAMAGED", "UNCHECKED"])),
   itemObservations: z.record(z.string(), z.string().max(4000)),
   observedQuantities: z.record(z.string(), z.number().int().min(0)),
+  fluids: z.object({
+    oil: z.enum(["", "OK", "LOW", "ADDED"]),
+    coolant: z.enum(["", "OK", "LOW", "ADDED"]),
+    fuel: z.enum(["", "FULL", "THREE_QUARTERS", "HALF", "QUARTER", "RESERVE"]),
+  }).default({ oil: "", coolant: "", fuel: "" }),
 });
 export type InspectionDraft = z.infer<typeof inspectionDraftSchema>;
 

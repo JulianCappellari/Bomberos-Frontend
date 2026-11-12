@@ -13,6 +13,7 @@ export interface Vehicle {
   year: number | null;
   mileage: number | null;
   nextOilChangeMileage: number | null;
+  fuelType?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +47,7 @@ export interface UpsertVehiclePayload {
   year?: number;
   mileage?: number;
   nextOilChangeMileage?: number;
+  fuelType?: string | null;
 }
 
 export interface CreateAssetPayload {
@@ -62,5 +64,6 @@ export interface CreateAssetPayload {
     year?: number;
     mileage?: number;
     nextOilChangeMileage?: number;
+  fuelType?: string | null;
   };
 }

@@ -327,7 +327,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
         </header>
         <GuardMode />
 
-        <main className="mx-auto w-full max-w-[var(--content)] flex-1 px-3 py-5 pb-[calc(6.75rem+env(safe-area-inset-bottom))] sm:px-5 sm:py-6 lg:px-8 lg:pb-10">
+        <main className="mx-auto w-full max-w-[var(--content)] flex-1 px-3 py-5 pb-[calc(10.5rem+env(safe-area-inset-bottom))] sm:px-5 sm:py-6 lg:px-8 lg:pb-28">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
