@@ -16,7 +16,7 @@ import { canOpenPage } from "@/lib/permissions";
 const groups = [
   { title: "Servicios y guardias", links: [["/alerts/notices", "Llamadas y avisos"], ["/alerts", "Convocatorias"], ["/incidents", "Intervenciones"], ["/calendar", "Agenda de guardias"], ["/guard-qr", "QR de ingreso"], ["/guard-log", "Actas de guardia"]] },
   { title: "Flota y materiales", links: [["/equipment", "Moviles e inventarios"], ["/vehicle-control", "Controles vehiculares"], ["/maintenance", "Mantenimiento"], ["/fuel", "Combustible"], ["/water-trips", "Viajes de agua"], ["/air-equipment", "ERA y compresor"]] },
-  { title: "Personal y organizacion", links: [["/control-groups", "Grupos de control"], ["/tasks", "Tareas y verificacion"], ["/participations", "Asistencias a servicios"], ["/driver-licenses", "Licencias de conducir"], ["/personal-equipment", "Vestimenta institucional"], ["/courses", "Cursos declarados"]] },
+  { title: "Personal y organizacion", links: [["/control-groups", "Grupos de control"], ["/tasks", "Tareas y verificacion"], ["/participations", "Asistencias a servicios"], ["/driver-licenses", "Licencias de conducir"], ["/incidents/logistics", "Habilitaciones de conductores"], ["/personal-equipment", "Vestimenta institucional"], ["/courses", "Cursos declarados"]] },
   { title: "Documentacion y supervision", links: [["/documents", "Protocolos y documentos"], ["/compliance", "Vencimientos"], ["/chat", "Comunicaciones"], ["/reports", "Reportes y estadisticas"], ["/ranking", "Ranking interno"], ["/contacts", "Contactos operativos"]] },
 ];
 

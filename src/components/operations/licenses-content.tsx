@@ -1,5 +1,6 @@
 "use client";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Clock, ShieldX, Truck, XCircle } from "lucide-react";
@@ -13,17 +14,17 @@ import { toast } from "@/lib/toast";
 import { getUserRosterRequest } from "@/services/user.service";
 
 type License = { id: string; title: string; details: string; revision: number; licenseNumber: string | null; issuer: string | null; licenseClasses: string[]; issuedOn: string | null; expiresOn: string | null };
-type Driving = { assetId: string; unitNumber: string; name: string; required: string[]; configured: boolean; covered: boolean; missing: string[]; authorization: "NONE" | "PENDING" | "APPROVED" | "REJECTED" | "REVOKED"; decidedAt: string | null; decisionNote: string | null; decidedBy: string | null; canDrive: boolean };
+type Driving = { assetId: string; unitNumber: string; name: string; required: string[]; configured: boolean; revision: number; covered: boolean; missing: string[]; authorization: "NONE" | "PENDING" | "APPROVED" | "REJECTED" | "REVOKED"; decidedAt: string | null; decisionNote: string | null; decidedBy: string | null; canDrive: boolean };
 
 // Estado de cada movil para la persona: primero lo que puede manejar, despues lo pendiente y lo que le falta.
-function drivingState(v: Driving) {
+function drivingState(v: Driving, own = true) {
   if (v.canDrive) return { label: "Habilitado", tone: "badge-green", Icon: CheckCircle2, text: `Autorizado por jefatura${v.decidedBy ? ` (${v.decidedBy})` : ""}.` };
-  if (v.covered && v.authorization === "PENDING") return { label: "Pendiente", tone: "badge-yellow", Icon: Clock, text: "Tu licencia lo cubre. Falta la autorización de un oficial o administrador." };
+  if (v.covered && v.authorization === "PENDING") return { label: "Pendiente", tone: "badge-yellow", Icon: Clock, text: `${own ? "Tu licencia lo cubre" : "Su licencia lo cubre"}. Falta la autorización de un oficial o administrador.` };
   if (v.authorization === "REJECTED") return { label: "Rechazado", tone: "badge-red", Icon: XCircle, text: v.decisionNote ? `Motivo: ${v.decisionNote}` : "Jefatura rechazó la habilitación." };
   if (v.authorization === "REVOKED") return { label: "Revocado", tone: "badge-red", Icon: ShieldX, text: v.decisionNote ? `Motivo: ${v.decisionNote}` : "La habilitación fue revocada." };
   if (v.covered && v.authorization === "APPROVED") return { label: "Habilitado", tone: "badge-green", Icon: CheckCircle2, text: "Autorizado por jefatura." };
   if (!v.configured) return { label: "Manual", tone: "", Icon: Truck, text: "Este móvil se habilita a mano por jefatura." };
-  return { label: "No alcanza", tone: "", Icon: Truck, text: `Te falta ${v.missing.join(" y ")}.` };
+  return { label: "No alcanza", tone: "", Icon: Truck, text: `${own ? "Te falta" : "Le falta"} ${v.missing.join(" y ")}.` };
 }
 const rank = (v: Driving) => v.canDrive ? 0 : v.covered && v.authorization === "PENDING" ? 1 : v.authorization === "REJECTED" || v.authorization === "REVOKED" ? 2 : v.configured ? 3 : 4;
 
@@ -34,6 +35,21 @@ export function LicensesContent({ personalOnly = false }: { personalOnly?: boole
   const roster = useQuery({ queryKey: ["licenses-roster", user?.id], queryFn: getUserRosterRequest, enabled: privileged });
   const query = useQuery({ queryKey: ["structured-licenses", user?.id, subject], queryFn: async () => (await api.get<License[]>("/members/declarations", { params: { category: "DRIVER_LICENSE", userId: subject || undefined } })).data, enabled: Boolean(user) });
   const driving = useQuery({ queryKey: ["driving-status", user?.id, subject], queryFn: async () => (await api.get<Driving[]>("/members/driving", { params: { userId: subject || undefined } })).data, enabled: Boolean(user) });
+  // Jefatura: cuantos pedidos de habilitacion esperan decision (en el panel general).
+  const queue = useQuery({ queryKey: ["driver-requests", user?.id], queryFn: async () => (await api.get<Array<{ status: string }>>("/incidents/logistics/drivers")).data, enabled: privileged });
+  const pendingCount = queue.data?.filter((r) => r.status === "PENDING").length ?? 0;
+  const [acting, setActing] = useState(""), [noteFor, setNoteFor] = useState("");
+  const canDecide = privileged && Boolean(subject) && subject !== user?.id;
+  async function decide(v: Driving, action: "APPROVE" | "REJECT" | "REVOKE", note = "") {
+    setActing(v.assetId); setError("");
+    try {
+      if (action === "REVOKE") await api.post("/incidents/logistics/authorizations/revoke", { assetId: v.assetId, userId: subject, revision: v.revision, reason: note });
+      else await api.post("/incidents/logistics/authorizations/decide", { assetId: v.assetId, userId: subject, revision: v.revision, decision: action, note });
+      setNoteFor("");
+      await Promise.all([client.invalidateQueries({ queryKey: ["driving-status"] }), client.invalidateQueries({ queryKey: ["driver-requests"] })]);
+      toast.success(action === "APPROVE" ? `Autorizado a manejar el móvil ${v.unitNumber}` : action === "REJECT" ? "Habilitación rechazada" : "Habilitación revocada");
+    } catch (err) { setError(getErrorMessage(err, "No se pudo guardar la decisión")); } finally { setActing(""); }
+  }
   const taken = new Set((query.data ?? []).filter((l) => l.id !== editing?.id).map((l) => normalizeLicenseClass(l.licenseClasses[0] ?? "")));
   function open(row: License | null) { setEditing(row); setOpened(true); setError(""); }
 
@@ -55,6 +71,9 @@ export function LicensesContent({ personalOnly = false }: { personalOnly?: boole
   const vehicles = [...(driving.data ?? [])].sort((a, b) => rank(a) - rank(b));
   return <section className="screen-body"><div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold">Licencias de conducir</h1>{own && <button className="app-button app-button-red w-auto" onClick={() => open(null)}>Cargar licencia</button>}</div>
     <p className="my-3 text-sm text-[var(--mut)]">Cada número de licencia corresponde a una clase: cargá un formulario por cada clase (por ejemplo B.1, C.1 y D.4 por separado). Con tus licencias, el sistema pide a jefatura la habilitación de los móviles que cubren.</p>
+    {privileged && <Link href="/incidents/logistics" className="mb-4 flex min-h-11 items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold">
+      <span>{pendingCount ? `${pendingCount} ${pendingCount === 1 ? "pedido de habilitación espera" : "pedidos de habilitación esperan"} tu decisión` : "Habilitaciones de conductores: ver todas"}</span><span aria-hidden>→</span>
+    </Link>}
     {privileged && <Field label="Personal"><select className="app-input mb-4" value={subject} onChange={(e) => { setSubject(e.target.value); setOpened(false); setEditing(null); }}><option value="">Mis licencias</option>{roster.data?.map((p) => <option key={p.id} value={p.id}>{personName(p)}</option>)}</select></Field>}
     {error && <ErrorNotice>{error}</ErrorNotice>}
     {opened && own && <form key={editing?.id || "new"} onSubmit={save} className="my-5 border-y border-[var(--bord)] py-4"><fieldset disabled={busy} className="space-y-4">
@@ -83,12 +102,22 @@ export function LicensesContent({ personalOnly = false }: { personalOnly?: boole
       <h2 id="driving-title" className="text-lg font-bold">Móviles que {own ? "podés" : "puede"} manejar</h2>
       <p className="mb-3 text-sm text-[var(--mut)]">Para manejar un móvil hacen falta las licencias que exige y la autorización de un oficial o administrador.</p>
       {driving.isLoading && <ListSkeleton label="Cargando móviles" />}
-      <ul className="grid gap-2 sm:grid-cols-2">{vehicles.map((v) => { const s = drivingState(v); return <li key={v.assetId} className="flex gap-3 rounded-xl border border-[var(--bord)] p-3">
+      <ul className="grid gap-2 sm:grid-cols-2">{vehicles.map((v) => { const s = drivingState(v, own); return <li key={v.assetId} className="flex gap-3 rounded-xl border border-[var(--bord)] p-3">
         <s.Icon className={`mt-0.5 h-5 w-5 shrink-0 ${v.canDrive ? "text-[var(--ok-text)]" : s.tone === "badge-yellow" ? "text-[var(--warn-text)]" : s.tone === "badge-red" ? "text-red-400" : "text-[var(--mut)]"}`} aria-hidden />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold">Móvil {v.unitNumber}</p>{s.tone && <span className={`badge ${s.tone}`}>{s.label}</span>}</div>
           <p className="text-xs text-[var(--mut)]">{v.name}{v.required.length ? ` · exige ${v.required.join(" + ")}` : ""}</p>
           <p className="mt-1 text-sm">{s.text}</p>
+          {canDecide && v.authorization !== "NONE" && <div className="mt-2 flex flex-wrap gap-2">
+            {v.authorization !== "APPROVED" && v.covered && <button type="button" className="app-button app-button-green w-auto" disabled={Boolean(acting)} onClick={() => void decide(v, "APPROVE")}>{acting === v.assetId ? "Guardando…" : "Autorizar"}</button>}
+            {v.authorization === "PENDING" && noteFor !== v.assetId && <button type="button" className="app-button app-button-outline w-auto" disabled={Boolean(acting)} onClick={() => setNoteFor(v.assetId)}>Rechazar</button>}
+            {v.canDrive && noteFor !== v.assetId && <button type="button" className="app-button app-button-outline w-auto" disabled={Boolean(acting)} onClick={() => setNoteFor(v.assetId)}>Revocar</button>}
+          </div>}
+          {canDecide && noteFor === v.assetId && <form className="mt-2 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); void decide(v, v.canDrive ? "REVOKE" : "REJECT", String(new FormData(e.currentTarget).get("note") || "")); }}>
+            <input name="note" required minLength={v.canDrive ? 10 : 5} maxLength={1000} autoFocus aria-label="Motivo" className="app-input min-w-0 flex-1" placeholder={v.canDrive ? "Motivo de la revocación" : "Motivo del rechazo"} />
+            <button className="app-button w-auto" disabled={Boolean(acting)}>{v.canDrive ? "Revocar" : "Rechazar"}</button>
+            <button type="button" className="app-button app-button-outline w-auto" onClick={() => setNoteFor("")}>Cancelar</button>
+          </form>}
         </div>
       </li>; })}</ul>
     </section>
