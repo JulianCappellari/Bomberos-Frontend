@@ -367,9 +367,11 @@ export default function AttendancePage() {
         <details className="rounded-2xl border border-white/[0.08] bg-[var(--card)] p-4 text-sm text-white/75">
           <summary className="flex cursor-pointer items-center gap-2 font-semibold text-white"><ShieldCheck className="h-4 w-4 text-red-400" aria-hidden /> ¿Cómo funciona?</summary>
           <ol className="mt-3 list-decimal space-y-2 pl-5">
-            <li>El celular pide tu ubicación para confirmar que estás en el cuartel (dentro de los 100 metros).</li>
+            <li>Escaneá el QR al entrar y al salir. El celular pide tu ubicación para confirmar que estás en el cuartel (dentro de los 100 metros); en la base sin ubicación no se pide.</li>
             <li>El código QR cambia cada 30 segundos, así no sirve una foto vieja.</li>
-            <li>Mientras estés adentro, cada 30 minutos te va a pedir que confirmes que seguís en el cuartel. Si no respondés, la permanencia se cierra y no suma horas.</li>
+            <li>Mientras estés adentro, cada 30 minutos te llega un aviso al celular para confirmar que seguís en el cuartel (con la ubicación, o tocando el aviso en la base sin ubicación). Si estás de guardia, no se pide hasta que termine tu turno.</li>
+            <li>Tenés 30 minutos para confirmar. Si no lo hacés, la permanencia se cierra sola y se acreditan solo las horas verificadas: hasta tu última confirmación más 30 minutos. Jefatura lo ve en los reportes.</li>
+            <li>Si te fuiste sin escanear, usá “¿Ya te fuiste? Cerrar sin QR”: se acredita como máximo hasta tu última presencia verificada. Si lo cerrás muchas horas después, queda marcado como tardío.</li>
             <li>Si salís a una emergencia, la confirmación se pausa y el tiempo se acredita igual.</li>
           </ol>
         </details>
