@@ -78,7 +78,7 @@ export default function ContactsPage() {
 
   return (
     <ProtectedLayout>
-      <main className="screen-body">
+      <div className="screen-body">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-white">Contactos</h1>
@@ -162,7 +162,7 @@ export default function ContactsPage() {
           ))}
         </div>
         </>}
-      </main>
+      </div>
     </ProtectedLayout>
   );
 }

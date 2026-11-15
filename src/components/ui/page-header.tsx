@@ -31,14 +31,14 @@ export function PageHeader({
         className
       )}
     >
-      <div className="flex items-center gap-3.5">
+      <div className="flex min-w-0 items-center gap-3.5">
         {icon && (
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 shadow-inner shadow-red-500/10">
+          <div aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 shadow-inner shadow-red-500/10">
             {icon}
           </div>
         )}
-        <div>
-          <div className="flex items-center gap-2.5">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="font-[family-name:var(--font-bebas)] text-2xl sm:text-3xl uppercase tracking-wider text-white">
               {title}
             </h1>

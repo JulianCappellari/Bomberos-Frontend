@@ -62,8 +62,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // 41: sin conexion el servidor no responde; eso no invalida la sesion. Se sigue con la ultima
         // identidad guardada y las credenciales se validan al volver la señal.
         const cached = (() => { try { return JSON.parse(localStorage.getItem(USER_KEY) || "null") as AuthUser | null; } catch { return null; } })();
-        if (active && isAxiosError(error) && !error.response && cached && getAccessToken()) setUserState(cached);
-        else if (active) { clearTokens(); setUserState(null); }
+        const status = isAxiosError(error) ? error.response?.status : undefined;
+        if (active && (status === undefined || status >= 500) && getAccessToken()) setUserState(cached);
+        else if (active) {
+          if (status === 401) clearTokens();
+          setUserState(null);
+        }
       } finally { if (active) setIsLoading(false); }
     };
     void bootstrap();

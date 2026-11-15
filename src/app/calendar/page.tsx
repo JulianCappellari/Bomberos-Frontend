@@ -126,7 +126,7 @@ export default function CalendarPage() {
 
   return (
     <ProtectedLayout>
-      <main className="screen-body">
+      <div className="screen-body">
         <header className="mb-4">
           <h1 className="flex items-center gap-2 text-2xl font-bold text-white"><CalendarDays className="h-6 w-6 text-red-400" aria-hidden /> Guardias</h1>
           <p className="mt-1 text-sm text-[var(--mut)]">Turno diurno 08:00 a 20:00 y nocturno 20:00 a 08:00. Tocá un día para ver quiénes están.</p>
@@ -300,7 +300,7 @@ export default function CalendarPage() {
         </section>
 
         {!onlyMine && <ShiftSwaps shifts={shifts} people={roster} />}
-      </main>
+      </div>
     </ProtectedLayout>
   );
 }

@@ -33,7 +33,7 @@ export default function CommandBoardPage() {
   const incidents = board.data?.incidents ?? [];
   const vehiclesOut = incidents.reduce((n, i) => n + i.movements.length, 0);
 
-  return <ProtectedLayout><main className="screen-body">
+  return <ProtectedLayout><div className="screen-body">
     <section id="command-board" className="space-y-4 bg-[var(--bg)] p-1 sm:p-3">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -100,5 +100,5 @@ export default function CommandBoardPage() {
         </aside>
       </div>
     </section>
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }

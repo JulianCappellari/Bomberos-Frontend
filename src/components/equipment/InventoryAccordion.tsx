@@ -56,6 +56,7 @@ export default function InventoryAccordion({ inventory }: Props) {
     0,
   );
   const canManageInventory = user?.role === "ADMIN" || user?.role === "OPERATOR";
+  const canEditInventory = canManageInventory || Boolean(user?.specialPermissions?.includes("FLEET"));
 
   async function saveItem(
     itemId: string,
@@ -136,7 +137,7 @@ export default function InventoryAccordion({ inventory }: Props) {
             ) : (
               compartment.items.map((item) =>
                 editingItemId === item.id ? (
-                  canManageInventory ? (
+                  canEditInventory ? (
                   <InventoryItemEditor
                     key={`edit-${item.id}`}
                     item={item}
@@ -149,7 +150,8 @@ export default function InventoryAccordion({ inventory }: Props) {
                     <InventoryItemRow
                       key={item.id}
                       item={item}
-                      canManage={canManageInventory}
+                      canEdit={canEditInventory}
+                      canDelete={canManageInventory}
                       onEdit={() => setEditingItemId(item.id)}
                       onDelete={() => deleteItem(item)}
                       isDeleting={deleteMutation.isPending}
@@ -159,7 +161,8 @@ export default function InventoryAccordion({ inventory }: Props) {
                   <InventoryItemRow
                     key={item.id}
                     item={item}
-                    canManage={canManageInventory}
+                    canEdit={canEditInventory}
+                    canDelete={canManageInventory}
                     onEdit={() => setEditingItemId(item.id)}
                     onDelete={() => deleteItem(item)}
                     isDeleting={deleteMutation.isPending}
@@ -176,13 +179,15 @@ export default function InventoryAccordion({ inventory }: Props) {
 
 function InventoryItemRow({
   item,
-  canManage,
+  canEdit,
+  canDelete,
   onEdit,
   onDelete,
   isDeleting,
 }: {
   item: VehicleInventoryItem;
-  canManage: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
   onEdit: () => void;
   onDelete: () => void;
   isDeleting: boolean;
@@ -216,7 +221,7 @@ function InventoryItemRow({
         </div>
       </div>
 
-      {canManage && (
+      {canEdit && (
       <div className="flex gap-3 self-end md:self-auto">
         <button
           type="button"
@@ -227,7 +232,7 @@ function InventoryItemRow({
           <Pencil className="h-4 w-4" />
         </button>
 
-        <button
+        {canDelete && <button
           type="button"
           onClick={onDelete}
           disabled={isDeleting}
@@ -235,7 +240,7 @@ function InventoryItemRow({
           aria-label={`Eliminar ${item.name}`}
         >
           <Trash2 className="h-4 w-4" />
-        </button>
+        </button>}
       </div>
       )}
     </div>

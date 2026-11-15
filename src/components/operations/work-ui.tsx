@@ -1,15 +1,12 @@
 "use client";
-import { ReactNode, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ReactNode, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { UserRosterItem } from "@/types/user";
+import { Modal } from "@/components/ui/modal";
 import { personName } from "./operations-ui";
 
 export function OperationDialog({ title, children, onClose, pending = false }: { title: string; children: ReactNode; onClose: () => void; pending?: boolean }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => { const dialog = ref.current; dialog?.showModal(); return () => dialog?.close(); }, []);
-  return <dialog ref={ref} aria-label={title} onCancel={(e) => { e.preventDefault(); if (!pending) onClose(); }} className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_24px)] max-w-2xl overflow-y-auto rounded-lg border border-[var(--bord)] bg-[var(--card)] p-4 text-[var(--txt)] backdrop:bg-black/70">
-    <div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-lg font-bold">{title}</h2><button type="button" title="Cerrar" aria-label="Cerrar" className="btn-icon" disabled={pending} onClick={onClose}><X className="h-4 w-4" /></button></div>{children}
-  </dialog>;
+  return <Modal open title={title} pending={pending} dismissOnBackdrop={false} onClose={onClose} size="xl">{children}</Modal>;
 }
 export function PeoplePicker({ people, value, onChange }: { people: UserRosterItem[]; value: string[]; onChange: (ids: string[]) => void }) {
   const [search, setSearch] = useState("");

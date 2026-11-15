@@ -56,7 +56,7 @@ export default function ReadinessPage() {
 
   return (
     <ProtectedLayout>
-      <main className="screen-body">
+      <div className="screen-body">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="section-title mb-1 mt-0">
@@ -340,7 +340,7 @@ export default function ReadinessPage() {
             )}
           </>
         )}
-      </main>
+      </div>
     </ProtectedLayout>
   );
 }

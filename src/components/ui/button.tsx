@@ -21,9 +21,9 @@ const variantStyles = {
 } as const;
 
 const sizeStyles = {
-  sm: "h-9 px-3.5 text-xs gap-1.5 rounded-lg",
-  md: "h-11 px-5 text-sm gap-2 rounded-xl",
-  lg: "h-12 px-6 text-base gap-2.5 rounded-xl",
+  sm: "min-h-9 px-3.5 text-xs gap-1.5 rounded-lg",
+  md: "min-h-11 px-5 text-sm gap-2 rounded-xl",
+  lg: "min-h-12 px-6 text-base gap-2.5 rounded-xl",
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -34,6 +34,7 @@ function Spinner() {
   return (
     <svg
       className="h-4 w-4 animate-spin"
+      aria-hidden="true"
       viewBox="0 0 24 24"
       fill="none"
     >
@@ -62,6 +63,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: keyof typeof variantStyles;
   size?: keyof typeof sizeStyles;
   loading?: boolean;
+  loadingLabel?: string;
   icon?: ReactNode;
 }
 
@@ -71,6 +73,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       variant = "primary",
       size = "md",
       loading = false,
+      loadingLabel,
       icon,
       className,
       disabled,
@@ -82,8 +85,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={cn(
-        "inline-flex items-center justify-center font-[family-name:var(--font-barlow-condensed)] font-bold uppercase tracking-wider",
+        "ui-button inline-flex min-w-0 items-center justify-center py-2 text-center font-[family-name:var(--font-barlow-condensed)] font-bold uppercase tracking-wider",
         "transition-all duration-200 ease-out",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0e13]",
         "disabled:pointer-events-none disabled:opacity-50",
@@ -94,8 +98,17 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       )}
       {...props}
     >
-      {loading ? <Spinner /> : icon}
-      {children}
+      {(icon || loadingLabel || loading) && (
+        <span aria-hidden="true" className="grid size-5 shrink-0 place-items-center">
+          {loading ? <Spinner /> : icon}
+        </span>
+      )}
+      {loadingLabel ? (
+        <span className="grid min-w-0">
+          <span className={cn("col-start-1 row-start-1", loading && "invisible")} aria-hidden={loading || undefined}>{children}</span>
+          <span className={cn("col-start-1 row-start-1", !loading && "invisible")} aria-hidden={!loading || undefined}>{loadingLabel}</span>
+        </span>
+      ) : children}
     </button>
   ),
 );

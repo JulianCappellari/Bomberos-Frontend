@@ -96,7 +96,7 @@ export default function IncidentsPage() {
 
   return (
     <ProtectedLayout>
-      <main className="screen-body">
+      <div className="screen-body">
         <header className="mb-4">
           <h1 className="flex items-center gap-2 text-2xl font-bold text-white"><Siren className="h-6 w-6 text-red-400" aria-hidden /> Intervenciones</h1>
           <p className="mt-1 text-sm text-[var(--mut)]">Cada emergencia tiene una planilla única: móviles, dotación, horarios y novedades.</p>
@@ -143,7 +143,7 @@ export default function IncidentsPage() {
             />
           ))}
         </section>
-      </main>
+      </div>
     </ProtectedLayout>
   );
 }

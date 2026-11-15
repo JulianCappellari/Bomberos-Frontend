@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, type InputHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from "react";
 import { cn } from "./cn";
 
 /* ------------------------------------------------------------------ */
@@ -16,7 +16,10 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, errorMessage, icon, className, id, ...props }, ref) => {
-    const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
+    const generatedId = useId();
+    const inputId = id || generatedId;
+    const errorId = errorMessage ? `${inputId}-error` : undefined;
+    const describedBy = [props["aria-describedby"], errorId].filter(Boolean).join(" ");
 
     return (
       <div className="flex flex-col gap-1.5">
@@ -31,7 +34,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
         <div className="relative">
           {icon && (
-            <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30">
+            <div aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30">
               {icon}
             </div>
           )}
@@ -44,18 +47,20 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               "placeholder:text-white/20",
               "transition-all duration-200",
               "focus:border-red-500/50 focus:bg-white/[0.06] focus:ring-2 focus:ring-red-500/10",
-              error
+              error || errorMessage
                 ? "border-red-500/50 bg-red-500/[0.04]"
                 : "border-white/[0.08]",
               icon && "pl-11",
               className,
             )}
             {...props}
+            aria-invalid={props["aria-invalid"] ?? (Boolean(error || errorMessage) || undefined)}
+            aria-describedby={describedBy || undefined}
           />
         </div>
 
         {errorMessage && (
-          <p className="text-xs text-red-400">{errorMessage}</p>
+          <p id={errorId} className="text-xs text-red-400">{errorMessage}</p>
         )}
       </div>
     );

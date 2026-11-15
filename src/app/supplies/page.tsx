@@ -79,7 +79,7 @@ function SuppliesScreen() {
   }
 
   const tabs: Array<[Tab, string]> = manager ? [["summary", "Resumen"], ["stock", "Stock"], ["clothing", "Prendas a reemplazar"], ["requests", "Pedidos"], ["movements", "Movimientos"]] : [["requests", "Pedidos de materiales"]];
-  return <ProtectedLayout><main className="screen-body">
+  return <ProtectedLayout><div className="screen-body">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold"><Package className="h-6 w-6 text-red-400" aria-hidden /> Vestimenta y materiales</h1>
@@ -201,7 +201,7 @@ function SuppliesScreen() {
     {dialog?.kind === "history" && <OperationDialog title={`Historial: ${itemLabel(dialog.item)}`} pending={false} onClose={() => setDialog(null)}>
       {history.isLoading ? <ListSkeleton label="Cargando historial" /> : <MovementList rows={history.data ?? []} />}
     </OperationDialog>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }
 
 function RequestForm({ options, busy, error, onSubmit }: { options?: Options; busy: boolean; error: string; onSubmit: (e: FormEvent<HTMLFormElement>) => void }) {

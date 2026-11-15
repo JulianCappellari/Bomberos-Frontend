@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import EquipmentPageHeader from "@/components/equipment/EquipmentPageHeader";
 import HistoryList from "@/components/equipment/HistoryList";
 import { useAsset } from "@/hooks/use-assets";
@@ -12,8 +13,9 @@ export default function VehicleHistoryPage() {
   const { data: asset, isLoading: assetLoading, error: assetError } =
     useAsset(assetId);
   const vehicleId = asset?.vehicle?.id ?? "";
+  const [page, setPage] = useState(1);
   const { data: history, isLoading, error } =
-    useVehicleInspectionHistory(vehicleId);
+    useVehicleInspectionHistory(vehicleId, page);
 
   return (
     <div className="space-y-4">
@@ -32,6 +34,11 @@ export default function VehicleHistoryPage() {
           <HistoryList history={history ?? []} />
         )}
       </div>
+      <nav aria-label="Páginas del historial" className="flex flex-wrap items-center gap-3">
+        <button type="button" className="app-button w-auto" disabled={page === 1 || isLoading} onClick={() => setPage(page - 1)}>Anterior</button>
+        <span aria-live="polite">Página {page}</span>
+        <button type="button" className="app-button w-auto" disabled={history?.length !== 25 || page >= 10000} onClick={() => setPage(page + 1)}>Siguiente</button>
+      </nav>
     </div>
   );
 }

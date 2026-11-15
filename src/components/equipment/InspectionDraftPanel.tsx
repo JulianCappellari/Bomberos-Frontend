@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { readInspectionDraft, InspectionDraft } from "@/lib/inspection-draft";
+import { isInspectionDraftCompatible, readInspectionDraft, InspectionDraft } from "@/lib/inspection-draft";
 
 const changedEvent = "inspection-draft-changed";
 function subscribe(listener: () => void) {
@@ -32,7 +32,7 @@ export default function InspectionDraftPanel({
   const saved = useMemo(() => readInspectionDraft(raw), [raw]);
   const hasPrevious = Boolean(saved);
   const waitingForChoice = !resolved && hasPrevious;
-  const compatible = saved?.inventorySignature === snapshot.inventorySignature;
+  const compatible = saved ? isInspectionDraftCompatible(saved, snapshot) : false;
 
   useEffect(() => {
     if (!hasChanges || waitingForChoice) return;
@@ -59,7 +59,7 @@ export default function InspectionDraftPanel({
       <div>
         <p className="font-bold">Hay un control sin finalizar</p>
         <p className="mt-1 text-xs opacity-80">{new Intl.DateTimeFormat("es-AR", { hourCycle: "h23", dateStyle: "short", timeStyle: "short" }).format(saved.savedAt)}</p>
-        {!compatible && <p className="mt-1">El inventario cambio. Inicie un control nuevo para revisar todos los materiales.</p>}
+        {!compatible && <p className="mt-1">{saved.draftId !== snapshot.draftId ? "Las marcas locales pertenecen a otro control o a un borrador anterior sin identificar." : "El inventario cambió. Volvé a revisar los materiales."}</p>}
       </div>
       <div className="flex gap-2">
         {compatible && <button type="button" className="app-button app-button-outline w-auto" onClick={() => { onRestore(saved); setResolved(true); }}>Recuperar</button>}

@@ -49,7 +49,7 @@ export default function NotebookPage() {
     const text = [`Libreta: ${incident?.title || "Intervencion"}`, `Pagina ${page} de registros`, ...entries.data!.items.map((e) => `\n${categories[e.category]}: ${e.title}\n${dateTime(e.occurredAt)} - ${personName(e.author)}\n${e.body}`)].join("\n");
     const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" })); const a = document.createElement("a"); a.href = url; a.download = `libreta-${incidentId}-pagina-${page}.txt`; a.click(); URL.revokeObjectURL(url);
   }
-  return <ProtectedLayout><main className="screen-body">
+  return <ProtectedLayout><div className="screen-body">
     <header className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><h1 className="flex items-center gap-2 text-2xl font-bold"><BookOpen className="h-6 w-6 text-red-400" /> Libreta del siniestro</h1><p className="mt-1 text-sm text-[var(--mut)]">Apuntes de una emergencia: lugares, personas, vehículos, constancias y novedades. Los horarios de salida de los móviles quedan en Actas de salida.</p></div><div className="flex gap-2"><button className="btn-icon" title="Actualizar" aria-label="Actualizar libreta" onClick={refresh}><RefreshCw className="h-4 w-4" /></button><button className="btn-icon" title="Descargar página en texto" aria-label="Descargar página en texto" disabled={!entries.data?.items.length} onClick={download}><Download className="h-4 w-4" /></button>{mayEdit && <button className="app-button app-button-red w-auto" onClick={() => edit(null)}><Plus className="h-4 w-4" /> Nueva entrada</button>}</div></header>
     <div className="mb-5 grid gap-3 sm:grid-cols-2"><Field label="Intervención"><select className="app-input" value={incidentId} onChange={(e) => { setIncidentId(e.target.value); setPage(1); }}><option value="">Elegir intervención</option>{accessible.map((i) => <option key={i.id} value={i.id}>{i.title} · {i.status === "OPEN" ? "Abierta" : "Cerrada"} · {i.occurredAt.slice(0, 10)}</option>)}</select></Field><Field label="Categoría"><select className="app-input" value={category} onChange={(e) => { setCategory(e.target.value); setPage(1); }}><option value="">Todas</option>{Object.entries(categories).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></Field></div>
     {incidents.isLoading && <ListSkeleton label="Cargando intervenciones" />}{incidents.isError && <ErrorNotice>No se pudieron cargar las intervenciones. <button className="underline" onClick={refresh}>Reintentar</button></ErrorNotice>}
@@ -69,5 +69,5 @@ export default function NotebookPage() {
       </>}
       <button className="app-button app-button-red" type="submit">{busy ? "Guardando..." : removing ? "Retirar conservando historial" : "Guardar"}</button>
     </fieldset></form></OperationDialog>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }

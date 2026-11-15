@@ -314,7 +314,8 @@ export default function NewAlertPage() {
               size="lg"
               disabled={!isFormValid || createAlertMutation.isPending}
               loading={createAlertMutation.isPending}
-              icon={createAlertMutation.isPending ? undefined : <Send className="h-5 w-5" />}
+              loadingLabel="Enviando alerta a la dotación…"
+              icon={<Send className="h-5 w-5" />}
               className={`relative w-full touch-none overflow-hidden ${holding ? "ring-2 ring-red-300" : ""}`}
               aria-pressed={holding}
               aria-describedby="hold-to-confirm-instructions"
@@ -341,12 +342,9 @@ export default function NewAlertPage() {
                   }}
                 />
               )}
-              <span className="relative">
-                {createAlertMutation.isPending
-                  ? "Enviando alerta a la dotación…"
-                  : holding
-                    ? "Seguí presionando…"
-                    : "Mantener presionado para despachar"}
+              <span className="relative grid">
+                <span className={`col-start-1 row-start-1 ${holding ? "invisible" : ""}`}>Mantener presionado para despachar</span>
+                <span className={`col-start-1 row-start-1 ${holding ? "" : "invisible"}`}>Seguí presionando…</span>
               </span>
             </Button>
           </div>

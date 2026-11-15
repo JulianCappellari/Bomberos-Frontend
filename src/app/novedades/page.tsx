@@ -22,18 +22,18 @@ export default function PublicNewsPage() {
       <h1 className="text-2xl font-bold">Novedades</h1>
       <p className="mt-1 text-sm text-[var(--mut)]">Informes de intervenciones finalizadas, capacitaciones y noticias del cuartel.</p>
       <div className="my-4 flex flex-wrap gap-2" role="tablist" aria-label="Filtrar">
-        {([["", "Todas"], ["INCIDENT", "Intervenciones"], ["TRAINING", "Capacitaciones"], ["NEWS", "Noticias"]] as const).map(([v, l]) => <button key={v} role="tab" aria-selected={kind === v} onClick={() => { setKind(v); setPage(1); }} className={`min-h-11 rounded-full border px-4 text-sm font-semibold ${kind === v ? "border-red-500 bg-red-500/10" : "border-[var(--bord)]"}`}>{l}</button>)}
+        {([["", "Todas"], ["INCIDENT", "Intervenciones"], ["TRAINING", "Capacitaciones"], ["NEWS", "Noticias"]] as const).map(([v, l]) => <button key={v} type="button" role="tab" aria-selected={kind === v} onClick={() => { setKind(v); setPage(1); }} className={`min-h-11 rounded-full border px-4 text-sm font-semibold ${kind === v ? "border-red-500 bg-red-500/10" : "border-[var(--bord)]"}`}>{l}</button>)}
       </div>
-      {query.isLoading && <p className="py-8 text-center text-sm text-[var(--mut)]">Cargando novedades…</p>}
+      {query.isLoading && <p role="status" className="py-8 text-center text-sm text-[var(--mut)]">Cargando novedades…</p>}
       {query.isError && <p role="alert" className="py-8 text-center text-sm">No se pudieron cargar las novedades. <button className="underline" onClick={() => query.refetch()}>Reintentar</button></p>}
       {query.data?.items.length === 0 && <p className="py-8 text-center text-sm text-[var(--mut)]">Todavía no hay publicaciones.</p>}
       <div className="grid gap-4 sm:grid-cols-2">
         {query.data?.items.map((p) => <Link key={p.id} href={`/novedades/${p.id}`} className="overflow-hidden rounded-2xl border border-[var(--bord)] bg-[var(--card)] transition hover:border-red-500/50">
-          {p.photos[0] && /* eslint-disable-next-line @next/next/no-img-element */ <img src={publicPhotoUrl(p.id, p.photos[0].id)} alt="" loading="lazy" className="aspect-video w-full object-cover" />}
+          {p.photos[0] && <Image unoptimized src={publicPhotoUrl(p.id, p.photos[0].id)} alt="" width={800} height={450} className="aspect-video w-full object-cover" />}
           <div className="p-4">
             <div className="flex flex-wrap items-center gap-2 text-xs"><span className="badge">{POST_KIND_LABEL[p.kind]}</span><span className="flex items-center gap-1 text-[var(--mut)]"><CalendarDays className="h-3.5 w-3.5" aria-hidden />{postDate(p)}</span></div>
             <h2 className="mt-2 text-lg font-bold leading-snug">{p.title}</h2>
-            <p className="mt-1 text-sm text-[var(--mut)]">{p.summary}</p>
+            <p className="mt-1 text-sm text-[var(--mut)] [overflow-wrap:anywhere]">{p.summary}</p>
             {p.kind === "INCIDENT" && (p.units?.length || p.peopleCount) ? <p className="mt-2 text-xs font-semibold">{[p.units?.length ? `Móviles ${p.units.join(", ")}` : "", p.peopleCount ? `${p.peopleCount} bomberos` : "", p.agencies?.length ? `${p.agencies.length} ${p.agencies.length === 1 ? "institución más" : "instituciones más"}` : ""].filter(Boolean).join(" · ")}</p> : null}
           </div>
         </Link>)}

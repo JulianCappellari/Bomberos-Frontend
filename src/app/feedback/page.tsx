@@ -43,7 +43,7 @@ export default function FeedbackPage() {
       await api.post("/feedback", { kind: data.get("kind"), title: String(data.get("title") || ""), body: String(data.get("body") || ""), anonymous });
       form.reset(); setAnonymous(true);
       await client.invalidateQueries({ queryKey: ["feedback"] });
-      toast.success("Enviado a jefatura", anonymous ? "Se envió de forma anónima." : "Se envió con tu nombre.");
+      toast.success("Enviado a jefatura", anonymous ? "Se envió con identidad reservada." : "Se envió con tu nombre.");
     } catch (err) { setError(getErrorMessage(err, "No se pudo enviar")); } finally { setBusy(false); }
   }
   async function markRead(id: string) {
@@ -51,7 +51,7 @@ export default function FeedbackPage() {
     catch (err) { setError(getErrorMessage(err, "No se pudo marcar como leído")); }
   }
 
-  return <ProtectedLayout><main className="screen-body">
+  return <ProtectedLayout><div className="screen-body">
     <h1 className="flex items-center gap-2 text-2xl font-bold"><Lock className="h-5 w-5 text-red-400" aria-hidden /> Buzón de sugerencias</h1>
     <p className="mb-4 mt-1 text-sm text-[var(--mut)]">Quejas, sugerencias, ideas, opiniones y mejoras. Lo lee solo jefatura y administración. Para entrar se confirma tu contraseña.</p>
     {locked && <div className="card space-y-3"><p className="text-sm">{mine.isFetching ? "Confirmá tu contraseña para entrar al buzón." : "Para entrar al buzón tenés que confirmar tu contraseña."}</p>{!mine.isFetching && <button className="app-button app-button-red w-auto" onClick={() => void mine.refetch()}>Confirmar contraseña</button>}</div>}
@@ -71,7 +71,7 @@ export default function FeedbackPage() {
           </div>
           <h2 className="mt-2 break-words font-bold">{r.title}</h2>
           <p className="mt-1 whitespace-pre-wrap break-words text-sm">{r.body}</p>
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--mut)]">{r.anonymous ? <><EyeOff className="h-3.5 w-3.5" aria-hidden /> Anónimo: el sistema no guarda quién lo envió.</> : <><UserRound className="h-3.5 w-3.5" aria-hidden /> {r.author?.name}{r.author?.rank ? ` · ${r.author.rank}` : ""}</>}</p>
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--mut)]">{r.anonymous ? <><EyeOff className="h-3.5 w-3.5" aria-hidden /> Identidad reservada</> : <><UserRound className="h-3.5 w-3.5" aria-hidden /> {r.author?.name}{r.author?.rank ? ` · ${r.author.rank}` : ""}</>}</p>
           <div className="mt-3">{r.readAt ? <p className="flex items-center gap-1.5 text-xs text-[var(--ok-text)]"><CheckCheck className="h-4 w-4" aria-hidden /> Leído{r.readBy ? ` por ${r.readBy}` : ""}</p> : <button className="app-button w-auto" onClick={() => void markRead(r.id)}>Marcar como leído</button>}</div>
         </article>)}
       </section>}
@@ -83,7 +83,7 @@ export default function FeedbackPage() {
           <Field label="Mensaje"><textarea name="body" className="app-input min-h-32" required minLength={5} maxLength={4000} /></Field>
           <fieldset className="space-y-2">
             <legend className="mb-1 text-sm font-semibold">¿Cómo querés enviarlo?</legend>
-            <label className={`flex cursor-pointer gap-3 rounded-xl border p-3 ${anonymous ? "border-red-500 bg-red-500/5" : "border-[var(--bord)]"}`}><input type="radio" name="mode" checked={anonymous} onChange={() => setAnonymous(true)} className="mt-1" /><span><span className="block font-semibold">Anónimo</span><span className="text-xs text-[var(--mut)]">No queda registrado quién lo envió en ningún lugar del sistema. Solo vos lo ves en tus envíos.</span></span></label>
+            <label className={`flex cursor-pointer gap-3 rounded-xl border p-3 ${anonymous ? "border-red-500 bg-red-500/5" : "border-[var(--bord)]"}`}><input type="radio" name="mode" checked={anonymous} onChange={() => setAnonymous(true)} className="mt-1" /><span><span className="block font-semibold">Identidad reservada</span><span className="text-xs text-[var(--mut)]">Jefatura recibe tu mensaje con identidad reservada. Podés consultar su estado en Mis envíos.</span></span></label>
             <label className={`flex cursor-pointer gap-3 rounded-xl border p-3 ${!anonymous ? "border-red-500 bg-red-500/5" : "border-[var(--bord)]"}`}><input type="radio" name="mode" checked={!anonymous} onChange={() => setAnonymous(false)} className="mt-1" /><span><span className="block font-semibold">Con mi nombre</span><span className="text-xs text-[var(--mut)]">Jefatura ve quién lo envió y te avisa cuando lo lee.</span></span></label>
           </fieldset>
           <button className="app-button app-button-red w-auto"><Send className="h-4 w-4" aria-hidden /> {busy ? "Enviando…" : "Enviar a jefatura"}</button>
@@ -94,10 +94,10 @@ export default function FeedbackPage() {
           {mine.data?.length === 0 && <p className="text-sm text-[var(--mut)]">Todavía no enviaste nada.</p>}
           <ul className="space-y-2">{mine.data?.map((m) => <li key={m.id} className="rounded-xl border border-[var(--bord)] p-3">
             <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold">{kindLabel(m.kind)} · {m.title}</span>{m.readAt ? <span className="badge badge-green inline-flex items-center gap-1"><CheckCheck className="h-3.5 w-3.5" aria-hidden /> Leído</span> : <span className="badge">Sin leer</span>}</div>
-            <p className="mt-1 text-xs text-[var(--mut)]">{day(m.receivedOn)} · {m.anonymous ? "Anónimo" : "Con tu nombre"}</p>
+            <p className="mt-1 text-xs text-[var(--mut)]">{day(m.receivedOn)} · {m.anonymous ? "Identidad reservada" : "Con tu nombre"}</p>
           </li>)}</ul>
         </section>
       </>}
     </>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }

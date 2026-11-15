@@ -5,6 +5,7 @@ type Options = {
   write: (tokens: Tokens) => void;
   request: (token: string) => Promise<Tokens>;
   expire: () => void;
+  isSessionRejected: (error: unknown) => boolean;
   lock?: (work: () => Promise<string>) => Promise<string>;
 };
 
@@ -24,7 +25,7 @@ export function createRefreshCoordinator(options: Options) {
         options.write(tokens);
         return tokens.accessToken;
       } catch (error) {
-        if (options.readRefresh() === previous) options.expire();
+        if (options.readRefresh() === previous && options.isSessionRejected(error)) options.expire();
         throw error;
       }
     };

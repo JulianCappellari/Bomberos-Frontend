@@ -9,6 +9,7 @@ import { QuickAvailability } from "@/components/operations/operational-availabil
 import { PresentPersonnelPanel } from "@/components/operations/present-personnel-panel";
 import { FireRiskPanel } from "@/components/operations/fire-risk-panel";
 import { ReviewQueue } from "./review-queue";
+import { HomeQueryError } from "./home-query-error";
 import { MissionBriefing } from "@/components/operations/mission-briefing";
 import { PushStatusBanner } from "@/components/operations/push-status-banner";
 import { useAuth } from "@/features/auth/auth-context";
@@ -53,9 +54,11 @@ export function HomeScreen() {
   const alerts = useQuery({ queryKey: ["alerts", "home", user?.id], queryFn: getAlertsRequest, enabled: Boolean(user), refetchInterval: 20000 });
   const unread = useQuery({ queryKey: ["notification-count", user?.id], queryFn: async () => (await api.get<{ unread: number }>("/members/notifications")).data, enabled: Boolean(user), refetchInterval: 30000 });
 
-  const active = (alerts.data || []).filter((alert) => alert.status === "ACTIVE");
+  const recentAlerts = alerts.data ?? [];
+  const active = recentAlerts.filter((alert) => alert.status === "ACTIVE");
   const awaitingResponse = active.filter((alert) => alert.viewerIsRecipient && !alert.responses?.some((response) => response.userId === user?.id));
   const presence = summary.data?.attendance.isCurrentlyInside;
+  const attendanceAction = summary.isError || presence === undefined ? "Ver asistencia" : presence ? "Registrar salida" : "Registrar ingreso";
   const operations = summary.data?.ops;
   const showStation = profile === "COMMAND" || profile === "GUARD";
   const links = shortcuts[profile].map((href) => visibleNavItems(user).find((item) => item.href === href)).filter((item): item is NonNullable<typeof item> => Boolean(item));
@@ -94,8 +97,8 @@ export function HomeScreen() {
             <div className="rounded-2xl border border-white/[0.08] bg-[var(--card)] p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-white/55">Presencia en el cuartel</p>
               <div className="mt-2 flex items-center justify-between gap-3">
-                <p className="font-bold text-white">{summary.isLoading ? "Consultando…" : presence ? `En el cuartel desde ${summary.data?.myOpenAttendance?.checkInAt ? time(summary.data.myOpenAttendance.checkInAt) : "hoy"}` : "Fuera del cuartel"}</p>
-                {profile !== "GUARD" && <Link href="/attendance" className="app-button w-auto shrink-0"><ScanLine className="h-4 w-4" aria-hidden />{presence ? "Registrar salida" : "Registrar ingreso"}</Link>}
+                <p className="font-bold text-white">{summary.isLoading ? "Consultando…" : summary.isError ? "No se pudo consultar la presencia" : presence ? `En el cuartel desde ${summary.data?.myOpenAttendance?.checkInAt ? time(summary.data.myOpenAttendance.checkInAt) : "hoy"}` : "Fuera del cuartel"}</p>
+                {profile !== "GUARD" && <Link href="/attendance" className="app-button w-auto shrink-0"><ScanLine className="h-4 w-4" aria-hidden />{attendanceAction}</Link>}
               </div>
             </div>
             <QuickAvailability />
@@ -115,7 +118,8 @@ export function HomeScreen() {
                 <ChevronRight className="h-4 w-4 text-white/40" aria-hidden />
               </Link>
             )}
-            {!awaitingResponse.length && !(unread.data?.unread) && (
+            {unread.isError && <HomeQueryError onRetry={() => void unread.refetch()}>No se pudo consultar el contador de avisos.</HomeQueryError>}
+            {alerts.isSuccess && unread.isSuccess && !awaitingResponse.length && unread.data.unread === 0 && (
               <p className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[var(--card)] p-3 text-sm text-white/70"><CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden />No tenés alertas ni avisos pendientes.</p>
             )}
           </div>
@@ -126,7 +130,7 @@ export function HomeScreen() {
 
         <section aria-label="Accesos rápidos">
           <SectionTitle>Accesos rápidos</SectionTitle>
-          <nav className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <nav aria-label="Accesos rápidos" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {links.map(({ href, label: name, description, Icon }) => (
               <Link key={href} href={href} className="flex min-h-16 items-center gap-3 rounded-xl border border-white/[0.08] bg-[var(--card)] p-3 transition-colors hover:border-red-500/40 hover:bg-white/[0.04]">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-500/10 text-red-300"><Icon className="h-5 w-5" aria-hidden /></span>
@@ -136,7 +140,7 @@ export function HomeScreen() {
           </nav>
         </section>
 
-        <MyShifts shifts={summary.data?.myUpcomingShifts ?? []} loading={summary.isLoading} />
+        <MyShifts shifts={summary.data?.myUpcomingShifts ?? []} loading={summary.isLoading} failed={summary.isError} onRetry={() => void summary.refetch()} />
 
         {showStation && operations && (
           <section aria-label="Estado del cuartel">
@@ -168,9 +172,12 @@ export function HomeScreen() {
         <div className="grid items-start gap-6 lg:grid-cols-2">
           <section aria-label="Últimas alertas">
             <SectionTitle action={<Link href="/alerts" className="flex items-center gap-1 text-sm text-red-300 hover:text-red-200">Ver todas<ChevronRight className="h-4 w-4" aria-hidden /></Link>}>Últimas alertas</SectionTitle>
-            {alerts.isLoading ? <p role="status" className="text-sm text-white/60">Cargando…</p> : (alerts.data || []).length === 0 ? <p className="rounded-xl border border-white/[0.08] bg-[var(--card)] p-3 text-sm text-white/60">No hay alertas registradas.</p> : (
+            {alerts.isError && <HomeQueryError onRetry={() => void alerts.refetch()}>No se pudieron actualizar las alertas.</HomeQueryError>}
+            {alerts.isLoading && <p role="status" className="text-sm text-white/60">Cargando…</p>}
+            {alerts.isSuccess && recentAlerts.length === 0 && <p className="rounded-xl border border-white/[0.08] bg-[var(--card)] p-3 text-sm text-white/60">No hay alertas registradas.</p>}
+            {recentAlerts.length > 0 && (
               <ul className="space-y-2">
-                {(alerts.data || []).slice(0, 3).map((alert) => (
+                {recentAlerts.slice(0, 3).map((alert) => (
                   <li key={alert.id}><Link href="/alerts" className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[var(--card)] p-3 hover:border-white/20">
                     <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${alert.status === "ACTIVE" ? "bg-red-500" : "bg-white/25"}`} aria-hidden />
                     <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{label(alertTypeLabels, alert.type)} · {alert.location}</span><span className="block text-xs text-white/55">{alert.status === "ACTIVE" ? "Activa" : alert.status === "CANCELLED" ? "Cancelada" : "Resuelta"} · {new Intl.DateTimeFormat("es-AR", { hourCycle: "h23", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(alert.createdAt))}</span></span>
@@ -181,19 +188,21 @@ export function HomeScreen() {
           </section>
           <PresentPersonnelPanel />
         </div>
-        {summary.isError && <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">No se pudo actualizar el resumen. Revisá la conexión; los datos se reintentan solos.</p>}
       </div>
     </ProtectedLayout>
   );
 }
 
-function MyShifts({ shifts, loading }: { shifts: DashboardShiftSummary[]; loading: boolean }) {
+function MyShifts({ shifts, loading, failed, onRetry }: { shifts: DashboardShiftSummary[]; loading: boolean; failed: boolean; onRetry: () => void }) {
   return (
     <section aria-label="Mis próximas guardias">
       <SectionTitle action={<Link href="/calendar" className="flex items-center gap-1 text-sm text-red-300 hover:text-red-200">Calendario<ChevronRight className="h-4 w-4" aria-hidden /></Link>}>Mis próximas guardias</SectionTitle>
-      {loading ? <p className="text-sm text-white/60" role="status">Cargando…</p> : shifts.length === 0 ? (
+      {failed && <HomeQueryError onRetry={onRetry}>No se pudieron actualizar las guardias.</HomeQueryError>}
+      {loading && <p className="text-sm text-white/60" role="status">Cargando…</p>}
+      {!loading && !failed && shifts.length === 0 && (
         <p className="rounded-xl border border-white/[0.08] bg-[var(--card)] p-3 text-sm text-white/60">No tenés guardias asignadas en los próximos 14 días.</p>
-      ) : (
+      )}
+      {shifts.length > 0 && (
         <ul className="grid gap-2 sm:grid-cols-2">
           {shifts.slice(0, 2).map((shift) => (
             <li key={shift.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-white/[0.08] bg-[var(--card)] p-3">

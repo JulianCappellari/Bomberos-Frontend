@@ -7,6 +7,9 @@
   --card: #13161d;
   --card2: #1a1e27;
   --bord: rgba(255, 255, 255, 0.1);
+  --control-bord: #697380;
+  --radius-ui: 8px;
+  --ease-ui: cubic-bezier(0.23, 1, 0.32, 1);
   --txt: #f4f6f8;
   --mut: #a3acba;
   --dim: #8a93a3;
@@ -51,6 +54,7 @@
   --card: #ffffff;
   --card2: #eef1f5;
   --bord: #d3d9e2;
+  --control-bord: #748095;
   --txt: #121a26;
   --mut: #4a5567;
   --dim: #5b6577;
@@ -99,7 +103,7 @@ html:not([data-theme="light"]) :is([class~="text-white/20"], [class~="text-white
    y con mayusculas normales; las etiquetas que usaban Barlow Condensed, a texto en oracion. */
 [class*="--font-bebas"] { text-transform: none !important; letter-spacing: -0.015em !important; font-weight: 700; }
 [class*="--font-barlow-condensed"] { text-transform: none !important; letter-spacing: 0 !important; }
-h1, h2, h3 { letter-spacing: -0.015em; }
+h1, h2, h3 { letter-spacing: -0.015em; overflow-wrap: anywhere; }
 /* Numeros del mismo ancho en horas, contadores y montos: no "bailan" al actualizarse. */
 .tabular-nums, time, [class*="font-mono"] { font-variant-numeric: tabular-nums; }
 .font-mono { font-family: var(--font-mono); }
@@ -165,6 +169,15 @@ body {
   outline-offset: 2px;
 }
 
+html { scroll-padding-block: calc(var(--hdr) + 1rem) 11rem; }
+@media (min-width: 1024px) { html { scroll-padding-block-end: 6rem; } }
+html:has(dialog[data-bomberos-dialog]:modal) { overflow: hidden; }
+.skip-link { position: fixed; z-index: 60; inset: 0.5rem auto auto 0.5rem; translate: 0 -150%; }
+.skip-link:focus { translate: none; }
+.dialog-panel { animation: dialog-enter 250ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes dialog-enter { from { opacity: 0; transform: translateY(30px) scale(0.95); } }
+dialog[data-bomberos-dialog]::backdrop { background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); }
+
 button {
   @apply cursor-pointer;
 }
@@ -213,7 +226,7 @@ button {
   }
 
   .app-input {
-    @apply w-full bg-[var(--card)] border-[1.5px] border-[var(--bord)] rounded-[10px] px-3.5 py-3 text-[15px] text-[var(--txt)] outline-none transition-colors;
+    @apply w-full min-w-0 bg-[var(--card)] border-[1.5px] border-[var(--bord)] rounded-[10px] px-3.5 py-3 text-[15px] text-[var(--txt)] outline-none transition-colors;
   }
 
   .input-dark {
@@ -239,7 +252,7 @@ button {
   /* Boton base = accion secundaria visible. Las variantes (-red, -outline, -green) definen la jerarquia. */
   .app-button {
     font-family: var(--font-sans);
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[var(--bord)] bg-[var(--card2)] px-5 py-[11px] text-[15px] font-semibold text-[var(--txt)] transition-all w-full;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] border border-[var(--bord)] bg-[var(--card2)] px-5 py-[11px] text-center text-[15px] font-semibold text-[var(--txt)] transition-all w-full;
   }
 
   .app-button:hover:not(:disabled) {
@@ -281,7 +294,7 @@ button {
   }
 
   .btn-icon {
-    @apply w-10 h-10 rounded-full bg-[var(--card)] border border-[var(--bord)] text-[var(--txt)] text-[18px] inline-flex items-center justify-center transition-all;
+    @apply w-10 h-10 shrink-0 rounded-full bg-[var(--card)] border border-[var(--bord)] text-[var(--txt)] text-[18px] inline-flex items-center justify-center transition-all;
   }
 
   .btn-icon:active {
@@ -648,10 +661,15 @@ button {
 .skeleton { border-radius: 0.5rem; background: linear-gradient(90deg, var(--card2) 0%, color-mix(in srgb, var(--card2) 60%, var(--txt) 8%) 50%, var(--card2) 100%); background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite; }
 
 /* Botones: respuesta al tocar y transiciones suaves (sin saltos de color). */
-.app-button, .btn-icon, button[role="tab"], button[role="radio"], button[aria-pressed] {
-  transition: transform 120ms ease, background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+.ui-button, .app-button, .btn-icon, button[role="tab"], button[role="radio"], button[aria-pressed] {
+  transition: transform 120ms ease, scale 120ms ease, background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
 }
-.app-button:active:not(:disabled), .btn-icon:active:not(:disabled), button[role="tab"]:active, button[role="radio"]:active, button[aria-pressed]:active:not(:disabled) { transform: scale(0.97); }
+:is(.app-button, .btn-icon, button[role="tab"], button[role="radio"], button[aria-pressed]):active:not(:disabled):not(.touch-none) { transform: scale(0.97); }
+
+.disclosure-summary { list-style: none; }
+.disclosure-summary::-webkit-details-marker { display: none; }
+.disclosure-chevron { transition: rotate 150ms var(--ease-ui); }
+details[open] > .disclosure-summary .disclosure-chevron { rotate: 180deg; }
 
 /* Listas que entran escalonadas la primera vez que se muestran. */
 @keyframes listIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -668,6 +686,11 @@ button {
 body { transition: background-color 200ms ease, color 200ms ease; }
 
 @media (prefers-reduced-motion: reduce) {
+  .ui-button[aria-busy="true"] .animate-spin { animation: none !important; }
+  :is(.ui-button, .app-button, .btn-icon, button[role="tab"], button[role="radio"], button[aria-pressed]):active {
+    scale: none !important;
+    transform: none !important;
+  }
   *,
   *::before,
   *::after {
@@ -682,6 +705,7 @@ body { transition: background-color 200ms ease, color 200ms ease; }
    clases de tamano (text-sm, etc.); solo en pantallas tactiles, en computadora se mantiene el diseno. */
 @media (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea { font-size: 16px; }
+  .ui-button { min-height: 2.75rem; }
 }
 
 /* Fecha y hora en iPhone: Safari les da un ancho propio y se salen del recuadro; se ajustan al contenedor

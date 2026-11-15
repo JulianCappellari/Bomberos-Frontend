@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { MapPin, Siren, ThumbsDown, ThumbsUp } from "lucide-react";
@@ -24,6 +24,8 @@ export function AlertGate() {
   const alerts = useAlerts(), respond = useRespondAlert();
   const [now, setNow] = useState(() => Date.now());
   const [error, setError] = useState("");
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const pending = ((alerts.data ?? []) as GateAlert[])
     .filter((a) => a.status === "ACTIVE" && a.viewerIsRecipient && !a.responses?.some((r) => r.userId === user?.id))
     .sort((a, b) => order[a.priority] - order[b.priority] || +new Date(a.createdAt) - +new Date(b.createdAt));
@@ -33,9 +35,18 @@ export function AlertGate() {
   useEffect(() => {
     if (!active) return;
     const timer = window.setInterval(() => setNow(Date.now()), 30000);
-    const previous = document.documentElement.style.overflow;
-    document.documentElement.style.overflow = "hidden";
-    return () => { window.clearInterval(timer); document.documentElement.style.overflow = previous; };
+    return () => window.clearInterval(timer);
+  }, [active]);
+
+  useLayoutEffect(() => {
+    if (!active) return;
+    const dialog = dialogRef.current;
+    dialog?.showModal();
+    titleRef.current?.focus();
+    return () => {
+      dialog?.close();
+      document.dispatchEvent(new Event("bomberos:urgent-dialog-closed"));
+    };
   }, [active]);
 
   if (!active || !alert) return null;
@@ -48,14 +59,14 @@ export function AlertGate() {
   const urgent = alert.priority === "HIGH";
   const author = alert.createdBy ? alert.createdBy.profile?.fullName || alert.createdBy.username : null;
   // Portal al <body>: asi queda por encima de todo (encabezado, menu y barra inferior), sin depender de la pagina.
-  return createPortal(<div role="alertdialog" aria-modal="true" aria-labelledby="alert-gate-title" aria-describedby="alert-gate-place" className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-[var(--bg)]/95 p-4 backdrop-blur-sm" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))", paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
-    <section className={`w-full max-w-md rounded-3xl border-2 bg-[var(--card)] p-5 shadow-2xl ${urgent ? "border-red-500" : "border-amber-500/70"}`}>
+  return createPortal(<dialog ref={dialogRef} data-bomberos-dialog data-urgent-alert role="alertdialog" aria-labelledby="alert-gate-title" aria-describedby="alert-gate-place" onCancel={(event) => event.preventDefault()} className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto overscroll-contain rounded-3xl bg-transparent text-[var(--txt)] backdrop:bg-[var(--bg)]/95 backdrop:backdrop-blur-sm">
+    <section className={`w-full rounded-3xl border-2 bg-[var(--card)] p-5 shadow-2xl ${urgent ? "border-red-500" : "border-amber-500/70"}`}>
       <div className="flex items-center justify-between gap-2">
         <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${urgent ? "bg-red-600 text-white" : "bg-amber-500/20 text-amber-200"}`}><Siren className={`h-4 w-4 ${urgent ? "animate-pulse" : ""}`} aria-hidden /> {priorityLabels[alert.priority]}</span>
         {pending.length > 1 && <span className="text-xs text-[var(--mut)]">1 de {pending.length} alertas</span>}
       </div>
-      <h1 id="alert-gate-title" className="mt-4 text-3xl font-bold text-[var(--txt)]">{typeLabels[alert.type] ?? "Emergencia"}</h1>
-      <p id="alert-gate-place" className="mt-2 flex items-start gap-2 text-lg font-semibold text-[var(--txt)]"><MapPin className="mt-1 h-5 w-5 shrink-0 text-red-400" aria-hidden />{alert.location}</p>
+      <h2 ref={titleRef} tabIndex={-1} id="alert-gate-title" className="mt-4 text-3xl font-bold text-[var(--txt)] outline-none">{typeLabels[alert.type] ?? "Emergencia"}</h2>
+      <p id="alert-gate-place" className="mt-2 flex items-start gap-2 text-lg font-semibold text-[var(--txt)]"><MapPin className="mt-1 h-5 w-5 shrink-0 text-red-400" aria-hidden /><span className="min-w-0 [overflow-wrap:anywhere]">{alert.location}</span></p>
       <p className="mt-1 text-sm text-[var(--mut)]">Emitida {elapsed(alert.createdAt, now)}{author ? ` por ${author}` : ""}</p>
       {alert.description && <p className="mt-3 max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-[var(--card2)] p-3 text-sm">{alert.description}</p>}
       <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(alert.location)}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex text-sm text-sky-300 underline">Ver en el mapa</a>
@@ -67,5 +78,5 @@ export function AlertGate() {
       {error && <p role="alert" className="mt-3 text-center text-sm text-red-300">{error}</p>}
       <p className="mt-4 text-center text-xs text-[var(--mut)]">Tu respuesta queda registrada y no se puede cambiar. El resto de la app se habilita al responder.</p>
     </section>
-  </div>, document.body);
+  </dialog>, document.body);
 }

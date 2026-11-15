@@ -29,7 +29,7 @@ export default function AvailabilityPage() {
     next.setUTCDate(next.getUTCDate() + offset);
     setDate(next.toISOString().slice(0, 10));
   }
-  return <ProtectedLayout><main className="screen-body">
+  return <ProtectedLayout><div className="screen-body">
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
       <div><h1 className="text-2xl font-bold text-white">Disponibilidad del personal</h1><p className="mt-1 text-sm text-[var(--mut)]">Por dia y turno · {roster.data?.length || 0} integrantes</p></div>
       <button type="button" className="btn-icon" title="Actualizar disponibilidad" aria-label="Actualizar disponibilidad" onClick={() => query.refetch()}><RefreshCw className="h-4 w-4" /></button>
@@ -76,7 +76,7 @@ export default function AvailabilityPage() {
       </article>)}
     </div>
     {!query.isLoading && !roster.isLoading && !people.length && <p className="py-6 text-center text-sm text-[var(--mut)]">No hay personal para este filtro.</p>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }
 function AvailabilityEditor({ date, userId, period, existing }: {
   date: string; userId: string; period: "DAY" | "NIGHT"; existing?: AvailabilityRecord;

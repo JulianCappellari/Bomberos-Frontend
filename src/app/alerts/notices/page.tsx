@@ -45,7 +45,7 @@ export default function NoticesPage() {
     try { await api.post(`/alerts/notices/${id}/activate`); setConfirm(""); await Promise.all([client.invalidateQueries({ queryKey: ["dispatch-notices"] }), client.invalidateQueries({ queryKey: ["alerts"] })]); }
     catch (err) { setError(getErrorMessage(err, "No se pudo convocar")); } finally { setBusy(false); }
   }
-  return <ProtectedLayout><main className="screen-body"><Link href="/alerts" className="text-sm underline">Volver a alertas</Link><h1 className="my-4 text-2xl font-bold">Registro de llamadas y avisos</h1>
+  return <ProtectedLayout><div className="screen-body"><Link href="/alerts" className="text-sm underline">Volver a alertas</Link><h1 className="my-4 text-2xl font-bold">Registro de llamadas y avisos</h1>
     {!allowed ? <ErrorNotice>Acceso reservado a guardia y jefatura.</ErrorNotice> : <>
     <h2 className="my-3 font-bold">{editing ? "Corregir aviso pendiente" : "Nuevo aviso"}</h2>
     <form key={editing?.id || "new"} onSubmit={register}><fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2">
@@ -69,5 +69,5 @@ export default function NoticesPage() {
       {cancelling?.id === row.id && <form onSubmit={cancelNotice} className="mt-3 grid gap-2"><Field label="Motivo de anulación"><textarea name="reason" required minLength={10} maxLength={1000} className="app-input" disabled={busy} /></Field><div className="flex flex-wrap gap-2"><button disabled={busy} className="app-button w-auto">Confirmar anulación</button><button disabled={busy} type="button" className="app-button w-auto" onClick={() => setCancelling(null)}>Conservar aviso</button></div></form>}
     </>}</article>)}
     <div className="mt-4 flex gap-2"><button disabled={page === 1} onClick={() => setPage(page-1)}>Anterior</button><button disabled={list.data?.length !== 30} onClick={() => setPage(page+1)}>Siguiente</button></div></>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }

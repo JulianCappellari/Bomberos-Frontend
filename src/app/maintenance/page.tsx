@@ -60,7 +60,7 @@ export default function MaintenancePage() {
       setClosing(null); setResolution(""); setCost("");
     } catch (err) { setError(getErrorMessage(err, "No se pudo cerrar el trabajo.")); }
   }
-  return <ProtectedLayout><main className="screen-body">
+  return <ProtectedLayout><div className="screen-body">
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
       <div><h1 className="text-2xl font-bold text-white">Mantenimiento</h1><p className="mt-1 text-sm text-[var(--mut)]">Trabajos, responsables y seguimiento de moviles y equipos</p></div>
       <div className="flex gap-2">
@@ -127,5 +127,5 @@ export default function MaintenancePage() {
       </article>;
     })}</div>
     {!query.isLoading && !query.isError && !visible.length && <p className="py-8 text-center text-sm text-[var(--mut)]">No hay trabajos para estos filtros.</p>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }

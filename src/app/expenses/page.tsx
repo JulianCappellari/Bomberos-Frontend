@@ -36,7 +36,7 @@ export default function ExpensesPage() {
   const water = new Map<string, Finance["water"]>();
   query.data?.water.forEach(w => water.set(w.tripId, [...(water.get(w.tripId) || []), w]));
   const ownForm = !admin && user?.role !== "OPERATOR" || tab === "submit";
-  return <ProtectedLayout><main className="screen-body"><header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">Gastos y reintegros</h1><p className="mt-1 text-sm text-[var(--mut)]">{admin || user?.role === "OPERATOR" ? "Presentá tus gastos y revisá los del cuartel." : "Presentá un gasto con su comprobante y seguí si se aprobó y pagó."}</p></div></header>
+  return <ProtectedLayout><div className="screen-body"><header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">Gastos y reintegros</h1><p className="mt-1 text-sm text-[var(--mut)]">{admin || user?.role === "OPERATOR" ? "Presentá tus gastos y revisá los del cuartel." : "Presentá un gasto con su comprobante y seguí si se aprobó y pagó."}</p></div></header>
     {access.isPending ? <p className="my-5">Verificando permisos...</p> : access.isError ? <ErrorNotice>No se pudieron verificar los permisos financieros. <button className="underline" onClick={() => access.refetch()}>Reintentar</button></ErrorNotice> : <>
     {(admin || user?.role === "OPERATOR") && <nav aria-label="Secciones financieras" className="my-5 flex flex-wrap gap-2 border-b border-[var(--bord)] pb-3">{[...(admin ? [["expenses", "Reintegros"], ["water", "Compensaciones por agua"]] : [["authorizations", "Autorizar gastos de oficiales"]]), ...(user?.profile?.rank?.toLowerCase() !== "administrador" ? [["submit", "Mis gastos"]] : []), ...(access.data?.canDelegate ? [["settings", "Accesos financieros"]] : [])].map(([value, label]) => <button key={value} className={`app-button w-auto ${tab === value || !admin && tab === "expenses" && value === "authorizations" ? "app-button-red" : "app-button-outline"}`} aria-pressed={tab === value} onClick={() => changeTab(value)}>{label}</button>)}</nav>}
     {error && <ErrorNotice>{error}</ErrorNotice>}{message && <p role="status" className="my-4 border-l-2 border-emerald-500 pl-3 text-sm">{message}</p>}
@@ -53,5 +53,5 @@ export default function ExpensesPage() {
     </>}
     </>}
     </>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }

@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import Image from "next/image";
+import { FormEvent, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, ImagePlus, X } from "lucide-react";
 import { ProtectedLayout } from "@/components/layout/protected-layout";
@@ -11,13 +12,42 @@ import { useAuth } from "@/features/auth/auth-context";
 import { api } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { isCommand } from "@/lib/permissions";
-import { POST_KIND_LABEL, PublicPost, PublicPostKind, publicPhotoUrl } from "@/lib/public-posts";
+import { POST_KIND_LABEL, PublicPost, PublicPostKind } from "@/lib/public-posts";
 import { toast } from "@/lib/toast";
 
 type Row = PublicPost & { status: "DRAFT" | "PUBLISHED" | "ARCHIVED"; incidentId: string | null; revision: number; updatedAt: string };
 type Draft = { id?: string; revision?: number; kind: PublicPostKind; title: string; summary: string; body: string; incidentId: string | null; happenedOn: string; keep: string[]; units: string; peopleCount: string; agencies: string };
 const empty: Draft = { kind: "NEWS", title: "", summary: "", body: "", incidentId: null, happenedOn: "", keep: [], units: "", peopleCount: "", agencies: "" };
 const STATUS = { DRAFT: ["Borrador", ""], PUBLISHED: ["Publicada", "badge-green"], ARCHIVED: ["Retirada", ""] } as const;
+
+function DraftPhoto({ postId, photoId }: { postId: string; photoId: string }) {
+  const [src, setSrc] = useState("");
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    let url = "";
+    void api.get<Blob>(`/public-posts/${encodeURIComponent(postId)}/photos/${encodeURIComponent(photoId)}`, {
+      responseType: "blob", signal: controller.signal,
+    }).then(({ data }) => {
+      if (controller.signal.aborted) return;
+      url = URL.createObjectURL(data);
+      setSrc(url);
+    }).catch(() => {
+      if (!controller.signal.aborted) setFailed(true);
+    });
+    return () => {
+      controller.abort();
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [postId, photoId]);
+  return src
+    ? <Image unoptimized src={src} alt="" width={80} height={80} className="h-20 w-20 rounded-lg object-cover" />
+    : <span className="grid h-20 w-20 place-items-center text-xs">{failed ? "Foto no disponible" : "Cargando foto…"}</span>;
+}
+
+function confirmPhotos(count: number) {
+  return count === 0 || window.confirm("¿Confirmás que las fotos no muestran vecinos ni personas asistidas?");
+}
 
 // Jefatura redacta y publica novedades para la comunidad y los medios (pagina publica /novedades).
 export default function PublicPostsAdminPage() {
@@ -42,25 +72,33 @@ export default function PublicPostsAdminPage() {
   async function save(event: FormEvent, publish = false) {
     event.preventDefault();
     if (!draft) return;
+    const published = posts.data?.some((post) => post.id === draft.id && post.status === "PUBLISHED");
+    if ((publish || (published && photos.length)) && !confirmPhotos(draft.keep.length + photos.length)) return;
     setBusy(true); setError("");
     try {
       const list = (v: string, sep: RegExp) => v.split(sep).map((x) => x.trim()).filter(Boolean);
       const body = { kind: draft.kind, title: draft.title, summary: draft.summary, body: draft.body, incidentId: draft.incidentId, happenedOn: draft.happenedOn || null, units: list(draft.units, /,/), peopleCount: draft.peopleCount ? Number(draft.peopleCount) : null, agencies: list(draft.agencies, /\n/), photos };
       let id = draft.id, revision = draft.revision;
-      if (id) { await api.put(`/public-posts/${id}`, { ...body, keepPhotoIds: draft.keep, revision }); revision = (revision ?? 0) + 1; }
+      if (id) { await api.put(`/public-posts/${id}`, { ...body, keepPhotoIds: draft.keep, revision, photosReviewed: Boolean(publish || published) }); revision = (revision ?? 0) + 1; }
       else { id = (await api.post<{ id: string }>("/public-posts", body)).data.id; revision = 1; }
-      if (publish) await api.post(`/public-posts/${id}/publish`, { revision });
+      if (publish) {
+        await refresh();
+        setDraft(null);
+        setPhotos([]);
+        await api.post(`/public-posts/${id}/publish`, { revision, photosReviewed: true });
+      }
       setDraft(null); setPhotos([]); await refresh();
       toast.success(publish ? "Publicado" : "Borrador guardado", publish ? "Ya se ve en la página pública de novedades." : undefined);
     } catch (err) { setError(getErrorMessage(err, "No se pudo guardar")); } finally { setBusy(false); }
   }
   async function toggle(row: Row) {
     setError("");
-    try { await api.post(`/public-posts/${row.id}/${row.status === "PUBLISHED" ? "unpublish" : "publish"}`, { revision: row.revision }); await refresh(); }
+    if (row.status !== "PUBLISHED" && !confirmPhotos(row.photos.length)) return;
+    try { await api.post(`/public-posts/${row.id}/${row.status === "PUBLISHED" ? "unpublish" : "publish"}`, { revision: row.revision, photosReviewed: true }); await refresh(); }
     catch (err) { setError(getErrorMessage(err, "No se pudo cambiar")); }
   }
 
-  return <ProtectedLayout><main className="screen-body">
+  return <ProtectedLayout><div className="screen-body">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <h1 className="text-2xl font-bold">Novedades públicas</h1>
       <Link href="/novedades" target="_blank" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold underline">Ver página pública <ExternalLink className="h-4 w-4" aria-hidden /></Link>
@@ -82,14 +120,14 @@ export default function PublicPostsAdminPage() {
         {draft.kind === "INCIDENT" && <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Móviles que salieron (separados por coma)"><input className="app-input" value={draft.units} onChange={(e) => set({ units: e.target.value })} placeholder="M-14, M-8" /></Field>
           <Field label="Cantidad de personas que fueron"><input type="number" min={0} max={500} className="app-input" value={draft.peopleCount} onChange={(e) => set({ peopleCount: e.target.value })} /></Field>
-          <div className="sm:col-span-2"><Field label="Otras instituciones que participaron (una por línea, con quién estuvo a cargo)"><textarea className="app-input min-h-20" value={draft.agencies} onChange={(e) => set({ agencies: e.target.value })} placeholder="Policía: Comisaría Sampacho, a cargo de …" /></Field></div>
+          <div className="sm:col-span-2"><Field label="Otras instituciones que participaron (una por línea)"><textarea className="app-input min-h-20" value={draft.agencies} onChange={(e) => set({ agencies: e.target.value })} placeholder="Policía: Comisaría Sampacho" /></Field></div>
         </div>}
         <Field label="Texto completo"><textarea className="app-input min-h-48" required minLength={10} maxLength={20000} value={draft.body} onChange={(e) => set({ body: e.target.value })} /></Field>
         <div>
           <p className="mb-2 text-sm font-semibold">Fotos (hasta 6)</p>
           <div className="flex flex-wrap gap-2">
-            {draft.id && draft.keep.map((pid) => <span key={pid} className="relative">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={publicPhotoUrl(draft.id!, pid)} alt="" className="h-20 w-20 rounded-lg object-cover" /><button type="button" aria-label="Quitar foto" className="absolute -right-2 -top-2 rounded-full bg-red-600 p-1 text-white" onClick={() => set({ keep: draft.keep.filter((x) => x !== pid) })}><X className="h-3 w-3" /></button></span>)}
-            {photos.map((p, i) => <span key={i} className="relative">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={`data:image/jpeg;base64,${p}`} alt="" className="h-20 w-20 rounded-lg object-cover" /><button type="button" aria-label="Quitar foto" className="absolute -right-2 -top-2 rounded-full bg-red-600 p-1 text-white" onClick={() => setPhotos((l) => l.filter((_, j) => j !== i))}><X className="h-3 w-3" /></button></span>)}
+            {draft.id && draft.keep.map((pid) => <span key={pid} className="relative"><DraftPhoto postId={draft.id!} photoId={pid} /><button type="button" aria-label="Quitar foto" className="absolute -right-2 -top-2 rounded-full bg-red-600 p-1 text-white" onClick={() => set({ keep: draft.keep.filter((x) => x !== pid) })}><X className="h-3 w-3" /></button></span>)}
+            {photos.map((p, i) => <span key={i} className="relative"><Image unoptimized src={`data:image/jpeg;base64,${p}`} alt="" width={80} height={80} className="h-20 w-20 rounded-lg object-cover" /><button type="button" aria-label="Quitar foto" className="absolute -right-2 -top-2 rounded-full bg-red-600 p-1 text-white" onClick={() => setPhotos((l) => l.filter((_, j) => j !== i))}><X className="h-3 w-3" /></button></span>)}
             {draft.keep.length + photos.length < 6 && <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-lg border border-dashed border-[var(--bord)]"><ImagePlus className="h-5 w-5" aria-label="Agregar fotos" /><input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => void addPhotos(e.target.files)} /></label>}
           </div>
         </div>
@@ -112,5 +150,5 @@ export default function PublicPostsAdminPage() {
         </div>
       </li>)}</ul>
     </>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }

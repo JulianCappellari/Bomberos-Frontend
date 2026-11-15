@@ -1,5 +1,7 @@
 "use client";
 
+import { Modal } from "@/components/ui/modal";
+
 import { FormEvent, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -9,7 +11,6 @@ import {
   Search,
   Trash2,
   UserRound,
-  X,
 } from "lucide-react";
 import { ProtectedLayout } from "@/components/layout/protected-layout";
 import { useAuth } from "@/features/auth/auth-context";
@@ -147,7 +148,7 @@ export default function CompliancePage() {
 
   return (
     <ProtectedLayout>
-      <main className="screen-body">
+      <div className="screen-body">
         <section className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="section-title mb-1 mt-0">Cumplimiento y vencimientos</div>
@@ -237,7 +238,7 @@ export default function CompliancePage() {
             onClose={() => setFormOpen(false)}
           />
         )}
-      </main>
+      </div>
     </ProtectedLayout>
   );
 }
@@ -394,23 +395,11 @@ function RecordFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/75 p-0 sm:items-center sm:p-4">
+    <Modal open onClose={onClose} title={record ? "Editar registro" : "Nuevo registro"} description="Control documental y preventivo" size="xl" pending={pending} dismissOnBackdrop={false}>
       <form
         onSubmit={submit}
-        className="max-h-[92dvh] w-full overflow-y-auto rounded-t-xl border border-[var(--bord)] bg-[var(--surf)] p-4 sm:max-w-2xl sm:rounded-xl sm:p-5"
+        className="space-y-3"
       >
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-bold uppercase text-white">
-              {record ? "Editar registro" : "Nuevo registro"}
-            </h2>
-            <p className="text-xs text-[var(--mut)]">Control documental y preventivo</p>
-          </div>
-          <button type="button" className="btn-icon" onClick={onClose} aria-label="Cerrar">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Aplicar a">
             <select
@@ -475,16 +464,16 @@ function RecordFormModal({
           </Field>
         </div>
 
-        {error && <div className="mt-3 rounded-[8px] border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</div>}
+        {error && <div role="alert" className="mt-3 rounded-[8px] border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</div>}
 
         <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button type="button" onClick={onClose} className="app-button app-button-outline sm:w-auto">Cancelar</button>
+          <button type="button" onClick={onClose} disabled={pending} className="app-button app-button-outline sm:w-auto">Cancelar</button>
           <button type="submit" disabled={pending} className="app-button app-button-red sm:w-auto">
             {pending ? "Guardando..." : "Guardar registro"}
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }
 

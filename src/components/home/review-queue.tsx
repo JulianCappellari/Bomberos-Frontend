@@ -6,6 +6,7 @@ import { api } from "@/lib/api-client";
 import { useAuth } from "@/features/auth/auth-context";
 import { listTasks } from "@/services/work.service";
 import { useFinanceAccess } from "@/components/operations/finance-panel";
+import { HomeQueryError } from "./home-query-error";
 
 // Jefatura: todo lo que espera una verificacion o aprobacion, en un solo lugar.
 export function ReviewQueue() {
@@ -29,12 +30,18 @@ export function ReviewQueue() {
     ["Correcciones de fichaje para autorizar", corrections.data?.filter((row) => row.requestedBy.id !== user?.id && row.attendance.userId !== user?.id).length ?? 0, "/station"],
   ];
   const pending = rows.filter(([, count]) => count > 0);
+  const queries = [tasks, courses, swaps, corrections, finance, ...(canFinance ? [expenses] : []), ...(user?.role === "OPERATOR" ? [officerExpenses] : [])];
+  const failed = queries.filter((query) => query.isError);
+  const loading = queries.some((query) => query.isPending);
   return (
     <section aria-label="Para verificar">
       <h2 className="mb-3 text-base font-bold text-white">Para verificar</h2>
-      {pending.length === 0 ? (
+      {failed.length > 0 && <HomeQueryError onRetry={() => { for (const query of failed) void query.refetch(); }}>No se pudieron consultar todas las verificaciones.</HomeQueryError>}
+      {loading && <p role="status" className="text-sm text-white/60">Consultando verificaciones…</p>}
+      {pending.length === 0 && !loading && failed.length === 0 && (
         <p className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[var(--card)] p-3 text-sm text-white/70"><ClipboardCheck className="h-4 w-4 text-emerald-400" aria-hidden />No hay nada esperando tu verificación.</p>
-      ) : (
+      )}
+      {pending.length > 0 && (
         <ul className="grid gap-2 sm:grid-cols-2">
           {pending.map(([text, count, href]) => (
             <li key={text}><Link href={href} className="flex items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-50 hover:bg-amber-500/15">

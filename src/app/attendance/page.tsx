@@ -20,7 +20,6 @@ import { useMyAttendanceSummary } from "@/hooks/use-attendence";
 import { useScanAttendanceQr } from "@/hooks/use-scan-attendance-qr";
 import { getCurrentPositionAsync } from "@/lib/geolocation";
 import { cameraErrorMessage, cameraSupportProblem, decodeImageFile, decodeVideoFrame, geolocationErrorMessage, openRearCamera } from "@/lib/qr-camera";
-import { LocationRequiredError } from "@/services/attendance.service";
 import { RemoteCheckout } from "@/components/attendance/remote-checkout";
 import { ProtectedLayout } from "@/components/layout/protected-layout";
 import { Button } from "@/components/ui/button";
@@ -149,19 +148,21 @@ export default function AttendancePage() {
 
     try {
       const deviceFingerprint = getDeviceFingerprint();
-      setLoadingMessage("Validando asistencia con el servidor...");
-      let result;
+      setLoadingMessage("Obteniendo tu ubicación...");
+      let position: GeolocationPosition;
       try {
-        result = await scanMutation.mutateAsync({ qrToken, deviceFingerprint });
+        position = await getCurrentPositionAsync();
       } catch (error) {
-        if (!(error instanceof LocationRequiredError)) throw error;
-        // El cuartel pide ubicacion: recien ahora se pide permiso de GPS (la base sin ubicacion nunca lo pide).
-        setLoadingMessage("Obteniendo tu ubicación...");
-        let position: GeolocationPosition;
-        try { position = await getCurrentPositionAsync(); } catch (geoError) { throw new Error(geolocationErrorMessage(geoError)); }
-        setLoadingMessage("Validando asistencia con el servidor...");
-        result = await scanMutation.mutateAsync({ qrToken, deviceFingerprint, latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy });
+        throw new Error(geolocationErrorMessage(error));
       }
+      setLoadingMessage("Validando asistencia con el servidor...");
+      const result = await scanMutation.mutateAsync({
+        qrToken,
+        deviceFingerprint,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+      });
 
       await attendanceSummary.refetch();
 
@@ -261,8 +262,6 @@ export default function AttendancePage() {
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", stopCamera);
     return () => { document.removeEventListener("visibilitychange", onHide); window.removeEventListener("pagehide", stopCamera); stopCamera(); };
-    // stopCamera solo usa refs y setters estables.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isInside = attendanceSummary.data?.isCurrentlyInside ?? false;
@@ -367,7 +366,7 @@ export default function AttendancePage() {
         <details className="rounded-2xl border border-white/[0.08] bg-[var(--card)] p-4 text-sm text-white/75">
           <summary className="flex cursor-pointer items-center gap-2 font-semibold text-white"><ShieldCheck className="h-4 w-4 text-red-400" aria-hidden /> ¿Cómo funciona?</summary>
           <ol className="mt-3 list-decimal space-y-2 pl-5">
-            <li>Escaneá el QR al entrar y al salir. El celular pide tu ubicación para confirmar que estás en el cuartel (dentro de los 100 metros); en la base sin ubicación no se pide.</li>
+            <li>Escaneá el QR al entrar y al salir. En cada escaneo se compara tu ubicación con la del cuartel.</li>
             <li>El código QR cambia cada 30 segundos, así no sirve una foto vieja.</li>
             <li>Mientras estés adentro, cada 30 minutos te llega un aviso al celular para confirmar que seguís en el cuartel (con la ubicación, o tocando el aviso en la base sin ubicación). Si estás de guardia, no se pide hasta que termine tu turno.</li>
             <li>Tenés 30 minutos para confirmar. Si no lo hacés, la permanencia se cierra sola y se acreditan solo las horas verificadas: hasta tu última confirmación más 30 minutos. Jefatura lo ve en los reportes.</li>
@@ -432,7 +431,7 @@ export default function AttendancePage() {
                 </p>
                 {availabilityError && <p role="alert" className="text-sm text-red-300">{availabilityError}</p>}
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button variant="primary" size="md" onClick={() => void activateAvailability()} disabled={availabilityBusy} loading={availabilityBusy} className="w-full">
+                  <Button variant="primary" size="md" onClick={() => void activateAvailability()} disabled={availabilityBusy} loading={availabilityBusy} loadingLabel="Actualizando…" className="w-full">
                     Sí, estoy disponible
                   </Button>
                   <Button variant="secondary" size="md" onClick={closeModal} disabled={availabilityBusy} className="w-full">

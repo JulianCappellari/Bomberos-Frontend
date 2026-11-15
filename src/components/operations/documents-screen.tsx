@@ -2,7 +2,7 @@
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { DocumentRectification } from "./document-rectification";
 import { FormEvent, useState } from "react";
-import { Archive, BookOpen, Copy, Download, ExternalLink, Pencil, Plus, RefreshCw, Search, Send, X } from "lucide-react";
+import { Archive, BookOpen, Download, ExternalLink, Pencil, Plus, RefreshCw, Search, Send, X } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/auth-context";
 import { DocumentReading, useMyDocumentReads } from "@/components/operations/document-reading";

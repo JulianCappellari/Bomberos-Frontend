@@ -7,6 +7,7 @@ function setup(request) {
   const options = {
     readAccess: () => state.accessToken, readRefresh: () => state.refreshToken,
     request, write: (tokens) => { Object.assign(state, tokens); state.writes++; },
+    isSessionRejected: (error) => error.message === "Unauthorized",
     expire: () => { state.expired++; state.accessToken = null; state.refreshToken = null; },
   };
   return { state, options };
@@ -28,6 +29,19 @@ test("Un refresh rechazado cierra la sesion una sola vez y no se reintenta recur
   await assert.rejects(refresh("old-access"), /Unauthorized/);
   await assert.rejects(refresh("old-access"), /Sesion cerrada/);
   assert.equal(state.expired, 1);
+});
+
+test("Una falla temporal de renovación conserva la sesión y permite recuperarla", async () => {
+  let calls = 0;
+  const { state, options } = setup(async () => {
+    if (++calls === 1) throw new Error("Servicio indisponible");
+    return next;
+  });
+  const refresh = createRefreshCoordinator(options);
+  await assert.rejects(refresh("old-access"), /Servicio indisponible/);
+  assert.equal(state.refreshToken, "old-refresh");
+  assert.equal(state.expired, 0);
+  assert.equal(await refresh("old-access"), "new-access");
 });
 
 test("Una renovacion pendiente no vuelve a autenticar despues de logout", async () => {

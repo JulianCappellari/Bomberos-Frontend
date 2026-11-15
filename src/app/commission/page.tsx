@@ -39,7 +39,7 @@ export default function CommissionPage() {
     catch (err) { tab?.close(); toast.error(getErrorMessage(err, "No se pudo abrir el comprobante")); }
   }
 
-  return <ProtectedLayout><main className="screen-body">
+  return <ProtectedLayout><div className="screen-body">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold"><Landmark className="h-6 w-6 text-red-400" aria-hidden /> Comisión directiva</h1>
@@ -95,5 +95,5 @@ export default function CommissionPage() {
         </div>
       </section>}
     </>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }

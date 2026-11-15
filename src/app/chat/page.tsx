@@ -176,7 +176,7 @@ export default function ChatPage() {
 
   return (
     <ProtectedLayout>
-      <main className="screen-body">
+      <div className="screen-body">
         <header className="mb-4">
           <h1 className="flex items-center gap-2 text-2xl font-bold text-white"><MessageCircle className="h-6 w-6 text-red-400" aria-hidden /> Comunicaciones</h1>
           <p className="mt-1 text-sm text-[var(--mut)]">Avisos internos para todo el cuartel. Confirmá la lectura de cada mensaje.{userHasCommandRank ? " Podés fijar los avisos importantes para que queden arriba." : ""}</p>
@@ -285,7 +285,7 @@ export default function ChatPage() {
             {recent.map(renderMessage)}
           </section>
         )}
-      </main>
+      </div>
     </ProtectedLayout>
   );
 }

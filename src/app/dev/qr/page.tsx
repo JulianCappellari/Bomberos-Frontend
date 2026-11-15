@@ -17,7 +17,7 @@ export default function DevAttendanceQrPage() {
 
   return (
     <ProtectedLayout>
-      <main className="screen-body">
+      <div className="screen-body">
         <section className="card mx-auto max-w-md">
           <h1 className="text-2xl font-black uppercase tracking-wider text-red-500">
             QR asistencia DEV
@@ -60,7 +60,7 @@ export default function DevAttendanceQrPage() {
             </>
           )}
         </section>
-      </main>
+      </div>
     </ProtectedLayout>
   );
 }

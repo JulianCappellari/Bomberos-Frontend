@@ -85,7 +85,7 @@ export default function PersonalEquipmentPage() {
     catch (err) { setError(getErrorMessage(err, "No se pudo registrar la baja.")); }
   }
   const names = { create: "Nuevo elemento", edit: "Editar elemento", checks: "Revision de estado", issues: "Registrar entrega", return: "Registrar devolucion" };
-  return <ProtectedLayout><main className="screen-body">
+  return <ProtectedLayout><div className="screen-body">
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h1 className="flex items-center gap-2 text-2xl font-bold"><Shirt className="h-6 w-6 shrink-0 text-red-400" />Equipamiento personal</h1><div className="flex gap-2"><button className="btn-icon" title="Actualizar equipamiento" aria-label="Actualizar equipamiento" onClick={() => void query.refetch()}><RefreshCw className="h-4 w-4" /></button>{manager && <button className="app-button app-button-red w-auto" disabled={mutation.isPending} onClick={() => open("create")}><Plus className="h-4 w-4" />Nuevo elemento</button>}</div></div>
     <div className="mb-5"><Link href="/equipment-requests" className="app-button app-button-outline w-auto">Pedidos de vestimenta</Link></div>
     {error && <ErrorNotice>{error}</ErrorNotice>}
@@ -128,5 +128,5 @@ export default function PersonalEquipmentPage() {
       {historyId === item.id && <EquipmentHistory item={item} />}
     </article>)}</div>
     {query.data && query.data.total > query.data.pageSize && <div className="mt-5 flex items-center justify-between gap-2"><button className="app-button app-button-outline w-auto" disabled={filters.page === 1 || query.isFetching} onClick={() => setFilters((value) => ({ ...value, page: value.page - 1 }))}>Anterior</button><span className="text-sm">{filters.page} / {Math.ceil(query.data.total / query.data.pageSize)}</span><button className="app-button app-button-outline w-auto" disabled={filters.page * query.data.pageSize >= query.data.total || query.isFetching} onClick={() => setFilters((value) => ({ ...value, page: value.page + 1 }))}>Siguiente</button></div>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }

@@ -43,7 +43,7 @@ export default function StationPage() {
 
   return (
     <ProtectedLayout>
-      <main className="screen-body">
+      <div className="screen-body">
         <header className="mb-4">
           <h1 className="text-2xl font-bold text-white">Cuartel ahora</h1>
           <p className="mt-1 text-sm text-[var(--mut)]">Quién está en el cuartel, quién está disponible y las correcciones de fichaje pendientes.</p>
@@ -87,7 +87,7 @@ export default function StationPage() {
             <PresentCard key={item.id} item={item} />
           ))}
         </section>
-      </main>
+      </div>
     </ProtectedLayout>
   );
 }

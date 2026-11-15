@@ -19,7 +19,7 @@ export default function HistoryList({ history }: Props) {
 
   return (
     <div className="space-y-4">
-      {history.map((entry, index) => (
+      {history.map((entry) => (
         <div
           key={entry.id}
           className="rounded-3xl border border-white/10 bg-[#16171b] p-5"
@@ -27,7 +27,7 @@ export default function HistoryList({ history }: Props) {
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <h3 className="text-xl font-black text-white">
-                Control #{history.length - index}
+                Control vehicular
               </h3>
               <p className="text-sm text-slate-400">
                 {formatDate(entry.inspectionDate)}
@@ -41,7 +41,7 @@ export default function HistoryList({ history }: Props) {
               </span>
             )}
             <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${!entry.voidedAt && entry.resultingAssetStatus === "OPERATIONAL" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-amber-500/30 bg-amber-500/10 text-amber-200"}`}>
-              {entry.voidedAt ? "Control anulado" : entry.confirmationsComplete === false ? "Pendiente de firmas" : entry.resultingAssetStatus === "OPERATIONAL" ? "Sin fallas al controlar" : "Requiere correccion"}
+              {entry.voidedAt ? "Control anulado" : entry.resultingAssetStatus === "OPERATIONAL" ? "Sin fallas al controlar" : "Requiere corrección"}
             </span>
           </div>
 

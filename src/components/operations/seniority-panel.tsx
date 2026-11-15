@@ -6,10 +6,12 @@ import { api } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { useAuth } from "@/features/auth/auth-context";
 import { ErrorNotice } from "@/components/operations/operations-ui";
+import { TableRegion } from "@/components/ui/table-region";
 import { PromotionRule, SeniorityRow } from "@/services/station.service";
 
 const fmt = (v: string | null) => v ? new Date(v).toLocaleDateString("es-AR", { timeZone: "UTC" }) : "Sin dato";
 const yrs = (v: number | null) => v === null ? "–" : `${String(v).replace(".", ",")} ${v === 1 ? "año" : "años"}`;
+const ruleColumns = { minYearsInRank: "Años en el cargo", minYearsService: "Años de servicio", minApprovedCourses: "Cursos aprobados" };
 
 // 14: escalafon y antiguedad calculados con la fecha de ingreso, la del ultimo ascenso y los cursos aprobados.
 export function SeniorityPanel() {
@@ -33,15 +35,15 @@ export function SeniorityPanel() {
     {query.isLoading && <p className="mt-3 text-sm text-[var(--mut)]">Calculando…</p>}
     {query.isError && <ErrorNotice>No se pudo calcular el escalafón. <button className="underline" onClick={() => query.refetch()}>Reintentar</button></ErrorNotice>}
 
-    {editing && <form onSubmit={save} className="card mt-4"><fieldset disabled={busy} className="space-y-3">
+    {editing && <form onSubmit={save} className="card mt-4 min-w-0"><fieldset disabled={busy} className="min-w-0 space-y-3">
       <h3 className="font-bold">Reglas de ascenso</h3>
       {error && <ErrorNotice>{error}</ErrorNotice>}
-      <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-sm"><thead><tr className="text-left text-xs text-[var(--mut)]"><th className="py-1">Cargo</th><th>Asciende a</th><th>Años en el cargo</th><th>Años de servicio</th><th>Cursos aprobados</th></tr></thead><tbody>
-        {draft.map((rule, i) => <tr key={rule.rank} className="border-t border-[var(--bord)]"><td className="py-2 pr-2 font-semibold">{rule.rank}</td>
-          <td className="pr-2"><input className="app-input py-1.5" value={rule.nextRank} maxLength={80} onChange={(e) => setDraft(draft.map((r, j) => j === i ? { ...r, nextRank: e.target.value } : r))} /></td>
-          {(["minYearsInRank", "minYearsService", "minApprovedCourses"] as const).map((k) => <td key={k} className="pr-2"><input type="number" min={0} max={k === "minApprovedCourses" ? 200 : 60} className="app-input w-20 py-1.5" value={rule[k]} onChange={(e) => setDraft(draft.map((r, j) => j === i ? { ...r, [k]: Number(e.target.value) } : r))} /></td>)}
+      <TableRegion label="Reglas de ascenso"><table className="w-full min-w-[580px] text-sm"><thead className="bg-[var(--card2)]"><tr className="text-left text-xs text-[var(--mut)]"><th scope="col" className="p-2">Cargo</th><th scope="col">Asciende a</th>{Object.values(ruleColumns).map((label) => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody>
+        {draft.map((rule, i) => <tr key={rule.rank} className="border-t border-[var(--bord)]"><th scope="row" className="p-2 text-left font-semibold">{rule.rank}</th>
+          <td className="p-2"><input aria-label={`Asciende a: ${rule.rank}`} className="app-input py-1.5" value={rule.nextRank} maxLength={80} onChange={(e) => setDraft(draft.map((r, j) => j === i ? { ...r, nextRank: e.target.value } : r))} /></td>
+          {(["minYearsInRank", "minYearsService", "minApprovedCourses"] as const).map((k) => <td key={k} className="p-2"><input aria-label={`${ruleColumns[k]}: ${rule.rank}`} type="number" min={0} max={k === "minApprovedCourses" ? 200 : 60} className="app-input w-20 py-1.5 tabular-nums" value={rule[k]} onChange={(e) => setDraft(draft.map((r, j) => j === i ? { ...r, [k]: Number(e.target.value) } : r))} /></td>)}
         </tr>)}
-      </tbody></table></div>
+      </tbody></table></TableRegion>
       <label className="block text-sm">Motivo del cambio<textarea required minLength={10} maxLength={1000} className="app-input mt-1" value={reason} onChange={(e) => setReason(e.target.value)} /></label>
       <div className="flex gap-2"><button className="app-button app-button-red w-auto">Guardar reglas</button><button type="button" className="app-button app-button-outline w-auto" onClick={() => setEditing(false)}>Cancelar</button></div>
     </fieldset></form>}

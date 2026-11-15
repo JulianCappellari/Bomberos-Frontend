@@ -22,12 +22,28 @@ type Props = {
   roster: UserRosterItem[];
 };
 
+type ServerDraft = {
+  id: string;
+  revision: number;
+  startedAt: string;
+  closedAt: string | null;
+  participants: Array<{ userId: string }>;
+};
+
 export default function InspectionForm({ vehicleId, inventory, roster }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [draft,setDraft]=useState<{id:string;revision:number;startedAt:string;participants:Array<{userId:string;attendanceId:string;joinedAt:string}>}|null>(null);
-  const eligible=useQuery({queryKey:["control-draft",draft?.id],enabled:Boolean(draft),queryFn:async()=>(await api.get<{candidates:Array<{userId:string}>}>(`/inspections/drafts/${draft!.id}`)).data,refetchInterval:10000});
+  const [loadedDraft, setDraft] = useState<ServerDraft | null>(null);
+  const eligible = useQuery({
+    queryKey: ["control-draft", loadedDraft?.id],
+    enabled: Boolean(loadedDraft),
+    queryFn: async () => (await api.get<ServerDraft & { candidates: Array<{ userId: string }> }>(`/inspections/drafts/${loadedDraft!.id}`)).data,
+    refetchInterval: 10000,
+  });
+  const latest = eligible.data;
+  const draft = loadedDraft && latest?.id === loadedDraft.id && latest.revision >= loadedDraft.revision ? latest : loadedDraft;
+  const responsibleUserIds = draft?.participants.map((participant) => participant.userId) ?? [];
   const draftKey = `inspection-draft:v1:${user?.id || "anonymous"}:${vehicleId}`;
   const items = useMemo(() => flattenInventoryItems(inventory), [inventory]);
 
@@ -44,18 +60,47 @@ export default function InspectionForm({ vehicleId, inventory, roster }: Props) 
   const [fluids, setFluids] = useState<{ oil: FluidLevel | ""; coolant: FluidLevel | ""; fuel: FuelLevel | "" }>({ oil: "", coolant: "", fuel: "" });
   const [sectionComments, setSectionComments] = useState<Record<string, string>>({});
   const [foundLocations, setFoundLocations] = useState<Record<string, string>>({});
-  const [responsibleUserIds, setResponsibleUserIds] = useState<string[]>([]);
-  const [leaderUserId, setLeaderUserId] = useState("");
+  const [selectedLeader, setLeaderUserId] = useState("");
+  const leaderUserId = responsibleUserIds.includes(selectedLeader) ? selectedLeader : responsibleUserIds.find((id) => id === user?.id) ?? "";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const availableRoster=roster.filter(p=>responsibleUserIds.includes(p.id)||eligible.data?.candidates.some(c=>c.userId===p.id));
-  async function startControl(){setLoading(true);setError("");try{const response=await api.post("/inspections/drafts",{vehicleId});setDraft(response.data);setResponsibleUserIds(response.data.participants.map((p:{userId:string})=>p.userId));setLeaderUserId(user?.id||"");const date=new Date(response.data.startedAt);setInspectionDate(new Intl.DateTimeFormat("en-CA",{timeZone:"America/Argentina/Buenos_Aires",year:"numeric",month:"2-digit",day:"2-digit"}).format(date));setInspectionTime(new Intl.DateTimeFormat("en-GB",{timeZone:"America/Argentina/Buenos_Aires",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(date));}catch(e){setError(getErrorMessage(e,"No se pudo iniciar el control"));}finally{setLoading(false);}}
-  async function changeParticipants(ids:string[]){if(!draft)return;setLoading(true);setError("");try{const result=await api.put(`/inspections/drafts/${draft.id}/participants`,{revision:draft.revision,userIds:ids});setDraft(result.data);setResponsibleUserIds(result.data.participants.map((p:{userId:string})=>p.userId));if(!ids.includes(leaderUserId))setLeaderUserId(user?.id||"");}catch(e){setError(getErrorMessage(e,"No se pudo actualizar el equipo"));}finally{setLoading(false);}}
+  async function startControl() {
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await api.post<ServerDraft>("/inspections/drafts", { vehicleId });
+      setDraft(data);
+      setLeaderUserId(user?.id ?? "");
+      const date = new Date(data.startedAt);
+      setInspectionDate(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit", day: "2-digit" }).format(date));
+      setInspectionTime(new Intl.DateTimeFormat("en-GB", { timeZone: "America/Argentina/Buenos_Aires", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date));
+    } catch (error) {
+      setError(getErrorMessage(error, "No se pudo iniciar el control"));
+    } finally {
+      setLoading(false);
+    }
+  }
+  async function changeParticipants(ids: string[]) {
+    if (!draft || draft.closedAt) return;
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await api.put<ServerDraft>(`/inspections/drafts/${draft.id}/participants`, { revision: draft.revision, userIds: ids });
+      setDraft(data);
+      if (!ids.includes(leaderUserId)) setLeaderUserId(user?.id ?? "");
+    } catch (error) {
+      setError(getErrorMessage(error, "No se pudo actualizar el equipo"));
+      await eligible.refetch();
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const [results, setResults] = useState<Record<string, InspectionResult>>(
     Object.fromEntries(items.map((item) => [item.id, "UNCHECKED"])),
   );
-  async function abandonControl(){if(!draft||!window.confirm("¿Descartar este borrador sin registrar el control? Se perderán las marcas locales."))return;setLoading(true);setError("");try{await api.post(`/inspections/drafts/${draft.id}/abandon`,{revision:draft.revision,reason:"Borrador descartado por su autor antes de finalizar"});setDraft(null);setResponsibleUserIds([]);setLeaderUserId("");setResults(Object.fromEntries(items.map(i=>[i.id,"UNCHECKED"])));setObservations("");setFluids({oil:"",coolant:"",fuel:""});setSectionComments({});setItemObservations({});setFoundLocations({});setObservedQuantities(Object.fromEntries(items.map(i=>[i.id,i.expectedQuantity])));clearInspectionDraft(draftKey);}catch(e){setError(getErrorMessage(e,"No se pudo descartar el borrador"));}finally{setLoading(false);}}
+  async function abandonControl(){if(!draft||draft.closedAt||!window.confirm("¿Descartar este borrador sin registrar el control? Se perderán las marcas locales."))return;setLoading(true);setError("");try{await api.post(`/inspections/drafts/${draft.id}/abandon`,{revision:draft.revision,reason:"Borrador descartado por su autor antes de finalizar"});setDraft(null);setLeaderUserId("");setResults(Object.fromEntries(items.map(i=>[i.id,"UNCHECKED"])));setObservations("");setFluids({oil:"",coolant:"",fuel:""});setSectionComments({});setItemObservations({});setFoundLocations({});setObservedQuantities(Object.fromEntries(items.map(i=>[i.id,i.expectedQuantity])));clearInspectionDraft(draftKey);}catch(e){setError(getErrorMessage(e,"No se pudo descartar el borrador"));await eligible.refetch();}finally{setLoading(false);}}
   const [itemObservations, setItemObservations] = useState<
     Record<string, string>
   >({});
@@ -69,23 +114,19 @@ export default function InspectionForm({ vehicleId, inventory, roster }: Props) 
     `${item.name} ${item.compartmentName || ""}`.toLocaleLowerCase().includes(search.toLocaleLowerCase().trim()),
   );
   const draftSnapshot = useMemo(() => ({
-    inventorySignature: inventorySignature(items), foundLocations,
+    draftId: draft?.id, inventorySignature: inventorySignature(items), foundLocations,
     inspectionDate, inspectionTime, incidentType, observations, sectionComments,
-    responsibleUserIds, leaderUserId, results, itemObservations, observedQuantities, fluids,
-  }), [fluids, items, inspectionDate, inspectionTime, incidentType, observations, sectionComments, responsibleUserIds, leaderUserId, results, itemObservations, observedQuantities, foundLocations]);
+    results, itemObservations, observedQuantities, fluids,
+  }), [draft?.id, fluids, items, inspectionDate, inspectionTime, incidentType, observations, sectionComments, results, itemObservations, observedQuantities, foundLocations]);
   const hasChanges = checkedCount > 0 || observations.length > 0 || Object.values(fluids).some(Boolean) || responsibleUserIds.length > 0 ||
     Object.values(itemObservations).some(Boolean) || Object.values(sectionComments).some(Boolean);
 
   function restoreDraft(draft: InspectionDraft) {
-    const allowedIds = new Set(roster.map((person) => person.id));
-    setInspectionDate(draft.inspectionDate);
-    setInspectionTime(draft.inspectionTime);
     setIncidentType(draft.incidentType);
     setObservations(draft.observations);
     setFluids(draft.fluids ?? { oil: "", coolant: "", fuel: "" });
     setSectionComments(draft.sectionComments || {});
     setFoundLocations(draft.foundLocations || {});
-    setLeaderUserId(responsibleUserIds.includes(draft.leaderUserId) ? draft.leaderUserId : user?.id||"");
     setResults(draft.results);
     setItemObservations(draft.itemObservations);
     setObservedQuantities(draft.observedQuantities);
@@ -133,7 +174,7 @@ export default function InspectionForm({ vehicleId, inventory, roster }: Props) 
     }
 
     try {
-      if(!draft)throw new Error("Inicie el control antes de finalizarlo");
+      if (!draft || draft.closedAt) throw new Error("Necesitás un borrador abierto para finalizar el control");
       await createInspection({
         draftId:draft.id,
         vehicleId,
@@ -171,6 +212,7 @@ export default function InspectionForm({ vehicleId, inventory, roster }: Props) 
       router.push(`/equipment/${inventory.asset.id}/history`);
     } catch (err: unknown) {
       setError(getErrorMessage(err, "No se pudo guardar el control"));
+      if (draft) await eligible.refetch();
     } finally {
       setLoading(false);
     }
@@ -179,12 +221,13 @@ export default function InspectionForm({ vehicleId, inventory, roster }: Props) 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {!draft&&<button type="button" className="app-button w-auto" disabled={loading} onClick={startControl}>Iniciar o recuperar control</button>}
-      {draft&&<button type="button" className="app-button app-button-outline w-auto" disabled={loading} onClick={abandonControl}>Descartar borrador</button>}
+      {draft&&!draft.closedAt&&<button type="button" className="app-button app-button-outline w-auto" disabled={loading} onClick={abandonControl}>Descartar borrador</button>}
       {!draft&&error&&<p role="alert" className="text-red-300">{error}</p>}
-      {draft&&<p className="text-sm text-[var(--mut)]">Control iniciado. Solo se agregan integrantes con QR abierto; la lista se actualiza cada 10 segundos. Finalizar bloquea el equipo.</p>}
+      {draft?.closedAt && <p role="status" className="text-sm text-[var(--mut)]">El borrador se cerró en otra pestaña. Volvé al historial para revisar el control.</p>}
+      {draft&&!draft.closedAt&&<p className="text-sm text-[var(--mut)]">Control iniciado. Solo se agregan integrantes con QR abierto; la lista se actualiza cada 10 segundos. Finalizar bloquea el equipo.</p>}
       {eligible.isError&&<p role="alert" className="text-red-300">No se pudo actualizar el personal presente.</p>}
-      <fieldset disabled={!draft||loading} className="space-y-5">
-      {user && <InspectionDraftPanel key={draftKey} storageKey={draftKey} snapshot={draftSnapshot} hasChanges={hasChanges} onRestore={restoreDraft} />}
+      <fieldset disabled={!draft||Boolean(draft.closedAt)||loading} className="space-y-5">
+      {user && draft && !draft.closedAt && <InspectionDraftPanel key={draft.id} storageKey={draftKey} snapshot={draftSnapshot} hasChanges={hasChanges} onRestore={restoreDraft} />}
       <section className="rounded-3xl border border-white/10 bg-[#16171b] p-5">
         <h2 className="mb-5 text-lg font-black uppercase tracking-wide text-slate-300">
           Datos del control

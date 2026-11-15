@@ -14,6 +14,7 @@ const refresh = createRefreshCoordinator({
   readAccess: getAccessToken, readRefresh: getRefreshToken,
   write: (tokens) => setTokens(tokens.accessToken, tokens.refreshToken),
   request: async (token) => (await refreshApi.post("/auth/refresh", { refreshToken: token })).data,
+  isSessionRejected: (error) => axios.isAxiosError(error) && error.response?.status === 401,
   expire: () => {
     clearTokens();
     if (typeof window !== "undefined") window.location.replace(new URL("/login", window.location.origin).href);

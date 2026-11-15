@@ -63,7 +63,7 @@ export default function NotificationsPage() {
     <ul className="stagger mt-4 space-y-2">{items.map((row) => <li key={row.id}>
       <button type="button" onClick={() => void open(row)} className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors hover:border-white/25 ${row.readAt ? "border-[var(--bord)] bg-transparent" : "border-red-500/30 bg-red-500/[0.06]"}`}>
         <span aria-hidden className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${row.readAt ? "bg-transparent" : "bg-red-500"}`} />
-        <span className="min-w-0 flex-1">
+        <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
           <span className={`block ${row.readAt ? "font-medium text-white/80" : "font-bold text-white"}`}>{row.title}</span>
           {row.body && <span className="mt-1 block whitespace-pre-wrap break-words text-sm text-white/70">{row.body}</span>}
           <span className="mt-1 block text-xs text-[var(--mut)]">{dateTime(row.createdAt)}{row.readAt ? "" : " · Sin leer"}</span>

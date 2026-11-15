@@ -3,6 +3,7 @@ import { z } from "zod";
 export const inspectionDraftSchema = z.object({
   version: z.literal(1),
   savedAt: z.number().finite(),
+  draftId: z.string().min(1).optional(),
   inventorySignature: z.string(),
   inspectionDate: z.string().date(),
   inspectionTime: z.string(),
@@ -10,8 +11,8 @@ export const inspectionDraftSchema = z.object({
   observations: z.string().max(10000),
   sectionComments: z.record(z.string(), z.string().max(2000)).default({}),
   foundLocations: z.record(z.string(), z.string().max(200)).default({}),
-  responsibleUserIds: z.array(z.string()),
-  leaderUserId: z.string(),
+  responsibleUserIds: z.array(z.string()).optional(),
+  leaderUserId: z.string().optional(),
   results: z.record(z.string(), z.enum(["OK", "MISSING", "DAMAGED", "UNCHECKED"])),
   itemObservations: z.record(z.string(), z.string().max(4000)),
   observedQuantities: z.record(z.string(), z.number().int().min(0)),
@@ -22,6 +23,10 @@ export const inspectionDraftSchema = z.object({
   }).default({ oil: "", coolant: "", fuel: "" }),
 });
 export type InspectionDraft = z.infer<typeof inspectionDraftSchema>;
+
+export function isInspectionDraftCompatible(saved: InspectionDraft, current: { draftId?: string; inventorySignature: string }) {
+  return Boolean(current.draftId && saved.draftId === current.draftId && saved.inventorySignature === current.inventorySignature);
+}
 
 export function readInspectionDraft(raw: string | null): InspectionDraft | null {
   if (!raw) return null;

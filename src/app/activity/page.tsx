@@ -17,8 +17,8 @@ export default function ActivityPage() {
   const { user } = useAuth();
   const [entityType, setEntity] = useState(""), [action, setAction] = useState(""), [query, setQuery] = useState(""), [from, setFrom] = useState(""), [to, setTo] = useState("");
   const logs = useAuditLogs({ limit: 100, entityType: entityType || undefined, action: action || undefined, q: query || undefined, from: from ? `${from}T00:00:00-03:00` : undefined, to: to ? `${to}T23:59:59.999-03:00` : undefined });
-  if (user?.role !== "ADMIN") return <ProtectedLayout><main className="screen-body"><ErrorNotice>Solo administracion puede consultar la auditoria.</ErrorNotice></main></ProtectedLayout>;
-  return <ProtectedLayout><main className="screen-body"><h1 className="text-2xl font-bold">Auditoria del sistema</h1><p className="my-3 text-sm text-[var(--mut)]">Quien realizo cada accion, cuando y que datos cambiaron.</p>
+  if (user?.role !== "ADMIN") return <ProtectedLayout><div className="screen-body"><ErrorNotice>Solo administracion puede consultar la auditoria.</ErrorNotice></div></ProtectedLayout>;
+  return <ProtectedLayout><div className="screen-body"><h1 className="text-2xl font-bold">Auditoria del sistema</h1><p className="my-3 text-sm text-[var(--mut)]">Quien realizo cada accion, cuando y que datos cambiaron.</p>
     <form className="my-5 grid gap-3 border-y border-[var(--bord)] py-4 sm:grid-cols-2 lg:grid-cols-4" onSubmit={e => e.preventDefault()}>
       <Field label="Buscar persona o referencia"><input className="app-input" type="search" value={query} onChange={e => setQuery(e.target.value)} /></Field>
       <Field label="Tipo de registro"><select className="app-input" value={entityType} onChange={e => setEntity(e.target.value)}><option value="">Todos los registros</option>{Object.entries(auditEntities).sort((a, b) => a[1].localeCompare(b[1], "es")).map(([code, text]) => <option key={code} value={code}>{text}</option>)}</select></Field>
@@ -27,5 +27,5 @@ export default function ActivityPage() {
     </form>
     {logs.isLoading && <p>Consultando auditoria...</p>}{logs.isError && <ErrorNotice>No se pudo cargar la auditoria. <button className="underline" onClick={() => logs.refetch()}>Reintentar</button></ErrorNotice>}
     {logs.data && <><p className="mb-3 text-xs text-[var(--mut)]">{logs.data.length} registros mostrados · Hasta 100 coincidencias mas recientes</p>{!logs.data.length && <p className="py-6 text-sm text-[var(--mut)]">No hay acciones que coincidan con los filtros.</p>}{logs.data.map(log => <LogDetail key={log.id} log={log} />)}</>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }

@@ -56,7 +56,7 @@ export default function SecurityCenterPage() {
   const events = (d?.events ?? []).filter((e) => filter === "ALL" || (labels[e.action]?.[1] ?? "blue") === filter);
   const alarms = d ? ["AUTH_ACCOUNT_LOCKED", "AUTH_REFRESH_REPLAY_BLOCKED", "ATTENDANCE_SHARED_DEVICE", "SECURITY_ANOMALY_MASS_CHANGE", "SECURITY_ANOMALY_BRUTE_FORCE", "AUTH_LOGIN_WHILE_LOCKED"].reduce((s, a) => s + (d.counts[a] ?? 0), 0) : 0;
 
-  return <ProtectedLayout><main className="screen-body space-y-5">
+  return <ProtectedLayout><div className="screen-body space-y-5">
     <header>
       <h1 className="flex items-center gap-2 text-2xl font-bold"><ShieldCheck className="h-6 w-6 text-red-400" aria-hidden /> Centro de seguridad</h1>
       <p className="mt-1 text-sm text-[var(--mut)]">Intentos de ingreso, fraudes posibles y medidas activas. Se actualiza cada 30 segundos; cada evento queda en la auditoría inalterable.</p>
@@ -95,5 +95,5 @@ export default function SecurityCenterPage() {
       <Field label="Motivo"><textarea autoFocus className="app-input min-h-20" required minLength={10} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
       <button className="app-button app-button-red">Cerrar sesiones</button>
     </fieldset></form></OperationDialog>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }

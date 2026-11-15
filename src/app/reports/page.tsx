@@ -60,7 +60,7 @@ export default function ReportsPage() {
     const link = document.createElement("a"); link.href = url; link.download = `reporte-${month}.csv`; link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 500);
   }
-  return <ProtectedLayout><main className="screen-body">
+  return <ProtectedLayout><div className="screen-body">
     <header className="mb-4">
       <h1 className="text-2xl font-bold text-white">Reportes</h1>
       <p className="mt-1 text-sm text-[var(--mut)]">{section === "personal" ? "Tus horas, registros y actividad." : command ? "Actividad operativa del cuartel, horas del personal y consumo de la flota." : "Actividad operativa del cuartel."}</p>
@@ -144,5 +144,5 @@ export default function ReportsPage() {
       <PersonalStatistics userId={user.id} />
       <Link href="/courses" className="app-button app-button-outline my-4 w-fit">Ver mis cursos y capacitaciones</Link>
     </>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }

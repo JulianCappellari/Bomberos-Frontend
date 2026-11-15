@@ -37,7 +37,7 @@ export default function Courses() {
   const rows = list.data ?? [];
   const showPager = page > 1 || rows.length === 30;
 
-  return <ProtectedLayout><main className="screen-body">
+  return <ProtectedLayout><div className="screen-body">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold"><GraduationCap className="h-6 w-6 text-red-400" aria-hidden /> Cursos y capacitación</h1>
@@ -88,5 +88,5 @@ export default function Courses() {
       </li>)}</ul>
       {showPager && <nav aria-label="Páginas" className="mt-4 flex items-center gap-2"><button className="app-button app-button-outline w-auto" disabled={page === 1} onClick={() => setPage(page - 1)}>Anterior</button><span className="text-sm text-[var(--mut)]">Página {page}</span><button className="app-button app-button-outline w-auto" disabled={rows.length !== 30} onClick={() => setPage(page + 1)}>Siguiente</button></nav>}
     </section>
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }

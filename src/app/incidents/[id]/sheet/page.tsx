@@ -17,6 +17,7 @@ import {IncidentRedo} from "@/components/operations/incident-redo";
 import {NotebookEntry} from "@/types/work";
 import {UserRosterItem} from "@/types/user";
 import {toast} from "@/lib/toast";
+import {TableRegion} from "@/components/ui/table-region";
 import {ConstanciaPrint,CONSTANCIA_PRINT_CSS,printConstancia,PrintableIncident,PrintableSheet} from "@/components/operations/constancia-print";
 
 type Material={name:string;quantity:number;notes:string};
@@ -130,7 +131,7 @@ function Sheet({id,data,saved}:{id:string;data:Response;saved:()=>Promise<unknow
 export default function IncidentSheetPage(){
  const {id}=useParams<{id:string}>(),{user}=useAuth();
  const query=useQuery({queryKey:["incident-sheet",id,user?.id],enabled:Boolean(user),queryFn:async()=>(await api.get<Response>(`/incidents/${id}/sheet`)).data});
- return <ProtectedLayout><main className="screen-body"><Link href="/incidents" className="text-sm text-red-300 underline-offset-4 hover:underline">← Intervenciones</Link>{query.isLoading&&<p role="status" className="mt-4">Cargando planilla…</p>}{query.isError&&<ErrorNotice>{getErrorMessage(query.error,"No se pudo consultar la planilla")}</ErrorNotice>}{query.data&&<Sheet key={query.data.sheet?.revision||0} id={id} data={query.data} saved={query.refetch}/>}</main></ProtectedLayout>;
+ return <ProtectedLayout><div className="screen-body"><Link href="/incidents" className="text-sm text-red-300 underline-offset-4 hover:underline">← Intervenciones</Link>{query.isLoading&&<p role="status" className="mt-4">Cargando planilla…</p>}{query.isError&&<ErrorNotice>{getErrorMessage(query.error,"No se pudo consultar la planilla")}</ErrorNotice>}{query.data&&<Sheet key={query.data.sheet?.revision||0} id={id} data={query.data} saved={query.refetch}/>}</div></ProtectedLayout>;
 }
 
 // Vista con el mismo orden que la constancia en papel, lista para imprimir y archivar en el libro.
@@ -155,10 +156,10 @@ function Constancia({incident,sheet,actingCrew,base}:{incident:Response["context
    {row("Clasificación",classifications.filter(([v])=>marked.has(v)).map(([,l])=>l).join(" · ")+(sheet?.classificationDetail?` — ${sheet.classificationDetail}`:""))}
   </dl>
   <h3 className="mt-4 font-semibold">Unidad asignada y horarios</h3>
-  <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[520px] border-collapse text-left">
-   <thead><tr className="border-b border-[var(--bord)] text-xs text-[var(--mut)]">{["Unidad N°","Salida","Llegada al lugar","Entrada","Chofer","Encargado"].map(h=><th key={h} className="py-1.5 pr-2 font-semibold">{h}</th>)}</tr></thead>
+  <TableRegion label="Unidad asignada y horarios" className="mt-2"><table className="w-full min-w-[520px] border-collapse text-left print:min-w-0">
+   <thead><tr className="border-b border-[var(--bord)] bg-[var(--card2)] text-xs text-[var(--mut)]">{["Unidad N°","Salida","Llegada al lugar","Entrada","Chofer","Encargado"].map(h=><th key={h} scope="col" className="p-2 font-semibold">{h}</th>)}</tr></thead>
    <tbody>{incident.movements.length?incident.movements.map(m=><tr key={m.id} className="border-b border-[var(--bord)]"><td className="py-1.5 pr-2 font-semibold">{m.asset.vehicle?.unitNumber||m.asset.name}</td><td className="pr-2 font-mono">{hour(m.departedAt)}</td><td className="pr-2 font-mono">{hour(m.arrivedAt)}</td><td className="pr-2 font-mono">{hour(m.returnedAt)}</td><td className="pr-2">{nameOf(m.driver)}</td><td>{nameOf(m.leader)}</td></tr>):<tr><td colSpan={6} className="py-2 text-[var(--mut)]">Sin salidas registradas.</td></tr>}</tbody>
-  </table></div>
+  </table></TableRegion>
   <button type="button" className="no-print app-button app-button-outline mt-4 w-auto" onClick={()=>printConstancia(requestLabel(incident))}>Descargar PDF / imprimir planilla</button>
   <p className="mt-1 text-xs text-[var(--mut)]">Se abre la impresión: elegí «Guardar como PDF» para descargarla.</p>
  </section>;

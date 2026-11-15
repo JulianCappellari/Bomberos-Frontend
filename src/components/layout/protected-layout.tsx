@@ -25,14 +25,17 @@ import { canOpenPage } from "@/lib/permissions";
 import { isCivilRank } from "@/lib/permissions";
 import { bottomNavHrefs, homeHref, isTechnicalAdmin, navGroups, navItems, visibleNavItems, type NavItem } from "@/lib/navigation";
 
-function matchesQuery(item: NavItem, query: string) {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  return (
-    item.label.toLowerCase().includes(q) ||
-    item.shortLabel.toLowerCase().includes(q) ||
-    item.description.toLowerCase().includes(q)
-  );
+function searchText(value: string) {
+  return value.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("es-AR");
+}
+
+function searchModules(items: NavItem[], query: string) {
+  const words = searchText(query).trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return items;
+  return items.filter(({ label, shortLabel, description }) => {
+    const text = searchText(`${label} ${shortLabel} ${description}`);
+    return words.every((word) => text.includes(word));
+  });
 }
 
 function SidebarLink({ item, pathname }: { item: NavItem; pathname: string }) {
@@ -42,6 +45,8 @@ function SidebarLink({ item, pathname }: { item: NavItem; pathname: string }) {
   return (
     <Link
       href={item.href}
+      aria-current={active ? "page" : undefined}
+      title={item.label}
       className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
         active
           ? "bg-red-500/15 text-white"
@@ -50,12 +55,14 @@ function SidebarLink({ item, pathname }: { item: NavItem; pathname: string }) {
     >
       {active && (
         <motion.span
+          aria-hidden="true"
           layoutId="sidebar-active-indicator"
           className="absolute top-1.5 bottom-1.5 left-0 w-1 rounded-r-full bg-red-500"
           transition={{ type: "spring", stiffness: 380, damping: 32 }}
         />
       )}
       <Icon
+        aria-hidden="true"
         className={`h-4 w-4 shrink-0 ${
           active ? "text-red-400" : "text-white/40 group-hover:text-white/80"
         }`}
@@ -107,6 +114,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        if (document.querySelector("dialog:modal")) return;
         event.preventDefault();
         setMoreOpen(true);
       }
@@ -123,15 +131,9 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
     return () => cancelAnimationFrame(frame);
   }, [moreOpen]);
 
-  const filteredNavItems = useMemo(
-    () => visibleNavItems(user).filter((item) => matchesQuery(item, searchQuery)),
-    [searchQuery, user],
-  );
-
-  const sidebarItems = useMemo(
-    () => visibleNavItems(user).filter((item) => matchesQuery(item, sidebarQuery)),
-    [sidebarQuery, user],
-  );
+  const modules = useMemo(() => visibleNavItems(user), [user]);
+  const filteredNavItems = useMemo(() => searchModules(modules, searchQuery), [modules, searchQuery]);
+  const sidebarItems = useMemo(() => searchModules(modules, sidebarQuery), [modules, sidebarQuery]);
 
   function closeModules() {
     setMoreOpen(false);
@@ -140,7 +142,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg)] text-white">
+      <div role="status" className="flex min-h-dvh flex-col items-center justify-center bg-[var(--bg)] text-white">
         <div className="relative mb-4 flex h-16 w-16 items-center justify-center">
           <div className="absolute inset-0 animate-ping rounded-full bg-red-600/20" />
           <div className="relative"><StationCrest height={48} /></div>
@@ -176,7 +178,8 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <MotionConfig reducedMotion="user">
-    <div className="app-shell flex min-h-screen text-white">
+    <div className="app-shell flex min-h-dvh text-white">
+      <a href="#main-content" className="skip-link rounded-lg border border-[var(--control-bord)] bg-[var(--card)] px-3 py-2 font-semibold">Saltar al contenido</a>
       <ProgressBar />
       <Toaster />
       <aside
@@ -219,7 +222,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
                 <div className="mb-1.5 px-3 font-[family-name:var(--font-barlow-condensed)] text-[11px] font-bold tracking-wider text-white/45 uppercase">
                   {category.label}
                 </div>
-                <nav className="space-y-0.5">
+                <nav aria-label={category.label} className="space-y-0.5">
                   {items.map((item) => (
                     <SidebarLink key={item.href} item={item} pathname={pathname} />
                   ))}
@@ -263,7 +266,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col lg:pl-[var(--sidebar)]">
         <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0c0e13]/80 px-3 backdrop-blur-xl sm:px-5">
           <div className="flex min-w-0 items-center gap-2.5">
-            {!isDashboard && <BackButton />}
+            {!isDashboard && <BackButton fallbackHref={home} />}
             <div className="flex min-w-0 items-center gap-2.5 lg:hidden">
               <StationCrest height={32} />
               <div className="truncate font-[family-name:var(--font-bebas)] text-xl tracking-wider text-white">
@@ -287,6 +290,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setMoreOpen(true)}
+              aria-haspopup="dialog"
               className="hidden h-9 items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white md:flex"
             >
               <Search className="h-4 w-4" />
@@ -309,7 +313,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
             {!isDashboard && (
               <span className="lg:hidden">
-                <HomeButton />
+                <HomeButton href={home} />
               </span>
             )}
 
@@ -318,6 +322,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setLogoutModalOpen(true)}
+              title="Cerrar sesión"
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/70 transition-colors hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 lg:hidden"
               aria-label="Cerrar sesión"
             >
@@ -327,10 +332,11 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
         </header>
         <GuardMode />
 
-        <main className="mx-auto w-full max-w-[var(--content)] flex-1 px-3 py-5 pb-[calc(10.5rem+env(safe-area-inset-bottom))] sm:px-5 sm:py-6 lg:px-8 lg:pb-28">
+        <main id="main-content" tabIndex={-1} className="mx-auto w-full min-w-0 max-w-[var(--content)] flex-1 px-3 py-5 pb-[calc(10.5rem+env(safe-area-inset-bottom))] sm:px-5 sm:py-6 lg:px-8 lg:pb-28">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
+              className="min-w-0"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
@@ -371,12 +377,13 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
               >
                 {active && (
                   <motion.span
+                    aria-hidden="true"
                     layoutId="mobile-nav-pill"
                     className="absolute inset-x-1 inset-y-1 rounded-xl bg-red-500/12"
                     transition={{ type: "spring", stiffness: 380, damping: 32 }}
                   />
                 )}
-                <Icon className="relative h-5 w-5" />
+                <Icon className="relative h-5 w-5" aria-hidden="true" />
                 <span className="relative max-w-full truncate px-1 font-[family-name:var(--font-barlow-condensed)] text-[10px] font-bold tracking-wider uppercase">
                   {item.shortLabel || item.label}
                 </span>
@@ -388,18 +395,20 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={() => setMoreOpen(true)}
             aria-haspopup="dialog"
+            aria-expanded={moreOpen}
             className={`relative flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-1 ${
               inMore ? "text-red-400" : "text-white/60"
             }`}
           >
             {inMore && (
               <motion.span
+                aria-hidden="true"
                 layoutId="mobile-nav-pill"
                 className="absolute inset-x-1 inset-y-1 rounded-xl bg-red-500/12"
                 transition={{ type: "spring", stiffness: 380, damping: 32 }}
               />
             )}
-            <Menu className="relative h-5 w-5" />
+            <Menu className="relative h-5 w-5" aria-hidden="true" />
             <span className="relative font-[family-name:var(--font-barlow-condensed)] text-[10px] font-bold tracking-wider uppercase">
               Menú
             </span>
@@ -416,11 +425,11 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
       >
         <div className="space-y-5">
           <div className="relative">
-            <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-white/40" />
+            <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-white/40" />
             <label htmlFor="module-search" className="sr-only">Buscar sección</label>
             <input
               id="module-search"
-              type="text"
+              type="search"
               placeholder="Buscar, por ejemplo: combustible, guardia, licencia"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
@@ -429,7 +438,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           {filteredNavItems.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-white/45">
+            <p role="status" className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-white/45">
               No hay secciones con ese nombre.
             </p>
           ) : (
@@ -449,6 +458,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
                         <Link
                           key={item.href}
                           href={item.href}
+                          aria-current={active ? "page" : undefined}
                           onClick={closeModules}
                           className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
                             active
@@ -463,13 +473,13 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
                                 : "border border-red-500/20 bg-red-500/10 text-red-300"
                             }`}
                           >
-                            <Icon className="h-4 w-4" />
+                            <Icon className="h-4 w-4" aria-hidden="true" />
                           </div>
                           <span className="min-w-0 flex-1">
                             <span className="block text-sm leading-snug font-semibold">{item.label}</span>
                             <span className="block text-xs leading-snug text-white/55">{item.description}</span>
                           </span>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-white/30" />
+                          <ChevronRight className="h-4 w-4 shrink-0 text-white/30" aria-hidden="true" />
                         </Link>
                       );
                     })}

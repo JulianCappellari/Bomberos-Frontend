@@ -26,6 +26,7 @@ export function MaterialSearch() {
     </label>
     {term.length >= 2 && <div className="mt-3 space-y-3" aria-live="polite">
       {query.isLoading && <p className="text-sm text-[var(--mut)]">Buscando…</p>}
+      {query.isError && <p className="text-sm text-red-300">No se pudo buscar el material. <button type="button" className="min-h-11 font-semibold underline" onClick={() => void query.refetch()}>Reintentar</button></p>}
       {empty && <p className="text-sm text-[var(--mut)]">No hay ningún material con «{term}» en los móviles ni en el depósito.</p>}
       {[...byVehicle.entries()].map(([unit, rows]) => <div key={unit}>
         <Link href={`/equipment/${rows[0]!.vehicle.assetId}`} className="flex min-w-0 items-start gap-2"><Truck className="mt-0.5 h-4 w-4 shrink-0 text-red-400" aria-hidden /><span className="min-w-0"><span className="block whitespace-nowrap font-bold">Móvil {unit}</span><span className="block truncate text-xs text-[var(--mut)]">{rows[0]!.vehicle.name}</span></span></Link>

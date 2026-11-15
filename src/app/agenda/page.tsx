@@ -49,7 +49,7 @@ export default function AgendaPage() {
   }
 
   const rows = query.data ?? [];
-  return <ProtectedLayout><main className="screen-body">
+  return <ProtectedLayout><div className="screen-body">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold"><CalendarDays className="h-6 w-6 text-red-400" aria-hidden /> Agenda del cuartel</h1>
@@ -110,5 +110,5 @@ export default function AgendaPage() {
       <Field label="Motivo"><textarea autoFocus className="app-input min-h-20" required minLength={5} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
       <button className="app-button app-button-red">Cancelar actividad</button>
     </fieldset></form></OperationDialog>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }

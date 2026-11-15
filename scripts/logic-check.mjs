@@ -173,12 +173,13 @@ function isRouteGroup(segment) {
 }
 
 function isPublicRoute(route) {
-  return route === "/" || route === "/login";
+  return route === "/" || route === "/login" || route === "/novedades" || route.startsWith("/novedades/");
 }
 
 function hasInternalNavigation(content) {
   return [
     "<ProtectedLayout",
+    "<HomeScreen",
     "EquipmentPageHeader",
     "BackButton",
     "HomeButton",

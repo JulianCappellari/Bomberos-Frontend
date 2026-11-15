@@ -64,10 +64,17 @@ export function FireRiskPanel() {
       </dl>
 
       <p className="mt-3 flex items-center gap-2 text-sm"><Compass className="h-4 w-4 shrink-0 text-amber-300" aria-hidden /><span>Viento del <strong>{data.current.windFrom}</strong> → un fuego avanzaría hacia el <strong>{data.current.spreadTowards}</strong></span></p>
-      <p className="mt-2 text-[11px] text-[var(--mut)]">Medido a las {time}{data.stale ? " · sin conexión con el proveedor: último dato disponible" : ""} · FWI {String(data.fwi).replace(".", ",")}</p>
+      <p className="mt-2 text-[11px] text-[var(--mut)]">Estimación orientativa · Datos de las {time}{data.stale ? " · último dato disponible" : ""} · FWI {String(data.fwi).replace(".", ",")}</p>
     </>}
 
     {open && <div id="official-fwi" className="mt-4 min-w-0 border-t border-[var(--bord)] pt-4">
+      <iframe
+        title="Mapa oficial de peligro de incendios de IDECOR"
+        src="https://mapascordoba.gob.ar/viewer/#/embed/mapa/442"
+        className="mb-3 h-80 w-full rounded-lg border border-[var(--bord)]"
+        referrerPolicy="no-referrer"
+        loading="lazy"
+      />
       {data && <dl className="mb-3 grid grid-cols-3 gap-2 text-xs sm:grid-cols-6">
         {[["FWI", data.fwi], ["FFMC", data.codes.ffmc], ["DMC", data.codes.dmc], ["DC", data.codes.dc], ["ISI", data.codes.isi], ["BUI", data.codes.bui]].map(([k, v]) => <div key={String(k)} className="rounded-lg bg-[var(--card2)] p-2"><dt className="text-[var(--mut)]">{k}</dt><dd className="font-bold">{String(v).replace(".", ",")}</dd></div>)}
       </dl>}

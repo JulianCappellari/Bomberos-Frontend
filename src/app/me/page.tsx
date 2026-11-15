@@ -29,7 +29,7 @@ export default function MyAccountPage() {
     try { await api.put("/members/profile", { phone: text("phone"), altPhone: text("altPhone"), address: text("address"), bloodType: text("bloodType"), email: text("email"), revision: profile.data!.profile!.updatedAt, emergencyContact: { fullName: text("contactName"), phone: text("contactPhone"), relationship: text("relationship") } }); await profile.refetch(); setNotice("Perfil guardado"); }
     catch (err) { setError(getErrorMessage(err, "No se pudo guardar el perfil")); } finally { setBusy(false); }
   }
-  if (systemAdmin) return <ProtectedLayout><main className="screen-body"><h1 className="mb-6 text-2xl font-bold">Configuración de la cuenta administradora</h1><SecuritySettings /></main></ProtectedLayout>;
+  if (systemAdmin) return <ProtectedLayout><div className="screen-body"><h1 className="mb-6 text-2xl font-bold">Configuración de la cuenta administradora</h1><SecuritySettings /></div></ProtectedLayout>;
   const p = profile.data?.profile, c = profile.data?.emergencyContact;
   const tabs = [["profile", "Mis datos"], ["availability", "Disponibilidad"], ["clothing", "Prendas"], ["licenses", "Licencias"], ["record", "Legajo"], ["security", "Seguridad"], ["preferences", "Preferencias"]] as const;
   const input = (name: string, label: string, value: string | null | undefined, max: number, extra: Record<string, unknown> = {}) => <Field label={label}><input className="app-input" name={name} defaultValue={value || ""} maxLength={max} {...extra} /></Field>;

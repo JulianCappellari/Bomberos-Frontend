@@ -11,7 +11,11 @@ import { AppearanceProvider, appearanceBootScript } from "@/components/operation
 const plexSans = IBM_Plex_Sans({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600", "700"], variable: "--font-plex", display: "swap" });
 const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["500", "600"], variable: "--font-plex-mono", display: "swap" });
 
+const publicBaseUrl = process.env.NEXT_PUBLIC_APP_URL
+  || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(publicBaseUrl),
   title: "Bomberos Voluntarios Sampacho",
   description:
     "Sistema operativo para Bomberos Voluntarios del Cuartel Sampacho, Córdoba.",

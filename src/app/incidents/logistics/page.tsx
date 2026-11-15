@@ -75,7 +75,7 @@ export default function DriverAuthorizationsPage() {
 
   return (
     <ProtectedLayout>
-      <main className="screen-body">
+      <div className="screen-body">
         <Link href="/incidents" className="text-sm underline">Volver a intervenciones</Link>
         <h1 className="my-3 text-2xl font-bold">Habilitaciones de conductores</h1>
         <p className="mb-4 text-sm text-[var(--mut)]">Para manejar un móvil hacen falta las licencias vigentes que exige y la autorización de jefatura para ese móvil. Cuando alguien carga una licencia que cubre un móvil, el pedido aparece acá.</p>
@@ -135,7 +135,7 @@ export default function DriverAuthorizationsPage() {
             </fieldset></form>
           </details>}
         </>}
-      </main>
+      </div>
     </ProtectedLayout>
   );
 }

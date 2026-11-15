@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { inventorySignature, readInspectionDraft } from "../src/lib/inspection-draft.ts";
+import { inventorySignature, isInspectionDraftCompatible, readInspectionDraft } from "../src/lib/inspection-draft.ts";
 
 const draft = () => ({
   version: 1, savedAt: Date.now(), inventorySignature: "inventory",
@@ -33,4 +33,11 @@ test("Cambiar la cantidad esperada invalida el inventario del borrador", () => {
 test("Reordenar los materiales conserva la compatibilidad", () => {
   const items = [{ id: "hose", expectedQuantity: 2 }, { id: "pump", expectedQuantity: 1 }];
   assert.equal(inventorySignature(items), inventorySignature([...items].reverse()));
+});
+test("El contenido se recupera únicamente para el mismo borrador e inventario", () => {
+  const current = { draftId: "borrador-actual", inventorySignature: "inventory" };
+  assert(isInspectionDraftCompatible({ ...draft(), draftId: current.draftId }, current));
+  assert(!isInspectionDraftCompatible(draft(), current));
+  assert(!isInspectionDraftCompatible({ ...draft(), draftId: "borrador-anterior" }, current));
+  assert(!isInspectionDraftCompatible({ ...draft(), draftId: current.draftId, inventorySignature: "distinto" }, current));
 });

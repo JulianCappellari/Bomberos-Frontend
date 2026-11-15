@@ -34,7 +34,7 @@ export function BackButton({
       aria-label={label}
       title={label}
     >
-      <ArrowLeft className="h-4 w-4" />
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
     </button>
   );
 }
@@ -42,13 +42,15 @@ export function BackButton({
 export function HomeButton({
   className = "flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/70 hover:bg-white/[0.08] hover:text-white transition-all active:scale-95",
   label = "Ir al inicio",
+  href = "/dashboard",
 }: {
   className?: string;
   label?: string;
+  href?: string;
 }) {
   return (
-    <Link className={className} href="/dashboard" aria-label={label} title={label}>
-      <Home className="h-4 w-4" />
+    <Link className={className} href={href} aria-label={label} title={label}>
+      <Home className="h-4 w-4" aria-hidden="true" />
     </Link>
   );
 }

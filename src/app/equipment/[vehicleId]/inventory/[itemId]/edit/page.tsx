@@ -47,7 +47,7 @@ export default function EquipmentInventoryItemPage() {
   const params = useParams<{ vehicleId: string; itemId: string }>();
   const assetId = params.vehicleId;
   const itemId = params.itemId;
-  const canManage = canManageInventory(user?.role);
+  const canManage = canManageInventory(user?.role) || Boolean(user?.specialPermissions?.includes("FLEET"));
   const { data: asset, isLoading: assetLoading, error: assetError } =
     useAsset(assetId);
   const vehicleId = asset?.vehicle?.id ?? "";
@@ -71,7 +71,7 @@ export default function EquipmentInventoryItemPage() {
       <div className="max-w-4xl">
         {!canManage ? (
           <PanelMessage tone="error">
-            Solo ADMIN y OPERATOR pueden administrar inventario.
+            La edición requiere autorización de jefatura o permiso de flota.
           </PanelMessage>
         ) : assetLoading || inventoryLoading ? (
           <PanelMessage>Cargando item...</PanelMessage>

@@ -1,14 +1,14 @@
 "use client";
 import { dehydrate, hydrate, QueryClient } from "@tanstack/react-query";
 
-// 41: modo sin conexion (lectura). Se guarda en el dispositivo la ultima respuesta de cada pantalla para
-// poder consultarla sin señal. Solo datos de la persona que inicio sesion; se borra al cerrar sesion.
-const KEY = "bomberos:query-cache:v1";
+// La lectura sin conexión conserva únicamente las consultas públicas permitidas.
+// El caché pertenece a la sesión local y se borra al cerrarla.
+const LEGACY_KEY = "bomberos:query-cache:v1";
+const KEY = "bomberos:query-cache:v2";
 const USER_KEY = "bomberos_user";
 const MAX_BYTES = 1_500_000;
 const MAX_AGE = 3 * 86_400_000;
-// Informacion de terceros o sensible: nunca se guarda en el dispositivo.
-const PRIVATE_PREFIXES = ["command-", "finance", "officer-expenses", "document-read-report", "station-seniority", "audit", "push-settings", "attendance-corrections"];
+const PUBLIC_QUERY_KEYS = new Set(["public-post", "public-posts", "fire-risk"]);
 
 function currentUserId() {
   try { return (JSON.parse(localStorage.getItem(USER_KEY) || "null") as { id?: string } | null)?.id ?? null; } catch { return null; }
@@ -16,6 +16,7 @@ function currentUserId() {
 
 export function restoreOfflineCache(client: QueryClient) {
   try {
+    localStorage.removeItem(LEGACY_KEY);
     const raw = localStorage.getItem(KEY); if (!raw) return;
     const saved = JSON.parse(raw) as { userId: string; savedAt: number; state: unknown };
     if (!saved.userId || saved.userId !== currentUserId() || Date.now() - saved.savedAt > MAX_AGE) { localStorage.removeItem(KEY); return; }
@@ -29,7 +30,10 @@ export function persistOfflineCache(client: QueryClient) {
     timer = null;
     const userId = currentUserId(); if (!userId) return;
     try {
-      const state = dehydrate(client, { shouldDehydrateQuery: (q) => q.state.status === "success" && !PRIVATE_PREFIXES.some((p) => String(q.queryKey[0]).startsWith(p)) });
+      const state = dehydrate(client, {
+        shouldDehydrateMutation: () => false,
+        shouldDehydrateQuery: (query) => query.state.status === "success" && PUBLIC_QUERY_KEYS.has(String(query.queryKey[0])),
+      });
       const raw = JSON.stringify({ userId, savedAt: Date.now(), state });
       if (raw.length <= MAX_BYTES) localStorage.setItem(KEY, raw);
     } catch { /* almacenamiento lleno o bloqueado: la app sigue funcionando en linea */ }
@@ -41,7 +45,12 @@ export function persistOfflineCache(client: QueryClient) {
   return () => { unsubscribe(); if (timer !== null) window.clearTimeout(timer); };
 }
 
-export function clearOfflineCache() { try { localStorage.removeItem(KEY); } catch { /* sin almacenamiento */ } }
+export function clearOfflineCache() {
+  try {
+    localStorage.removeItem(KEY);
+    localStorage.removeItem(LEGACY_KEY);
+  } catch { /* sin almacenamiento */ }
+}
 
 export function offlineCacheSavedAt() {
   try { const raw = localStorage.getItem(KEY); return raw ? (JSON.parse(raw) as { savedAt: number }).savedAt : null; } catch { return null; }

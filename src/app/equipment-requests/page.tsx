@@ -44,7 +44,7 @@ export default function EquipmentRequestsPage() {
     try { await mutation.mutateAsync({ id: request.id, action: "cancel", body: { revision: request.revision } }); setNotice("Pedido cancelado."); if (form?.request?.id === request.id) setForm(null); }
     catch (err) { setError(getErrorMessage(err, "No se pudo cancelar el pedido.")); }
   }
-  return <ProtectedLayout><main className="screen-body">
+  return <ProtectedLayout><div className="screen-body">
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h1 className="flex items-center gap-2 text-2xl font-bold"><ClipboardList className="h-6 w-6 shrink-0 text-red-400" />Pedidos de vestimenta</h1><div className="flex flex-wrap gap-2"><button className="btn-icon" title="Actualizar pedidos" aria-label="Actualizar pedidos" onClick={() => void query.refetch()}><RefreshCw className="h-4 w-4" /></button><button className="app-button app-button-red w-auto" disabled={mutation.isPending} onClick={() => open({ type: "create" })}><Plus className="h-4 w-4" />Nuevo pedido</button><Link href="/personal-equipment" className="app-button app-button-outline w-auto">Equipamiento personal</Link></div></div>
     {error && <ErrorNotice>{error}</ErrorNotice>}{notice && <p role="status" className="mb-4 border-l-2 border-green-400 pl-3 text-sm text-green-200">{notice}</p>}
     {form && <form ref={formRef} key={`${form.type}-${form.request?.id || "new"}-${form.decision || ""}`} onSubmit={submit} className="mb-5 scroll-mt-20 border-y border-[var(--bord)] py-4">
@@ -76,5 +76,5 @@ export default function EquipmentRequestsPage() {
       </div>
     </article>)}</div>
     {query.data && query.data.total > query.data.pageSize && <div className="mt-5 flex items-center justify-between gap-2"><button className="app-button app-button-outline w-auto" disabled={filters.page === 1 || query.isFetching} onClick={() => setFilters((value) => ({ ...value, page: value.page - 1 }))}>Anterior</button><span className="text-sm">{filters.page} / {Math.ceil(query.data.total / query.data.pageSize)}</span><button className="app-button app-button-outline w-auto" disabled={filters.page * query.data.pageSize >= query.data.total || query.isFetching} onClick={() => setFilters((value) => ({ ...value, page: value.page + 1 }))}>Siguiente</button></div>}
-  </main></ProtectedLayout>;
+  </div></ProtectedLayout>;
 }
