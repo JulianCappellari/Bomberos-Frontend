@@ -8,6 +8,7 @@ import {
   setTokens,
 } from "./auth";
 import { cachedStepUp, clearStepUp, requestStepUp } from "./step-up";
+import { toast } from "./toast";
 
 const refreshApi = axios.create({ baseURL: api.defaults.baseURL, timeout: 15000 });
 const refresh = createRefreshCoordinator({
@@ -23,7 +24,16 @@ const refresh = createRefreshCoordinator({
     ? await navigator.locks.request("bomberos-session-refresh", work) : await work(),
 });
 
+// Demo: el aviso de "accion simulada" se muestra solo para lo que hizo la persona (toque, tecla o envio
+// de formulario en los ultimos segundos), no para los envios automaticos de fondo (marcas de lectura, sondeos).
+let lastGesture = 0;
+if (typeof window !== "undefined") {
+  for (const type of ["pointerdown", "keydown", "submit"]) window.addEventListener(type, () => { lastGesture = Date.now(); }, { capture: true, passive: true });
+}
+type DemoAwareConfig = { _userAction?: boolean };
+
 api.interceptors.request.use((config) => {
+  (config as DemoAwareConfig)._userAction = Date.now() - lastGesture < 5000;
   const token = getAccessToken();
 
   if (token) {
@@ -36,7 +46,15 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Cuenta demo: el servidor no ejecuta las acciones que guardan datos; responde "simulado" y aca se avisa.
+    if (response.data && typeof response.data === "object" && (response.data as { demoSimulated?: unknown }).demoSimulated === true
+      && (response.config as DemoAwareConfig)._userAction) {
+      // Mas tiempo que un aviso comun: la pantalla puede mostrar encima su propio mensaje de exito.
+      toast.success("La acción funcionó correctamente", "Es una cuenta de demostración: no se guardó ningún cambio.", 8000);
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 

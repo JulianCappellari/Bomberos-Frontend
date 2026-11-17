@@ -5,9 +5,13 @@ import { api } from "@/lib/api-client";
 import { getCurrentPositionAsync } from "@/lib/geolocation";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { useAuth } from "@/features/auth/auth-context";
+import { demoMemory } from "@/lib/demo-memory";
+// Demo: la confirmacion se simula; se oculta el aviso (recordado en la pestaña).
+const demoConfirmedAttendances = demoMemory("confirmed-presence");
 export function PresencePrompt() {
-  const { user } = useAuth(), client = useQueryClient();
+  const { user } = useAuth(), client = useQueryClient(), demo = Boolean(user?.demo), uid = user?.id;
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const [, setDemoConfirmations] = useState(0);
   const query = useQuery({ queryKey: ["presence-confirmation", user?.id], queryFn: async () => (await api.get<{ attendance: { id: string; stationName: string; requiresLocation?: boolean } | null; needsConfirmation: boolean; dueAt: string | null; retryAt?: string; expiresAt?: string }>("/members/presence")).data, enabled: Boolean(user && !user.mustChangePassword), refetchInterval: 15000, refetchOnWindowFocus: true });
   const id = query.data?.attendance?.id, gps = query.data?.attendance?.requiresLocation !== false, attempted = useRef(""), inFlight = useRef(false), promptElement = useRef<HTMLElement>(null);
   const confirm = useCallback(async (inside: boolean) => {
@@ -18,12 +22,13 @@ export function PresencePrompt() {
       // Base sin ubicacion: se confirma tocando (no hay GPS que comparar).
       const point = inside && gps ? await getCurrentPositionAsync() : null;
       await api.post("/members/presence", { attendanceId: id, inside, ...(inside && !gps ? { tap: true } : {}), ...(point ? { latitude: point.coords.latitude, longitude: point.coords.longitude, accuracy: point.coords.accuracy, capturedAt: new Date(point.timestamp).toISOString() } : {}) });
+      if (demo) { demoConfirmedAttendances.add(`${uid}:${id}`); setDemoConfirmations((n) => n + 1); }
       await client.invalidateQueries({ queryKey: ["presence-confirmation"] });
       await client.invalidateQueries({ queryKey: ["dashboard-summary"] });
       await client.invalidateQueries({ queryKey: ["attendance", "present"] });
     } catch (err) { setError(getErrorMessage(err, "No se pudo confirmar. Revise el permiso GPS y vuelva a intentarlo.")); }
     finally { inFlight.current = false; setBusy(false); }
-  }, [client,id,gps]);
+  }, [client,id,gps,demo,uid]);
   const { needsConfirmation, dueAt, retryAt, expiresAt } = query.data || {};
   useEffect(() => {
     if (!id || !needsConfirmation || !dueAt) return;
@@ -54,6 +59,6 @@ export function PresencePrompt() {
     void check(); document.addEventListener("visibilitychange",check);
     return () => {cancelled = true; observer?.disconnect(); document.removeEventListener("visibilitychange",check);};
   }, [id,gps,needsConfirmation,dueAt,retryAt,expiresAt,query.dataUpdatedAt,confirm,client,user?.id]);
-  if (!query.data?.needsConfirmation) return null;
+  if (!query.data?.needsConfirmation || (demo && id && demoConfirmedAttendances.has(`${uid}:${id}`))) return null;
   return <aside ref={promptElement} role="alert" className="mb-4 rounded-lg border border-amber-500/50 bg-amber-500/10 p-4"><h2 className="font-bold">Seguís en {query.data.attendance?.stationName}?</h2><p className="mt-1 text-sm">{gps ? "Al confirmar se comprobará tu ubicación. Si no respondés, la app intentará verificarla a los 15 minutos, solo si está visible y ya tiene permiso." : "Confirmá que seguís en la base. Cada confirmación habilita 30 minutos más de permanencia."} {expiresAt && <>Si no confirmás antes de las {new Date(expiresAt).toLocaleTimeString("es-AR",{ hourCycle: "h23",hour:"2-digit",minute:"2-digit",timeZone:"America/Argentina/Buenos_Aires"})}, la permanencia se cierra y se acredita solo hasta tu última presencia verificada{dueAt ? ` (${new Date(dueAt).toLocaleTimeString("es-AR",{ hourCycle: "h23",hour:"2-digit",minute:"2-digit",timeZone:"America/Argentina/Buenos_Aires"})})` : ""}.</> }</p><div className="mt-3 flex flex-wrap gap-2"><button disabled={busy} className="app-button app-button-red w-auto" onClick={() => confirm(true)}>{busy ? "Procesando..." : gps ? "Sí, confirmar con GPS" : "Sí, sigo acá"}</button><button disabled={busy} className="app-button w-auto" onClick={() => confirm(false)}>No, cerrar mi permanencia</button></div>{error && <p className="mt-3 text-sm text-red-300">{error}</p>}</aside>;
 }

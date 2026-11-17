@@ -3,15 +3,17 @@
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, User, Eye, EyeOff, ShieldCheck, AlertCircle } from "lucide-react";
+import { Lock, User, Eye, EyeOff, ShieldCheck, AlertCircle, FlaskConical, ChevronRight } from "lucide-react";
 import { StationCrest } from "@/components/layout/station-crest";
 import { useAuth } from "@/features/auth/auth-context";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { Button } from "@/components/ui/button";
+import { demoProfilesRequest } from "@/services/auth.service";
+import type { DemoProfile } from "@/types/auth";
 
 const schema = z.object({
   username: z.string().min(1, "Ingresá tu nombre de usuario"),
@@ -21,10 +23,32 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, demoLogin } = useAuth();
   const router = useRouter();
   const [serverError, setServerError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  // Demo: perfiles ficticios para conocer el sistema. Solo aparece si el servidor tiene la demo activa.
+  const [demoProfiles, setDemoProfiles] = useState<DemoProfile[]>([]);
+  const [demoBusy, setDemoBusy] = useState("");
+  const [demoError, setDemoError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    demoProfilesRequest().then((data) => { if (active && data.enabled) setDemoProfiles(data.profiles); }).catch(() => { /* Sin demo: solo el ingreso normal. */ });
+    return () => { active = false; };
+  }, []);
+
+  async function enterDemo(profile: string) {
+    try {
+      setDemoError("");
+      setDemoBusy(profile);
+      await demoLogin(profile);
+      router.replace("/dashboard");
+    } catch (error: unknown) {
+      setDemoError(getErrorMessage(error, "La demostración no está disponible en este momento."));
+      setDemoBusy("");
+    }
+  }
 
   const {
     register,
@@ -243,6 +267,50 @@ export default function LoginPage() {
             </div>
           </form>
         </div>
+
+        {demoProfiles.length > 0 && (
+          <section id="demo" aria-labelledby="demo-title" className="rounded-3xl border border-amber-500/30 bg-[#121316]/90 p-6 shadow-2xl backdrop-blur-xl sm:p-7">
+            <div className="mb-4 flex items-start gap-3">
+              <FlaskConical className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden />
+              <div className="space-y-1">
+                <h2 id="demo-title" className="font-[family-name:var(--font-bebas)] text-2xl uppercase tracking-wider text-white">
+                  Probar la demo
+                </h2>
+                <p className="text-xs text-white/50">
+                  Entrá con un perfil ficticio y recorré todo el sistema. Lo que hagas se simula: no se guarda ningún cambio.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {demoProfiles.map((profile) => (
+                <button
+                  key={profile.key}
+                  type="button"
+                  disabled={Boolean(demoBusy)}
+                  onClick={() => void enterDemo(profile.key)}
+                  className="group flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-3 text-left transition-colors hover:border-amber-500/40 hover:bg-amber-500/[0.06] disabled:opacity-60"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-[family-name:var(--font-barlow-condensed)] text-sm font-bold tracking-wider text-white uppercase">
+                      {demoBusy === profile.key ? "Ingresando..." : profile.label}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-snug text-white/45">{profile.description}</span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-white/30 transition-colors group-hover:text-amber-300" aria-hidden />
+                </button>
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-white/40">
+              ¿Te pasaron un usuario de invitado para ver los perfiles de mando? Ingresalo arriba, con su contraseña.
+            </p>
+            {demoError && (
+              <p role="alert" className="mt-3 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+                {demoError}
+              </p>
+            )}
+          </section>
+        )}
 
         {/* Footer info */}
         <div className="text-center font-[family-name:var(--font-barlow-condensed)] text-xs font-semibold tracking-widest text-white/30 uppercase lg:hidden">

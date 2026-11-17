@@ -14,6 +14,7 @@ import { TaskSyncPanel } from "@/components/operations/task-sync-panel";
 import { AppUpdateBanner } from "@/components/operations/app-lifecycle";
 import { OfflineBanner, PendingAlertBanner } from "@/components/operations/status-banners";
 import { AlertGate } from "@/components/operations/alert-gate";
+import { DemoBanner } from "@/components/operations/demo-banner";
 import { StepUpDialog } from "@/components/operations/step-up-dialog";
 import { NotificationBell } from "@/components/operations/notification-bell";
 import { GuardMode } from "@/components/operations/guard-mode";
@@ -342,6 +343,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             >
+              <DemoBanner />
               <StepUpDialog />
               <OfflineBanner />
               <PendingAlertBanner />

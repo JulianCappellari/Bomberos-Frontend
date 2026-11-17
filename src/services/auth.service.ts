@@ -1,5 +1,5 @@
 import { api } from "@/lib/api-client";
-import { LoginResponse } from "@/types/auth";
+import { DemoProfilesResponse, LoginResponse } from "@/types/auth";
 
 export async function loginRequest(username: string, password: string) {
   const response = await api.post<LoginResponse>("/auth/login", {
@@ -21,5 +21,15 @@ export async function changePasswordRequest(data: {
 
 export async function getMeRequest() {
   const response = await api.get("/auth/me");
+  return response.data;
+}
+
+export async function demoProfilesRequest() {
+  const response = await api.get<DemoProfilesResponse>("/demo/profiles");
+  return response.data;
+}
+
+export async function demoLoginRequest(profile: string) {
+  const response = await api.post<LoginResponse>("/demo/login", { profile });
   return response.data;
 }

@@ -7,6 +7,7 @@ import { useAuth } from "@/features/auth/auth-context";
 import { useAlerts, useRespondAlert } from "@/hooks/use-alerts";
 import { getErrorMessage } from "@/lib/get-error-message";
 import { toast } from "@/lib/toast";
+import { demoMemory } from "@/lib/demo-memory";
 
 type GateAlert = { id: string; type: string; priority: "HIGH" | "MEDIUM" | "LOW"; status: string; location: string; description?: string | null; createdAt: string; viewerIsRecipient?: boolean; responses?: Array<{ userId: string }>; createdBy?: { username: string; profile?: { fullName?: string | null } | null } | null };
 const typeLabels: Record<string, string> = { FIRE: "Incendio", RESCUE: "Rescate", ACCIDENT: "Accidente", CHEMICAL: "Riesgo químico", MEDICAL: "Emergencia médica", FLOOD: "Inundación", OTHER: "Emergencia" };
@@ -17,6 +18,10 @@ function elapsed(from: string, now: number) {
   return minutes < 1 ? "recién" : minutes < 60 ? `hace ${minutes} min` : `hace ${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 }
 
+// Demo: la respuesta se simula y no se guarda. Se recuerda en la pestaña para que la misma alerta no
+// vuelva a bloquear la app mientras se recorre la demo.
+const demoAnsweredAlerts = demoMemory("answered-alerts");
+
 // Con una alerta activa sin responder, la persona convocada ve solo esta tarjeta hasta contestar Voy / No voy.
 // Desaparece sola cuando la alerta deja de estar activa (al cerrar la planilla de la intervención o cancelarla).
 export function AlertGate() {
@@ -24,10 +29,11 @@ export function AlertGate() {
   const alerts = useAlerts(), respond = useRespondAlert();
   const [now, setNow] = useState(() => Date.now());
   const [error, setError] = useState("");
+  const [, setDemoAnswers] = useState(0);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const pending = ((alerts.data ?? []) as GateAlert[])
-    .filter((a) => a.status === "ACTIVE" && a.viewerIsRecipient && !a.responses?.some((r) => r.userId === user?.id))
+    .filter((a) => a.status === "ACTIVE" && a.viewerIsRecipient && !a.responses?.some((r) => r.userId === user?.id) && !(user?.demo && demoAnsweredAlerts.has(`${user.id}:${a.id}`)))
     .sort((a, b) => order[a.priority] - order[b.priority] || +new Date(a.createdAt) - +new Date(b.createdAt));
   const alert = pending[0];
   const active = Boolean(alert && user && !user.mustChangePassword && pathname !== "/security");
@@ -53,7 +59,7 @@ export function AlertGate() {
   async function answer(response: "GOING" | "NOT_GOING") {
     if (response === "NOT_GOING" && !window.confirm("¿Confirmás que NO vas? La respuesta no se puede cambiar.")) return;
     setError("");
-    try { await respond.mutateAsync({ id: alert!.id, response }); toast.success(response === "GOING" ? "Confirmaste que vas" : "Avisaste que no vas", alert!.location); }
+    try { await respond.mutateAsync({ id: alert!.id, response }); if (user?.demo) { demoAnsweredAlerts.add(`${user.id}:${alert!.id}`); setDemoAnswers((n) => n + 1); return; } toast.success(response === "GOING" ? "Confirmaste que vas" : "Avisaste que no vas", alert!.location); }
     catch (err) { setError(getErrorMessage(err, "No se pudo registrar tu respuesta. Probá de nuevo.")); }
   }
   const urgent = alert.priority === "HIGH";

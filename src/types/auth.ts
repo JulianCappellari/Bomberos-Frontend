@@ -10,6 +10,8 @@ export type AuthUser = {
   isActive: boolean;
   isPendingApproval: boolean;
   mustChangePassword?: boolean;
+  /** Cuenta de demostracion: datos ficticios y acciones simuladas que no se guardan. */
+  demo?: boolean;
   profile: {
     fullName: string;
     rank: string;
@@ -24,3 +26,6 @@ export type LoginResponse = {
     refreshToken: string;
   };
 };
+
+export type DemoProfile = { key: string; label: string; description: string };
+export type DemoProfilesResponse = { enabled: boolean; profiles: DemoProfile[] };

@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { clearTokens, getAccessToken, setTokens } from "@/lib/auth";
-import { getMeRequest, loginRequest } from "@/services/auth.service";
+import { demoLoginRequest, getMeRequest, loginRequest } from "@/services/auth.service";
 import { api } from "@/lib/api-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { AuthUser } from "@/types/auth";
@@ -23,6 +23,7 @@ type AuthContextType = {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<AuthUser>;
+  demoLogin: (profile: string) => Promise<AuthUser>;
   logout: () => void;
   setUser: (user: AuthUser | null) => void;
 };
@@ -102,6 +103,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [setUser, queryClient],
   );
 
+  // Demo: entra con un perfil ficticio, sin contrasena. Lo que haga se simula y no se guarda.
+  const demoLogin = useCallback(
+    async (profile: string) => {
+      const data = await demoLoginRequest(profile);
+      queryClient.clear();
+      clearOfflineCache();
+      setTokens(data.tokens.accessToken, data.tokens.refreshToken);
+      setUser(data.user);
+      return data.user;
+    },
+    [setUser, queryClient],
+  );
+
   const logout = useCallback(async () => {
     if (user && readTaskOutbox(user.id).length && !window.confirm("Tiene acciones sin sincronizar. Cerrar sesion elimina esos pendientes de este dispositivo. Desea continuar?")) return;
     if (DEV_BYPASS) {
@@ -130,10 +144,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: !!user,
       isLoading,
       login,
+      demoLogin,
       logout,
       setUser,
     }),
-    [user, isLoading, login, logout, setUser],
+    [user, isLoading, login, demoLogin, logout, setUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

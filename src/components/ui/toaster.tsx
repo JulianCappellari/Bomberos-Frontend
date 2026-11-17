@@ -26,7 +26,7 @@ export function Toaster() {
               <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${s.iconColor}`} aria-hidden />
               <div className="min-w-0"><p className="text-sm font-semibold text-[var(--txt)]">{t.message}</p>{t.detail && <p className="mt-0.5 text-xs text-[var(--mut)]">{t.detail}</p>}</div>
               <button type="button" onClick={() => dismiss(t.id)} aria-label="Cerrar aviso" className="absolute right-2 top-2 rounded-md p-1 text-[var(--mut)] hover:text-[var(--txt)]"><X className="h-4 w-4" /></button>
-              <motion.span aria-hidden className={`absolute bottom-0 left-0 h-0.5 ${s.bar}`} initial={{ width: "100%" }} animate={{ width: "0%" }} transition={{ duration: t.kind === "error" ? 6 : 3.5, ease: "linear" }} />
+              <motion.span aria-hidden className={`absolute bottom-0 left-0 h-0.5 ${s.bar}`} initial={{ width: "100%" }} animate={{ width: "0%" }} transition={{ duration: t.durationMs / 1000, ease: "linear" }} />
             </motion.div>
           );
         })}
