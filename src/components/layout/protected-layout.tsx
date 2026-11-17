@@ -15,6 +15,7 @@ import { AppUpdateBanner } from "@/components/operations/app-lifecycle";
 import { OfflineBanner, PendingAlertBanner } from "@/components/operations/status-banners";
 import { AlertGate } from "@/components/operations/alert-gate";
 import { DemoBanner } from "@/components/operations/demo-banner";
+import { MissionBriefing } from "@/components/operations/mission-briefing";
 import { StepUpDialog } from "@/components/operations/step-up-dialog";
 import { NotificationBell } from "@/components/operations/notification-bell";
 import { GuardMode } from "@/components/operations/guard-mode";
@@ -349,6 +350,8 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
               <PendingAlertBanner />
               <AlertGate />
               <PresencePrompt />
+              {/* Personal actuante: las novedades del movil en todas las pantallas (Inicio las muestra completas). */}
+              {pathname !== "/dashboard" && <MissionBriefing compact />}
               <TaskSyncPanel />
               <AppUpdateBanner />
               {canOpenPage(pathname, user?.role, user?.specialPermissions, user?.profile?.rank) ? children : <section className="p-5"><h1 className="text-xl font-bold">Acceso restringido</h1><p className="mt-2 text-sm">Su perfil no tiene permiso para consultar este apartado.</p><Link href={home} className="mt-3 inline-block underline">Volver al inicio</Link></section>}

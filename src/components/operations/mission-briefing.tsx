@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertOctagon, AlertTriangle, CheckCircle2, Info, Truck } from "lucide-react";
 import { useAuth } from "@/features/auth/auth-context";
@@ -14,13 +15,39 @@ const style = {
 } as const;
 const hour = (v: string) => new Date(v).toLocaleTimeString("es-AR", { hourCycle: "h23", hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" });
 
-// Inicio: si saliste a una emergencia, lo que tenés que saber del movil (fallas, faltantes, vencimientos).
-// Se actualiza solo y desaparece cuando el movil vuelve al cuartel.
-export function MissionBriefing() {
+// Si saliste a una emergencia, lo que tenés que saber del movil (fallas, faltantes, vencimientos).
+// Aparece apenas te cargan como personal actuante en la planilla (no espera a que se guarde) y desaparece
+// cuando el movil vuelve al cuartel. En Inicio se ve completo; en el resto de las pantallas, plegado arriba.
+export function MissionBriefing({ compact = false }: { compact?: boolean }) {
   const { user } = useAuth();
-  const query = useQuery({ queryKey: ["mission-briefing", user?.id], queryFn: async () => (await api.get<Briefing[]>("/incidents/logistics/briefing")).data, enabled: Boolean(user && !user.mustChangePassword), refetchInterval: 30000, refetchOnWindowFocus: true });
+  const query = useQuery({ queryKey: ["mission-briefing", user?.id], queryFn: async () => (await api.get<Briefing[]>("/incidents/logistics/briefing")).data, enabled: Boolean(user && !user.mustChangePassword), refetchInterval: 15000, refetchOnWindowFocus: true });
+  const section = useRef<HTMLElement>(null), scrolled = useRef(false);
+  const ready = Boolean(query.data?.length);
+  // Desde el aviso ("/dashboard#tu-movil"): lleva a la tarjeta del movil cuando termina de cargar.
+  useEffect(() => {
+    if (compact || !ready || scrolled.current || window.location.hash !== "#tu-movil") return;
+    scrolled.current = true;
+    section.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [compact, ready]);
   if (!query.data?.length) return null;
-  return <section aria-label="Tu móvil en salida" className="space-y-3">
+  if (compact) return <section aria-label="Tu móvil en salida" className="mb-4 space-y-2">
+    {query.data.map((b) => <details key={b.movementId} className="group rounded-xl border-2 border-red-500/60 bg-[var(--card)]">
+      <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
+        <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-red-300"><Truck className="h-4 w-4" aria-hidden /> En salida · {b.role}</span>
+        <span className="font-bold">Móvil {b.vehicle}</span>
+        {(b.counts?.critical ?? 0) > 0 && <span className="rounded-full border border-red-500/50 bg-red-500/10 px-2 py-0.5 text-xs font-bold text-red-400">{b.counts!.critical} {b.counts!.critical === 1 ? "importante" : "importantes"}</span>}
+        <span className="ml-auto text-sm font-semibold text-[var(--mut)] underline underline-offset-4 group-open:hidden">Ver novedades del móvil</span>
+        <span className="ml-auto hidden text-sm font-semibold text-[var(--mut)] underline underline-offset-4 group-open:inline">Ocultar</span>
+      </summary>
+      <div className="px-4 pb-4">
+        {b.notes.length === 0
+          ? <p className="flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm"><CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" aria-hidden />Sin fallas ni faltantes registrados.</p>
+          : <BriefingNotes b={b} />}
+        <Link href={`/incidents/${b.incident.id}/sheet`} className="mt-3 inline-block text-sm underline underline-offset-4">Ver la planilla de la intervención</Link>
+      </div>
+    </details>)}
+  </section>;
+  return <section ref={section} id="tu-movil" aria-label="Tu móvil en salida" className="scroll-mt-24 space-y-3">
     {query.data.map((b) => <article key={b.movementId} className="rounded-2xl border-2 border-red-500/60 bg-[var(--card)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
